@@ -27,6 +27,9 @@
 #include "src/base.h"
 #include "src/codec_avif.h"
 #include "src/codec_combination.h"
+#include "src/codec_jpegli.h"
+#include "src/codec_jpegsimple.h"
+#include "src/codec_jpegturbo.h"
 #include "src/codec_jpegxl.h"
 #include "src/codec_webp.h"
 #include "src/codec_webp2.h"
@@ -46,11 +49,14 @@
 namespace codec_compare_gen {
 
 std::string CodecName(Codec codec) {
-  return codec == Codec::kWebp     ? "webp"
-         : codec == Codec::kWebp2  ? "webp2"
-         : codec == Codec::kJpegXl ? "jpegxl"
-         : codec == Codec::kAvif   ? "avif"
-                                   : "combination";
+  return codec == Codec::kWebp          ? "webp"
+         : codec == Codec::kWebp2       ? "webp2"
+         : codec == Codec::kJpegXl      ? "jpegxl"
+         : codec == Codec::kAvif        ? "avif"
+         : codec == Codec::kCombination ? "combination"
+         : codec == Codec::kJpegturbo   ? "jpegturbo"
+         : codec == Codec::kJpegli      ? "jpegli"
+                                        : "jpegsimple";
 }
 
 std::string CodecVersion(Codec codec) {
@@ -62,9 +68,15 @@ std::string CodecVersion(Codec codec) {
     return JpegXLVersion();
   } else if (codec == Codec::kAvif) {
     return AvifVersion();
-  } else {
-    assert(codec == Codec::kCombination);
+  } else if (codec == Codec::kCombination) {
     return CodecCombinationVersion();
+  } else if (codec == Codec::kJpegturbo) {
+    return JpegturboVersion();
+  } else if (codec == Codec::kJpegli) {
+    return JpegliVersion();
+  } else {
+    assert(codec == Codec::kJpegsimple);
+    return JpegsimpleVersion();
   }
 }
 
@@ -73,9 +85,12 @@ StatusOr<Codec> CodecFromName(const std::string& name, bool quiet) {
   if (name == "webp2") return Codec::kWebp2;
   if (name == "jpegxl") return Codec::kJpegXl;
   if (name == "avif") return Codec::kAvif;
-  CHECK_OR_RETURN(name == "combination", quiet)
+  if (name == "combination") return Codec::kCombination;
+  if (name == "jpegturbo") return Codec::kJpegturbo;
+  if (name == "jpegli") return Codec::kJpegli;
+  CHECK_OR_RETURN(name == "jpegsimple", quiet)
       << "Unknown codec \"" << name << "\"";
-  return Codec::kCombination;
+  return Codec::kJpegsimple;
 }
 
 std::vector<int> CodecLossyQualities(Codec codec) {
@@ -83,20 +98,29 @@ std::vector<int> CodecLossyQualities(Codec codec) {
   if (codec == Codec::kWebp2) return Webp2LossyQualities();
   if (codec == Codec::kJpegXl) return JpegXLLossyQualities();
   if (codec == Codec::kAvif) return AvifLossyQualities();
-  assert(codec == Codec::kCombination);
-  return CodecCombinationLossyQualities();
+  if (codec == Codec::kCombination) return CodecCombinationLossyQualities();
+  if (codec == Codec::kJpegturbo) return JpegturboLossyQualities();
+  if (codec == Codec::kJpegli) return JpegliLossyQualities();
+  assert(codec == Codec::kJpegsimple);
+  return JpegsimpleLossyQualities();
 }
 
 std::string CodecExtension(Codec codec) {
-  return codec == Codec::kWebp     ? "webp"
-         : codec == Codec::kWebp2  ? "wp2"
-         : codec == Codec::kJpegXl ? "jxl"
-         : codec == Codec::kAvif   ? "avif"
-                                   : "unknown";
+  return codec == Codec::kWebp          ? "webp"
+         : codec == Codec::kWebp2       ? "wp2"
+         : codec == Codec::kJpegXl      ? "jxl"
+         : codec == Codec::kAvif        ? "avif"
+         : codec == Codec::kCombination ? "comb"
+         : codec == Codec::kJpegturbo   ? "turbo.jpg"
+         : codec == Codec::kJpegli      ? "li.jpg"
+         : codec == Codec::kJpegsimple  ? "s.jpg"
+                                        : "unknown";
 }
 
 bool CodecIsSupportedByBrowsers(Codec codec) {
-  return codec == Codec::kWebp || codec == Codec::kAvif;
+  return codec == Codec::kWebp || codec == Codec::kAvif ||
+         codec == Codec::kJpegturbo || codec == Codec::kJpegli ||
+         codec == Codec::kJpegsimple;
 }
 
 #if defined(HAS_WEBP2)
@@ -148,6 +172,10 @@ StatusOr<TaskOutput> EncodeDecode(const TaskInput& input,
           ? (original_image.HasTransparency() ? WP2_RGBA_32 : WP2_RGB_24)
       : input.codec_settings.codec == Codec::kAvif
           ? (original_image.HasTransparency() ? WP2_ARGB_32 : WP2_RGB_24)
+      : input.codec_settings.codec == Codec::kJpegturbo ||
+              input.codec_settings.codec == Codec::kJpegli ||
+              input.codec_settings.codec == Codec::kJpegsimple
+          ? WP2_RGB_24
           : WP2_ARGB_32;
   if (original_image.format() != needed_format) {
     WP2::ArgbBuffer image(needed_format);
@@ -156,6 +184,29 @@ StatusOr<TaskOutput> EncodeDecode(const TaskInput& input,
   }
 
   original_image.metadata_.Clear();
+
+  auto encode_func =
+      input.codec_settings.codec == Codec::kWebp     ? &EncodeWebp
+      : input.codec_settings.codec == Codec::kWebp2  ? &EncodeWebp2
+      : input.codec_settings.codec == Codec::kJpegXl ? &EncodeJxl
+      : input.codec_settings.codec == Codec::kAvif   ? &EncodeAvif
+      : input.codec_settings.codec == Codec::kCombination
+          ? &EncodeCodecCombination
+      : input.codec_settings.codec == Codec::kJpegturbo  ? &EncodeJpegturbo
+      : input.codec_settings.codec == Codec::kJpegli     ? &EncodeJpegli
+      : input.codec_settings.codec == Codec::kJpegsimple ? &EncodeJpegsimple
+                                                         : nullptr;
+  auto decode_func =
+      input.codec_settings.codec == Codec::kWebp     ? &DecodeWebp
+      : input.codec_settings.codec == Codec::kWebp2  ? &DecodeWebp2
+      : input.codec_settings.codec == Codec::kJpegXl ? &DecodeJxl
+      : input.codec_settings.codec == Codec::kAvif   ? &DecodeAvif
+      : input.codec_settings.codec == Codec::kCombination
+          ? &DecodeCodecCombination
+      : input.codec_settings.codec == Codec::kJpegturbo  ? &DecodeJpegturbo
+      : input.codec_settings.codec == Codec::kJpegli     ? &DecodeJpegli
+      : input.codec_settings.codec == Codec::kJpegsimple ? &DecodeJpegsimple
+                                                         : nullptr;
 
   const Timer encoding_duration;
   WP2::Data encoded_image;
@@ -168,18 +219,9 @@ StatusOr<TaskOutput> EncodeDecode(const TaskInput& input,
                     quiet);
     file.read(reinterpret_cast<char*>(encoded_image.bytes),
               static_cast<long>(length));
-  } else if (input.codec_settings.codec == Codec::kWebp) {
-    ASSIGN_OR_RETURN(encoded_image, EncodeWebp(input, original_image, quiet));
-  } else if (input.codec_settings.codec == Codec::kWebp2) {
-    ASSIGN_OR_RETURN(encoded_image, EncodeWebp2(input, original_image, quiet));
-  } else if (input.codec_settings.codec == Codec::kJpegXl) {
-    ASSIGN_OR_RETURN(encoded_image, EncodeJxl(input, original_image, quiet));
-  } else if (input.codec_settings.codec == Codec::kAvif) {
-    ASSIGN_OR_RETURN(encoded_image, EncodeAvif(input, original_image, quiet));
   } else {
-    assert(input.codec_settings.codec == Codec::kCombination);
-    ASSIGN_OR_RETURN(encoded_image,
-                     EncodeCodecCombination(input, original_image, quiet));
+    CHECK_OR_RETURN(encode_func != nullptr, quiet);
+    ASSIGN_OR_RETURN(encoded_image, encode_func(input, original_image, quiet));
   }
   task.encoding_duration = encoding_duration.seconds();
   task.image_width = original_image.width();
@@ -188,34 +230,10 @@ StatusOr<TaskOutput> EncodeDecode(const TaskInput& input,
 
   const Timer decoding_duration;
   WP2::ArgbBuffer decoded_image;
-  if (input.codec_settings.codec == Codec::kWebp) {
+  CHECK_OR_RETURN(decode_func != nullptr, quiet);
+  {
     ASSIGN_OR_RETURN(auto image_and_color_conversion_duration,
-                     DecodeWebp(input, encoded_image, quiet));
-    decoded_image = std::move(image_and_color_conversion_duration.first);
-    task.decoding_color_conversion_duration =
-        image_and_color_conversion_duration.second;
-  } else if (input.codec_settings.codec == Codec::kWebp2) {
-    ASSIGN_OR_RETURN(auto image_and_color_conversion_duration,
-                     DecodeWebp2(input, encoded_image, quiet));
-    decoded_image = std::move(image_and_color_conversion_duration.first);
-    task.decoding_color_conversion_duration =
-        image_and_color_conversion_duration.second;
-  } else if (input.codec_settings.codec == Codec::kJpegXl) {
-    ASSIGN_OR_RETURN(auto image_and_color_conversion_duration,
-                     DecodeJxl(input, encoded_image, quiet));
-    decoded_image = std::move(image_and_color_conversion_duration.first);
-    task.decoding_color_conversion_duration =
-        image_and_color_conversion_duration.second;
-  } else if (input.codec_settings.codec == Codec::kAvif) {
-    ASSIGN_OR_RETURN(auto image_and_color_conversion_duration,
-                     DecodeAvif(input, encoded_image, quiet));
-    decoded_image = std::move(image_and_color_conversion_duration.first);
-    task.decoding_color_conversion_duration =
-        image_and_color_conversion_duration.second;
-  } else {
-    assert(input.codec_settings.codec == Codec::kCombination);
-    ASSIGN_OR_RETURN(auto image_and_color_conversion_duration,
-                     DecodeCodecCombination(input, encoded_image, quiet));
+                     decode_func(input, encoded_image, quiet));
     decoded_image = std::move(image_and_color_conversion_duration.first);
     task.decoding_color_conversion_duration =
         image_and_color_conversion_duration.second;

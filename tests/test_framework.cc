@@ -78,6 +78,21 @@ TEST_F(FrameworkTest, AllCodecsWithAlpha) {
             Status::kOk);
 }
 
+TEST_F(FrameworkTest, AllTraditionalCodecs) {
+  ComparisonSettings settings;
+  settings.codec_settings.push_back(
+      {Codec::kWebp, /*effort=*/6, /*quality=*/75});
+  settings.codec_settings.push_back(
+      {Codec::kJpegturbo, /*effort=*/0, /*quality=*/90});
+  settings.codec_settings.push_back(
+      {Codec::kJpegli, /*effort=*/0, /*quality=*/80});
+  settings.codec_settings.push_back(
+      {Codec::kJpegsimple, /*effort=*/8, /*quality=*/70});
+  EXPECT_EQ(Compare({std::string(data_path) + "gradient32x32.png"}, settings,
+                    TempPath("completed_tasks.csv"), TempPath()),
+            Status::kOk);
+}
+
 //------------------------------------------------------------------------------
 
 TEST_F(FrameworkTest, Incremental) {

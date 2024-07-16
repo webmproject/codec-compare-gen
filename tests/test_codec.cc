@@ -200,6 +200,54 @@ TEST(CodecTest, CodecCombinationLossyMaxQuality) {
 
 //------------------------------------------------------------------------------
 
+TEST(CodecTest, JpegturboMinQuality) {
+  TaskInput input;
+  input.codec_settings = {Codec::kJpegturbo, /*effort=*/0, /*quality=*/0};
+  input.image_path = std::string(data_path) + "gradient32x32.png";
+  EXPECT_EQ(EncodeDecodeTest(input), Status::kOk);
+}
+
+TEST(CodecTest, JpegturboMaxQuality) {
+  TaskInput input;
+  input.codec_settings = {Codec::kJpegturbo, /*effort=*/0, /*quality=*/100};
+  input.image_path = std::string(data_path) + "gradient32x32.png";
+  EXPECT_EQ(EncodeDecodeTest(input), Status::kOk);
+}
+
+//------------------------------------------------------------------------------
+
+TEST(CodecTest, JpegliMinQuality) {
+  TaskInput input;
+  input.codec_settings = {Codec::kJpegli, /*effort=*/0, /*quality=*/0};
+  input.image_path = std::string(data_path) + "gradient32x32.png";
+  EXPECT_EQ(EncodeDecodeTest(input), Status::kOk);
+}
+
+TEST(CodecTest, JpegliMaxQuality) {
+  TaskInput input;
+  input.codec_settings = {Codec::kJpegli, /*effort=*/0, /*quality=*/100};
+  input.image_path = std::string(data_path) + "gradient32x32.png";
+  EXPECT_EQ(EncodeDecodeTest(input), Status::kOk);
+}
+
+//------------------------------------------------------------------------------
+
+TEST(CodecTest, JpegsimpleMinQualityMinEffort) {
+  TaskInput input;
+  input.codec_settings = {Codec::kJpegsimple, /*effort=*/0, /*quality=*/0};
+  input.image_path = std::string(data_path) + "gradient32x32.png";
+  EXPECT_EQ(EncodeDecodeTest(input), Status::kOk);
+}
+
+TEST(CodecTest, JpegsimpleMaxQualityMaxEffort) {
+  TaskInput input;
+  input.codec_settings = {Codec::kJpegsimple, /*effort=*/8, /*quality=*/100};
+  input.image_path = std::string(data_path) + "gradient32x32.png";
+  EXPECT_EQ(EncodeDecodeTest(input), Status::kOk);
+}
+
+//------------------------------------------------------------------------------
+
 TEST(CodecTest, EncodeToDiskAndLoadFromDisk) {
   TaskInput input;
   input.codec_settings = {Codec::kWebp, /*effort=*/2, /*quality=*/95};

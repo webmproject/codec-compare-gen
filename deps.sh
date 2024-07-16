@@ -90,6 +90,7 @@ pushd third_party
       -DJPEGXL_ENABLE_JPEGLI=OFF \
       -DJPEGXL_ENABLE_OPENEXR=OFF \
       -DJPEGXL_ENABLE_DEVTOOLS=ON \
+      -DJPEGXL_ENABLE_JPEGLI=ON -DJPEGXL_ENABLE_JPEGLI_LIBJPEG=OFF \
       -DCMAKE_BUILD_TYPE=Release \
       -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ \
       -DBUILD_SHARED_LIBS=ON
@@ -102,5 +103,29 @@ pushd third_party
     git checkout 14995bc19a6ac75abf6e171cdfb17f26ad980879
     cargo build --release
   popd
+
+  git clone https://github.com/libjpeg-turbo/libjpeg-turbo.git libjpeg_turbo
+  pushd libjpeg_turbo
+    git checkout e287a35762cba20e2253efb3260007289a2f2186
+    cmake -S . -B build
+    cmake --build build --parallel
+  popd
+
+  git clone https://github.com/webmproject/sjpeg.git
+  pushd sjpeg
+    git checkout 4578abf18ed8b81290c6fe5c23eb7a58c8f38212
+    cmake -S . -B build \
+      -DSJPEG_BUILD_EXAMPLES=OFF \
+      -DBUILD_SHARED_LIBS=ON
+    cmake --build build --parallel
+  popd
+
+  # TODO: Add MozJPEG
+  # git clone https://github.com/mozilla/mozjpeg.git
+  # pushd mozjpeg
+  #   git checkout 6c9f0897afa1c2738d7222a0a9ab49e8b536a267
+  #   cmake -S . -B build
+  #   cmake --build build --parallel
+  # popd
 
 popd
