@@ -27,7 +27,16 @@ namespace codec_compare_gen {
 
 enum class Status { kOk, kUnknownError };
 
-enum class Codec { kWebp, kWebp2, kJpegXl, kAvif, kCombination };
+enum class Codec {
+  kWebp,
+  kWebp2,
+  kJpegXl,
+  kAvif,
+  kCombination,
+  kJpegturbo,
+  kJpegli,
+  kJpegsimple
+};
 
 static constexpr int kQualityLossless = -1;  // Input setting.
 

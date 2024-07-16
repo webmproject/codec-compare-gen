@@ -67,6 +67,11 @@ int main(int argc, char* argv[]) {
                 << " [--codec webp {effort}]" << std::endl
                 << " [--codec webp2 {effort}]" << std::endl
                 << " [--codec jpegxl {effort}]" << std::endl
+                << " [--codec avif {effort}]" << std::endl
+                << " [--codec combination {effort}]" << std::endl
+                << " [--codec jpegturbo]" << std::endl
+                << " [--codec jpegli]" << std::endl
+                << " [--codec jpegsimple {effort}]" << std::endl
                 << " --lossy|--lossless" << std::endl
                 << " [--qualities {unique|min:max}]"
                 << " [--repeat {number of times to encode each image}]"
@@ -85,22 +90,36 @@ int main(int argc, char* argv[]) {
                 << " --" << std::endl
                 << " {image file path}..." << std::endl;
       return 0;
-    } else if (arg == "--codec" && arg_index + 2 < argc) {
+    } else if (arg == "--codec" && arg_index + 1 < argc) {
       const std::string codec = argv[++arg_index];
-      const int effort = std::stoi(argv[++arg_index]);
-      if (codec == "webp") {
-        codec_settings.push_back({codec_compare_gen::Codec::kWebp, effort});
-      } else if (codec == "wp2" || codec == "webp2") {
-        codec_settings.push_back({codec_compare_gen::Codec::kWebp2, effort});
-      } else if (codec == "jxl" || codec == "jpegxl") {
-        codec_settings.push_back({codec_compare_gen::Codec::kJpegXl, effort});
-      } else if (codec == "avif") {
-        codec_settings.push_back({codec_compare_gen::Codec::kAvif, effort});
-      } else if (codec == "combination") {
-        codec_settings.push_back(
-            {codec_compare_gen::Codec::kCombination, effort});
+      if (codec == "jpegturbo" || codec == "turbojpeg") {
+        codec_settings.push_back({codec_compare_gen::Codec::kJpegturbo});
+      } else if (codec == "jpegli") {
+        codec_settings.push_back({codec_compare_gen::Codec::kJpegli});
+      } else if (arg_index + 2 < argc) {
+        const int effort = std::stoi(argv[++arg_index]);
+        if (codec == "webp") {
+          codec_settings.push_back({codec_compare_gen::Codec::kWebp, effort});
+        } else if (codec == "wp2" || codec == "webp2") {
+          codec_settings.push_back({codec_compare_gen::Codec::kWebp2, effort});
+        } else if (codec == "jxl" || codec == "jpegxl") {
+          codec_settings.push_back({codec_compare_gen::Codec::kJpegXl, effort});
+        } else if (codec == "avif") {
+          codec_settings.push_back({codec_compare_gen::Codec::kAvif, effort});
+        } else if (codec == "combination") {
+          codec_settings.push_back(
+              {codec_compare_gen::Codec::kCombination, effort});
+        } else if (codec == "jpegsimple" || codec == "simplejpeg" ||
+                   codec == "sjpeg") {
+          codec_settings.push_back(
+              {codec_compare_gen::Codec::kJpegsimple, effort});
+        } else {
+          std::cerr << "Error: Unknown codec \"" << codec << "\"" << std::endl;
+          return 1;
+        }
       } else {
-        std::cerr << "Error: Unknown codec \"" << codec << "\"" << std::endl;
+        std::cerr << "Error: Missing {effort} for codec \"" << codec << "\""
+                  << std::endl;
         return 1;
       }
     } else if (arg == "--repeat" && arg_index + 1 < argc) {
@@ -166,7 +185,7 @@ int main(int argc, char* argv[]) {
 
   if (lossy) {
     std::vector<std::vector<int>> qualities(
-        static_cast<int>(codec_compare_gen::Codec::kCombination) + 1);
+        static_cast<int>(codec_compare_gen::Codec::kJpegsimple) + 1);
     for (size_t i = 0; i < qualities.size(); ++i) {
       qualities[i] = codec_compare_gen::CodecLossyQualities(
           static_cast<codec_compare_gen::Codec>(i));

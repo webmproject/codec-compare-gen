@@ -39,6 +39,12 @@ add_library(
   src/codec_avif.cc
   src/codec_combination.h
   src/codec_combination.cc
+  src/codec_jpegli.h
+  src/codec_jpegli.cc
+  src/codec_jpegsimple.h
+  src/codec_jpegsimple.cc
+  src/codec_jpegturbo.h
+  src/codec_jpegturbo.cc
   src/codec_jpegxl.h
   src/codec_jpegxl.cc
   src/codec_webp.h
@@ -58,6 +64,8 @@ add_library(
   src/timer.h
   src/worker.h)
 target_include_directories(libccgen PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+
+# Dependencies
 
 target_compile_definitions(libccgen PRIVATE HAS_WEBP2)
 target_include_directories(libccgen PRIVATE ${CCGEN_TD}/libwebp2)
@@ -87,10 +95,38 @@ target_include_directories(libccgen
 target_link_directories(libccgen PRIVATE ${CCGEN_TD}/libjxl/build/lib)
 target_link_libraries(
   libccgen ${CCGEN_TD}/libjxl/build/lib/${CCGEN_PREFIX}jxl${CCGEN_SUFFIX})
+# jpegli is part of libjxl. For lib/jpegli/types.h included by common.h included
+# by codec_jpegli.cc:
+target_include_directories(libccgen PRIVATE ${CCGEN_TD}/libjxl)
+# libjxl does not generate any shared libjpegli binary. Using the libjpeg
+# drop-in replacement would result in symbol collisions with other similar
+# implementations. Use the static binary and its dependency instead:
+target_link_libraries(
+  libccgen
+  ${CCGEN_TD}/libjxl/build/lib/${CMAKE_STATIC_LIBRARY_PREFIX}jpegli-static${CMAKE_STATIC_LIBRARY_SUFFIX}
+  ${CCGEN_TD}/libjxl/build/third_party/highway/${CMAKE_STATIC_LIBRARY_PREFIX}hwy${CMAKE_STATIC_LIBRARY_SUFFIX}
+)
+
+target_compile_definitions(libccgen PRIVATE HAS_JPEGSIMPLE)
+target_link_directories(libccgen PRIVATE ${CCGEN_TD}/sjpeg/build)
+target_link_libraries(
+  libccgen ${CCGEN_TD}/sjpeg/build/${CCGEN_PREFIX}sjpeg${CCGEN_SUFFIX})
+
+target_compile_definitions(libccgen PRIVATE HAS_JPEGTURBO)
+target_include_directories(libccgen PRIVATE ${CCGEN_TD}/libjpeg_turbo
+                                            ${CCGEN_TD}/libjpeg_turbo/build)
+target_link_directories(libccgen PRIVATE ${CCGEN_TD}/libjpeg_turbo/build)
+target_link_libraries(
+  libccgen
+  ${CCGEN_TD}/libjpeg_turbo/build/${CCGEN_PREFIX}turbojpeg${CCGEN_SUFFIX})
+
+# Tools
 
 add_executable(ccgen tools/ccgen.cc)
 target_include_directories(ccgen PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(ccgen libccgen)
+
+# Tests
 
 option(BUILD_TESTING "Build the tests (requires GoogleTest)" OFF)
 if(BUILD_TESTING)
