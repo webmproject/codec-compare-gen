@@ -28,6 +28,7 @@
 #include "src/codec_avif.h"
 #include "src/codec_combination.h"
 #include "src/codec_jpegli.h"
+#include "src/codec_jpegmoz.h"
 #include "src/codec_jpegsimple.h"
 #include "src/codec_jpegturbo.h"
 #include "src/codec_jpegxl.h"
@@ -56,7 +57,8 @@ std::string CodecName(Codec codec) {
          : codec == Codec::kCombination ? "combination"
          : codec == Codec::kJpegturbo   ? "jpegturbo"
          : codec == Codec::kJpegli      ? "jpegli"
-                                        : "jpegsimple";
+         : codec == Codec::kJpegsimple  ? "jpegsimple"
+                                        : "jpegmoz";
 }
 
 std::string CodecVersion(Codec codec) {
@@ -74,9 +76,11 @@ std::string CodecVersion(Codec codec) {
     return JpegturboVersion();
   } else if (codec == Codec::kJpegli) {
     return JpegliVersion();
-  } else {
-    assert(codec == Codec::kJpegsimple);
+  } else if (codec == Codec::kJpegsimple) {
     return JpegsimpleVersion();
+  } else {
+    assert(codec == Codec::kJpegmoz);
+    return JpegmozVersion();
   }
 }
 
@@ -88,9 +92,10 @@ StatusOr<Codec> CodecFromName(const std::string& name, bool quiet) {
   if (name == "combination") return Codec::kCombination;
   if (name == "jpegturbo") return Codec::kJpegturbo;
   if (name == "jpegli") return Codec::kJpegli;
-  CHECK_OR_RETURN(name == "jpegsimple", quiet)
+  if (name == "jpegsimple") return Codec::kJpegsimple;
+  CHECK_OR_RETURN(name == "jpegmoz", quiet)
       << "Unknown codec \"" << name << "\"";
-  return Codec::kJpegsimple;
+  return Codec::kJpegmoz;
 }
 
 std::vector<int> CodecLossyQualities(Codec codec) {
@@ -101,8 +106,9 @@ std::vector<int> CodecLossyQualities(Codec codec) {
   if (codec == Codec::kCombination) return CodecCombinationLossyQualities();
   if (codec == Codec::kJpegturbo) return JpegturboLossyQualities();
   if (codec == Codec::kJpegli) return JpegliLossyQualities();
-  assert(codec == Codec::kJpegsimple);
-  return JpegsimpleLossyQualities();
+  if (codec == Codec::kJpegsimple) return JpegsimpleLossyQualities();
+  assert(codec == Codec::kJpegmoz);
+  return JpegmozLossyQualities();
 }
 
 std::string CodecExtension(Codec codec) {
@@ -114,13 +120,14 @@ std::string CodecExtension(Codec codec) {
          : codec == Codec::kJpegturbo   ? "turbo.jpg"
          : codec == Codec::kJpegli      ? "li.jpg"
          : codec == Codec::kJpegsimple  ? "s.jpg"
+         : codec == Codec::kJpegmoz     ? "moz.jpg"
                                         : "unknown";
 }
 
 bool CodecIsSupportedByBrowsers(Codec codec) {
   return codec == Codec::kWebp || codec == Codec::kAvif ||
          codec == Codec::kJpegturbo || codec == Codec::kJpegli ||
-         codec == Codec::kJpegsimple;
+         codec == Codec::kJpegsimple || codec == Codec::kJpegmoz;
 }
 
 #if defined(HAS_WEBP2)
@@ -174,7 +181,8 @@ StatusOr<TaskOutput> EncodeDecode(const TaskInput& input,
           ? (original_image.HasTransparency() ? WP2_ARGB_32 : WP2_RGB_24)
       : input.codec_settings.codec == Codec::kJpegturbo ||
               input.codec_settings.codec == Codec::kJpegli ||
-              input.codec_settings.codec == Codec::kJpegsimple
+              input.codec_settings.codec == Codec::kJpegsimple ||
+              input.codec_settings.codec == Codec::kJpegmoz
           ? WP2_RGB_24
           : WP2_ARGB_32;
   if (original_image.format() != needed_format) {
@@ -195,6 +203,7 @@ StatusOr<TaskOutput> EncodeDecode(const TaskInput& input,
       : input.codec_settings.codec == Codec::kJpegturbo  ? &EncodeJpegturbo
       : input.codec_settings.codec == Codec::kJpegli     ? &EncodeJpegli
       : input.codec_settings.codec == Codec::kJpegsimple ? &EncodeJpegsimple
+      : input.codec_settings.codec == Codec::kJpegmoz    ? &EncodeJpegmoz
                                                          : nullptr;
   auto decode_func =
       input.codec_settings.codec == Codec::kWebp     ? &DecodeWebp
@@ -206,6 +215,7 @@ StatusOr<TaskOutput> EncodeDecode(const TaskInput& input,
       : input.codec_settings.codec == Codec::kJpegturbo  ? &DecodeJpegturbo
       : input.codec_settings.codec == Codec::kJpegli     ? &DecodeJpegli
       : input.codec_settings.codec == Codec::kJpegsimple ? &DecodeJpegsimple
+      : input.codec_settings.codec == Codec::kJpegmoz    ? &DecodeJpegmoz
                                                          : nullptr;
 
   const Timer encoding_duration;
