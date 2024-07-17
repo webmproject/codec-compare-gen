@@ -120,12 +120,11 @@ pushd third_party
     cmake --build build --parallel
   popd
 
-  # TODO: Add MozJPEG
-  # git clone https://github.com/mozilla/mozjpeg.git
-  # pushd mozjpeg
-  #   git checkout 6c9f0897afa1c2738d7222a0a9ab49e8b536a267
-  #   cmake -S . -B build
-  #   cmake --build build --parallel
-  # popd
+  git clone https://github.com/mozilla/mozjpeg.git
+  pushd mozjpeg
+    git checkout 6c9f0897afa1c2738d7222a0a9ab49e8b536a267
+    cmake -S . -B build -DWITH_TURBOJPEG=OFF
+    cmake --build build --parallel
+  popd
 
 popd

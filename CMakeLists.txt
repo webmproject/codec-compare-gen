@@ -16,7 +16,7 @@ cmake_minimum_required(VERSION 3.20)
 project(
   codec-compare-gen
   LANGUAGES CXX
-  VERSION 0.1.0)
+  VERSION 0.1.1)
 set(CMAKE_CXX_STANDARD 17)
 
 option(BUILD_SHARED_LIBS "Build the shared codec-compare-gen library" ON)
@@ -41,6 +41,8 @@ add_library(
   src/codec_combination.cc
   src/codec_jpegli.h
   src/codec_jpegli.cc
+  src/codec_jpegmoz.h
+  src/codec_jpegmoz.cc
   src/codec_jpegsimple.h
   src/codec_jpegsimple.cc
   src/codec_jpegturbo.h
@@ -106,6 +108,11 @@ target_link_libraries(
   ${CCGEN_TD}/libjxl/build/lib/${CMAKE_STATIC_LIBRARY_PREFIX}jpegli-static${CMAKE_STATIC_LIBRARY_SUFFIX}
   ${CCGEN_TD}/libjxl/build/third_party/highway/${CMAKE_STATIC_LIBRARY_PREFIX}hwy${CMAKE_STATIC_LIBRARY_SUFFIX}
 )
+
+target_compile_definitions(libccgen PRIVATE HAS_JPEGMOZ)
+target_link_directories(libccgen PRIVATE ${CCGEN_TD}/mozjpeg/build)
+target_link_libraries(
+  libccgen ${CCGEN_TD}/mozjpeg/build/${CCGEN_PREFIX}jpeg${CCGEN_SUFFIX})
 
 target_compile_definitions(libccgen PRIVATE HAS_JPEGSIMPLE)
 target_link_directories(libccgen PRIVATE ${CCGEN_TD}/sjpeg/build)

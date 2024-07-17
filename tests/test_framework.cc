@@ -88,6 +88,11 @@ TEST_F(FrameworkTest, AllTraditionalCodecs) {
       {Codec::kJpegli, /*effort=*/0, /*quality=*/80});
   settings.codec_settings.push_back(
       {Codec::kJpegsimple, /*effort=*/8, /*quality=*/70});
+  // copybara:insert_begin(no mozjpeg in google3)
+  // settings.codec_settings.push_back(
+  //     {Codec::kJpegmoz, /*effort=*/0, /*quality=*/60});
+  // }
+  // copybara:insert_end
   EXPECT_EQ(Compare({std::string(data_path) + "gradient32x32.png"}, settings,
                     TempPath("completed_tasks.csv"), TempPath()),
             Status::kOk);

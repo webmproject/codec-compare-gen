@@ -248,6 +248,24 @@ TEST(CodecTest, JpegsimpleMaxQualityMaxEffort) {
 
 //------------------------------------------------------------------------------
 
+// copybara:insert_begin(no mozjpeg in google3)
+// TEST(CodecTest, JpegmozMinQuality) {
+//   TaskInput input;
+//   input.codec_settings = {Codec::kJpegmoz, /*effort=*/0, /*quality=*/0};
+//   input.image_path = std::string(data_path) + "gradient32x32.png";
+//   EXPECT_EQ(EncodeDecodeTest(input), Status::kOk);
+// }
+
+// TEST(CodecTest, JpegmozMaxQuality) {
+//   TaskInput input;
+//   input.codec_settings = {Codec::kJpegmoz, /*effort=*/0, /*quality=*/100};
+//   input.image_path = std::string(data_path) + "gradient32x32.png";
+//   EXPECT_EQ(EncodeDecodeTest(input), Status::kOk);
+// }
+// copybara:insert_end
+
+//------------------------------------------------------------------------------
+
 TEST(CodecTest, EncodeToDiskAndLoadFromDisk) {
   TaskInput input;
   input.codec_settings = {Codec::kWebp, /*effort=*/2, /*quality=*/95};

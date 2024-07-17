@@ -72,6 +72,7 @@ int main(int argc, char* argv[]) {
                 << " [--codec jpegturbo]" << std::endl
                 << " [--codec jpegli]" << std::endl
                 << " [--codec jpegsimple {effort}]" << std::endl
+                << " [--codec jpegmoz]" << std::endl
                 << " --lossy|--lossless" << std::endl
                 << " [--qualities {unique|min:max}]"
                 << " [--repeat {number of times to encode each image}]"
@@ -96,6 +97,8 @@ int main(int argc, char* argv[]) {
         codec_settings.push_back({codec_compare_gen::Codec::kJpegturbo});
       } else if (codec == "jpegli") {
         codec_settings.push_back({codec_compare_gen::Codec::kJpegli});
+      } else if (codec == "jpegmoz" || codec == "mozjpeg") {
+        codec_settings.push_back({codec_compare_gen::Codec::kJpegmoz});
       } else if (arg_index + 2 < argc) {
         const int effort = std::stoi(argv[++arg_index]);
         if (codec == "webp") {
@@ -185,13 +188,13 @@ int main(int argc, char* argv[]) {
 
   if (lossy) {
     std::vector<std::vector<int>> qualities(
-        static_cast<int>(codec_compare_gen::Codec::kJpegsimple) + 1);
+        static_cast<int>(codec_compare_gen::Codec::kJpegmoz) + 1);
     for (size_t i = 0; i < qualities.size(); ++i) {
       qualities[i] = codec_compare_gen::CodecLossyQualities(
           static_cast<codec_compare_gen::Codec>(i));
     }
     for (const CodecEffort& setting : codec_settings) {
-      for (const int quality : qualities[static_cast<int>(setting.codec)]) {
+      for (const int quality : qualities.at(static_cast<int>(setting.codec))) {
         if (allowed_qualities.empty() ||
             allowed_qualities.find(quality) != allowed_qualities.end()) {
           settings.codec_settings.push_back(
