@@ -41,6 +41,12 @@ enum class Codec {
 
 static constexpr int kQualityLossless = -1;  // Input setting.
 
+enum class Subsampling {
+  kDefault,  // Default setting depending on the quality and/or codec.
+  k444,      // No subsampling.
+  k420       // Chroma subsampling 4:2:0 (halved in both dimensions).
+};
+
 enum class DistortionMetric {
   kLibwebp2Psnr,
   kLibwebp2Ssim,

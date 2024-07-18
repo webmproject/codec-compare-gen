@@ -79,9 +79,11 @@ Status TasksToJson(const std::string& batch_name, CodecSettings settings,
   bool has_encoded_path = true;
   for (size_t i = 0; i < tasks.size(); ++i) {
     const CodecSettings& codec_settings = tasks[i].task_input.codec_settings;
-    CHECK_OR_RETURN(codec_settings.codec == settings.codec &&
-                        codec_settings.effort == settings.effort,
-                    quiet)
+    CHECK_OR_RETURN(
+        codec_settings.codec == settings.codec &&
+            codec_settings.effort == settings.effort &&
+            codec_settings.chroma_subsampling == settings.chroma_subsampling,
+        quiet)
         << "Codec settings do not match";
     lossless &= codec_settings.quality == kQualityLossless;
     has_encoded_path &= !tasks[i].task_input.encoded_path.empty();
@@ -99,7 +101,8 @@ Status TasksToJson(const std::string& batch_name, CodecSettings settings,
       GetImagePathCommonPrefix(tasks, /*get_encoded_path=*/false);
   const std::string encoding_cmd =
       "codec_compare_gen ${original_path} --codec " +
-      CodecName(settings.codec) + " " + std::to_string(settings.effort);
+      CodecName(settings.codec) + " " + std::to_string(settings.effort) + " " +
+      SubsamplingToString(settings.chroma_subsampling);
   const std::string encoded_prefix =
       GetImagePathCommonPrefix(tasks, /*get_encoded_path=*/true);
 
@@ -155,6 +158,7 @@ Status TasksToJson(const std::string& batch_name, CodecSettings settings,
     {"effort": "Compression effort parameter"},)json";
   if (!lossless) {
     file << R"json(
+    {"chroma_subsampling": "Compression chroma subsampling parameter"},
     {"quality": "Compression quality parameter"},)json";
   }
   if (has_encoded_path) {
@@ -192,6 +196,9 @@ Status TasksToJson(const std::string& batch_name, CodecSettings settings,
     file << task.image_height << ",";
     file << task.task_input.codec_settings.effort << ",";
     if (!lossless) {
+      file << SubsamplingToString(
+                  task.task_input.codec_settings.chroma_subsampling)
+           << ",";
       file << task.task_input.codec_settings.quality << ",";
     }
     if (has_encoded_path) {

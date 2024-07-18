@@ -90,6 +90,11 @@ StatusOr<WP2::Data> EncodeJxl(const TaskInput& input,
                       original_image.format() == WP2_RGB_24,
                   quiet)
       << "libjxl requires RGB(A)";
+  CHECK_OR_RETURN(
+      input.codec_settings.chroma_subsampling == Subsampling::kDefault ||
+          input.codec_settings.chroma_subsampling == Subsampling::k444,
+      quiet)
+      << "libjxl only supports 4:4:4 (no chroma subsampling)";
 
   const JxlEncoderPtr encoder = JxlEncoderMake(nullptr);
   CHECK_OR_RETURN(encoder != nullptr, quiet) << "JxlEncoderMake() failed";

@@ -21,6 +21,7 @@
 #include <vector>
 
 #include "src/base.h"
+#include "src/serialization.h"
 #include "src/task.h"
 #include "src/timer.h"
 
@@ -74,7 +75,9 @@ StatusOr<avifRGBFormat> WP2SampleFormatToAvifRGBFormat(WP2SampleFormat format) {
 }
 
 StatusOr<avif::ImagePtr> ArgbBufferToAvifImage(const WP2::ArgbBuffer& wp2_image,
-                                               bool lossless, bool quiet) {
+                                               bool lossless,
+                                               Subsampling subsampling,
+                                               bool quiet) {
   avif::ImagePtr image(avifImageCreate(wp2_image.width(), wp2_image.height(),
                                        WP2Formatbpc(wp2_image.format()),
                                        AVIF_PIXEL_FORMAT_YUV444));
@@ -83,6 +86,15 @@ StatusOr<avif::ImagePtr> ArgbBufferToAvifImage(const WP2::ArgbBuffer& wp2_image,
     image->colorPrimaries = AVIF_COLOR_PRIMARIES_UNSPECIFIED;
     image->transferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_UNSPECIFIED;
     image->matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_IDENTITY;
+  }
+  if (subsampling == Subsampling::kDefault ||
+      subsampling == Subsampling::k420) {
+    image->yuvFormat = AVIF_PIXEL_FORMAT_YUV420;
+  } else {
+    CHECK_OR_RETURN(subsampling == Subsampling::k444, quiet)
+        << "AVIF does not support chroma subsampling "
+        << SubsamplingToString(subsampling);
+    image->yuvFormat = AVIF_PIXEL_FORMAT_YUV444;
   }
   avifRGBImage rgb_image;
   avifRGBImageSetDefaults(&rgb_image, image.get());
@@ -128,8 +140,10 @@ StatusOr<WP2::Data> EncodeAvif(const TaskInput& input,
                                const WP2::ArgbBuffer& original_image,
                                bool quiet) {
   const bool lossless = input.codec_settings.quality == kQualityLossless;
-  ASSIGN_OR_RETURN(avif::ImagePtr image,
-                   ArgbBufferToAvifImage(original_image, lossless, quiet));
+  ASSIGN_OR_RETURN(
+      avif::ImagePtr image,
+      ArgbBufferToAvifImage(original_image, lossless,
+                            input.codec_settings.chroma_subsampling, quiet));
 
   avif::EncoderPtr encoder(avifEncoderCreate());
   CHECK_OR_RETURN(encoder != nullptr, quiet) << "avifEncoderCreate() failed";

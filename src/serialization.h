@@ -34,6 +34,10 @@ std::string Escape(const std::string& str);
 // Removes leading and trailing quotes and replaces each \" by ".
 StatusOr<std::string> Unescape(const std::string& escaped_str, bool quiet);
 
+// Enum/string conversions.
+std::string SubsamplingToString(Subsampling chroma_subsampling);
+StatusOr<Subsampling> SubsamplingFromString(const std::string& str, bool quiet);
+
 }  // namespace codec_compare_gen
 
 #endif  // SRC_SERIALIZATION_H_

@@ -72,12 +72,26 @@ std::vector<int> WebpLossyQualities() {
 StatusOr<WP2::Data> EncodeWebp(const TaskInput& input,
                                const WP2::ArgbBuffer& original_image,
                                bool quiet) {
+  const bool lossless = input.codec_settings.quality == kQualityLossless;
+  const Subsampling subsampling = input.codec_settings.chroma_subsampling;
+  if (lossless) {
+    CHECK_OR_RETURN(subsampling == Subsampling::kDefault ||
+                        subsampling == Subsampling::k444,
+                    quiet)
+        << "WebP only supports lossless 4:4:4 (no chroma subsampling)";
+  } else {
+    CHECK_OR_RETURN(subsampling == Subsampling::kDefault ||
+                        subsampling == Subsampling::k420,
+                    quiet)
+        << "WebP only supports lossy 4:2:0 (chroma subsampling)";
+  }
+
   // Reuse libwebp2's wrapper for simplicity.
   WP2::Data data;
   WP2::DataWriter writer(&data);
   WebPConfig config;
   CHECK_OR_RETURN(WebPConfigInit(&config), quiet) << "WebPConfigInit() failed";
-  if (input.codec_settings.quality == kQualityLossless) {
+  if (lossless) {
     CHECK_OR_RETURN(WebPConfigLosslessPreset(
                         &config, /*level=*/input.codec_settings.effort),
                     quiet)

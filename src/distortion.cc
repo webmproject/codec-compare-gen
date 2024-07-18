@@ -93,8 +93,10 @@ StatusOr<float> GetLibwebp2Distortion(const WP2::ArgbBuffer& reference,
   CHECK_OR_RETURN(status == WP2_STATUS_OK, quiet)
       << "GetDistortion(" << metric << ") failed on " << task.image_path
       << " and " << CodecName(task.codec_settings.codec) << " at effort "
-      << task.codec_settings.effort << " and quality "
-      << task.codec_settings.quality << ": " << WP2GetStatusMessage(status);
+      << task.codec_settings.effort << ", chroma subsampling "
+      << SubsamplingToString(task.codec_settings.chroma_subsampling)
+      << " and quality " << task.codec_settings.quality << ": "
+      << WP2GetStatusMessage(status);
   float overall_distortion = distortion[4];
 
   if (metric == WP2::PSNR &&
@@ -106,10 +108,11 @@ StatusOr<float> GetLibwebp2Distortion(const WP2::ArgbBuffer& reference,
       std::cerr << "Error: " << task.image_path
                 << " was encoded or decoded with loss in "
                 << CodecName(task.codec_settings.codec) << " format at effort "
-                << task.codec_settings.effort << " and quality "
-                << task.codec_settings.quality << " (alpha " << distortion[0]
-                << "dB, R " << distortion[1] << "dB, G " << distortion[2]
-                << "dB, B " << distortion[3] << "dB, overall "
+                << task.codec_settings.effort << ", chroma subsampling "
+                << SubsamplingToString(task.codec_settings.chroma_subsampling)
+                << " and quality " << task.codec_settings.quality << " (alpha "
+                << distortion[0] << "dB, R " << distortion[1] << "dB, G "
+                << distortion[2] << "dB, B " << distortion[3] << "dB, overall "
                 << overall_distortion << "dB)" << std::endl;
     }
     // Uncomment to dump the problematic image.

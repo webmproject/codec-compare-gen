@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.1.2
+
+Add 4:2:0 chroma subsampling support for codecs that also support lossy 4:4:4.
+
 ## v0.1.1
 
 Add JPEG codec libraries jpegli, jpegturbo, mozjpeg and sjpeg.
