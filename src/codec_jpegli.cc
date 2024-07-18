@@ -26,6 +26,7 @@
 #include "src/base.h"
 #include "src/codec_jpegturbo.h"
 #include "src/codec_jpegxl.h"
+#include "src/serialization.h"
 #include "src/task.h"
 
 #if defined(HAS_WEBP2)
@@ -107,8 +108,8 @@ StatusOr<WP2::Data> EncodeJpegli(const TaskInput& input,
 
   jpegli_simple_progression(&cinfo);
 
-  const bool chroma_downsampling = false;  // Use 4:4:4.
-  if (chroma_downsampling) {
+  if (input.codec_settings.chroma_subsampling == Subsampling::kDefault ||
+      input.codec_settings.chroma_subsampling == Subsampling::k420) {
     // cf https://zpl.fi/chroma-subsampling-and-jpeg-sampling-factors/
     cinfo.comp_info[0].h_samp_factor = 2;
     cinfo.comp_info[0].v_samp_factor = 2;
@@ -117,7 +118,11 @@ StatusOr<WP2::Data> EncodeJpegli(const TaskInput& input,
       cinfo.comp_info[i].v_samp_factor = 1;
     }
   } else {
-    // Turn off chroma subsampling (it is on by default).  For more details on
+    CHECK_OR_RETURN(
+        input.codec_settings.chroma_subsampling == Subsampling::k444, quiet)
+        << "jpegli does not support chroma subsampling "
+        << SubsamplingToString(input.codec_settings.chroma_subsampling);
+    // Turn off chroma subsampling (it is on by default). For more details on
     // chroma subsampling, see http://en.wikipedia.org/wiki/Chroma_subsampling.
     for (int i = 0; i < cinfo.num_components; ++i) {
       cinfo.comp_info[i].h_samp_factor = 1;

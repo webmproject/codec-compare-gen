@@ -22,6 +22,7 @@
 
 #include "src/base.h"
 #include "src/framework.h"
+#include "src/serialization.h"
 #include "src/task.h"
 
 #if defined(HAS_WEBP2)
@@ -71,6 +72,17 @@ StatusOr<WP2::Data> EncodeWebp2(const TaskInput& input,
   } else {
     config.quality = input.codec_settings.quality;
     config.alpha_quality = input.codec_settings.quality;
+  }
+  if (input.codec_settings.chroma_subsampling == Subsampling::kDefault) {
+    config.uv_mode = WP2::EncoderConfig::UVModeAuto;
+  } else if (input.codec_settings.chroma_subsampling == Subsampling::k420) {
+    config.uv_mode = WP2::EncoderConfig::UVMode420;
+  } else {
+    CHECK_OR_RETURN(
+        input.codec_settings.chroma_subsampling == Subsampling::k444, quiet)
+        << "WebP2 does not support chroma subsampling "
+        << SubsamplingToString(input.codec_settings.chroma_subsampling);
+    config.uv_mode = WP2::EncoderConfig::UVMode444;
   }
   config.effort = input.codec_settings.effort;
   config.thread_level = 0;

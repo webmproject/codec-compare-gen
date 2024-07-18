@@ -23,6 +23,7 @@
 
 #include "src/base.h"
 #include "src/codec_jpegturbo.h"
+#include "src/serialization.h"
 #include "src/task.h"
 
 #if defined(HAS_WEBP2)
@@ -64,6 +65,17 @@ StatusOr<WP2::Data> EncodeJpegsimple(const TaskInput& input,
       << "sjpeg method " << input.codec_settings.effort
       << " must be between 0 and 8";
   CHECK_OR_RETURN(original_image.format() == WP2_RGB_24, quiet);
+  SjpegYUVMode chroma_subsampling;
+  if (input.codec_settings.chroma_subsampling == Subsampling::kDefault ||
+      input.codec_settings.chroma_subsampling == Subsampling::k420) {
+    chroma_subsampling = SJPEG_YUV_420;
+  } else {
+    CHECK_OR_RETURN(
+        input.codec_settings.chroma_subsampling == Subsampling::k444, quiet)
+        << "sjpeg does not support chroma subsampling "
+        << SubsamplingToString(input.codec_settings.chroma_subsampling);
+    chroma_subsampling = SJPEG_YUV_444;
+  }
 
   const uint32_t stride =
       original_image.width() * WP2FormatBpp(original_image.format());
@@ -72,7 +84,7 @@ StatusOr<WP2::Data> EncodeJpegsimple(const TaskInput& input,
       original_image.GetRow8(0), static_cast<int>(original_image.width()),
       static_cast<int>(original_image.height()), static_cast<int>(stride),
       &buffer, input.codec_settings.quality, input.codec_settings.effort,
-      SJPEG_YUV_444);
+      chroma_subsampling);
   CHECK_OR_RETURN(size != 0, quiet);
 
   // Copy the data to avoid a delete[]/free() mismatch.

@@ -44,7 +44,15 @@ std::string GetEncodedFilePath(const std::string& folder_path,
   path.append(std::filesystem::path(image_path).filename().string());
 
   std::stringstream ext;
-  ext << ".e" << codec_settings.effort;
+  ext << ".";
+  if (codec_settings.quality != kQualityLossless ||
+      codec_settings.chroma_subsampling != Subsampling::k444) {
+    // 444/420 could be prepended by "yuv" but it makes the file name longer and
+    // it could be misleading for RGB 444. Just make it appear before the "e" of
+    // effort instead.
+    ext << SubsamplingToString(codec_settings.chroma_subsampling);
+  }
+  ext << "e" << codec_settings.effort;
   if (codec_settings.quality == kQualityLossless) {
     ext << "lossless";
   } else {
@@ -56,7 +64,8 @@ std::string GetEncodedFilePath(const std::string& folder_path,
 }
 
 bool operator==(const CodecSettings& a, const CodecSettings& b) {
-  return a.codec == b.codec && a.effort == b.effort && a.quality == b.quality;
+  return a.codec == b.codec && a.effort == b.effort &&
+         a.chroma_subsampling == b.chroma_subsampling && a.quality == b.quality;
 }
 
 }  // namespace
@@ -73,7 +82,8 @@ std::string TaskOutput::Serialize() const {
   std::stringstream ss;
   ss << Escape(CodecName(task_input.codec_settings.codec)) << ", "
      << task_input.codec_settings.effort << ", "
-     << task_input.codec_settings.quality << ", "
+     << SubsamplingToString(task_input.codec_settings.chroma_subsampling)
+     << ", " << task_input.codec_settings.quality << ", "
      << Escape(task_input.image_path) << ", " << image_width << ", "
      << image_height << ", " << Escape(task_input.encoded_path) << ", "
      << encoded_size << ", " << encoding_duration << ", " << decoding_duration
@@ -88,7 +98,7 @@ std::string TaskOutput::Serialize() const {
 
 namespace {
 
-constexpr size_t kNumNonDistortionTokens = 11;
+constexpr size_t kNumNonDistortionTokens = 12;
 
 StatusOr<TaskOutput> UnserializeNoDistortion(
     const std::string& serialized_task, const std::vector<std::string> tokens,
@@ -106,6 +116,9 @@ StatusOr<TaskOutput> UnserializeNoDistortion(
   task.task_input.codec_settings.effort = std::stoul(tokens[t++]);
   CHECK_OR_RETURN(task.task_input.codec_settings.effort <= 10, quiet)
       << "Unknown effort in \"" << serialized_task << "\"";
+
+  ASSIGN_OR_RETURN(task.task_input.codec_settings.chroma_subsampling,
+                   SubsamplingFromString(tokens[t++], quiet));
 
   task.task_input.codec_settings.quality = std::stoi(tokens[t++]);
   CHECK_OR_RETURN(task.task_input.codec_settings.quality == kQualityLossless ||
@@ -275,8 +288,9 @@ SplitByCodecSettingsAndAggregateByImageAndQuality(
   auto cmp = [](const CodecSettings& a, const CodecSettings& b) {
     // Multiple qualities can coexist in the same aggregate (meaning in the same
     // output JSON single file). Only split by codec and effort.
-    return static_cast<int>(a.codec) < static_cast<int>(b.codec) ||
-           (a.codec == b.codec && a.effort < b.effort);
+    return a.codec < b.codec || (a.codec == b.codec && a.effort < b.effort) ||
+           (a.codec == b.codec && a.effort == b.effort &&
+            a.chroma_subsampling < b.chroma_subsampling);
   };
   std::map<CodecSettings, std::vector<TaskOutput>, decltype(cmp)> map(cmp);
   for (const TaskOutput& result : results) {

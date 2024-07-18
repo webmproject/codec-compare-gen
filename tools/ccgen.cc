@@ -24,7 +24,9 @@
 #include "src/base.h"
 #include "src/codec.h"
 #include "src/framework.h"
+#include "src/serialization.h"
 
+namespace codec_compare_gen {
 namespace {
 
 void GetAllFilesIn(const std::string& file_or_directory_path,
@@ -40,16 +42,15 @@ void GetAllFilesIn(const std::string& file_or_directory_path,
 }
 
 struct CodecEffort {
-  codec_compare_gen::Codec codec;
+  Codec codec;
   int effort;
+  Subsampling chroma_subsampling;
 };
 
-}  // namespace
-
-int main(int argc, char* argv[]) {
+int Main(int argc, char* argv[]) {
   std::vector<std::string> image_paths;
   std::vector<CodecEffort> codec_settings;
-  codec_compare_gen::ComparisonSettings settings;
+  ComparisonSettings settings;
   bool lossy = false;
   bool lossless = false;
   std::unordered_set<int> allowed_qualities;
@@ -64,15 +65,15 @@ int main(int argc, char* argv[]) {
     const std::string arg = argv[arg_index];
     if (arg == "-h" || arg == "--help") {
       std::cout << "Usage: " << argv[0] << std::endl
-                << " [--codec webp {effort}]" << std::endl
-                << " [--codec webp2 {effort}]" << std::endl
-                << " [--codec jpegxl {effort}]" << std::endl
-                << " [--codec avif {effort}]" << std::endl
-                << " [--codec combination {effort}]" << std::endl
-                << " [--codec jpegturbo]" << std::endl
-                << " [--codec jpegli]" << std::endl
-                << " [--codec jpegsimple {effort}]" << std::endl
-                << " [--codec jpegmoz]" << std::endl
+                << " [--codec webp {effort} {444|420}]" << std::endl
+                << " [--codec webp2 {effort} {444|420}]" << std::endl
+                << " [--codec jpegxl {effort} 444]" << std::endl
+                << " [--codec avif {effort} {444|420}]" << std::endl
+                << " [--codec combination {effort} {444|420}]" << std::endl
+                << " [--codec jpegturbo {444|420}]" << std::endl
+                << " [--codec jpegli {444|420}]" << std::endl
+                << " [--codec jpegsimple {effort} {444|420}]" << std::endl
+                << " [--codec jpegmoz {444|420}]" << std::endl
                 << " --lossy|--lossless" << std::endl
                 << " [--qualities {unique|min:max}]"
                 << " [--repeat {number of times to encode each image}]"
@@ -91,31 +92,29 @@ int main(int argc, char* argv[]) {
                 << " --" << std::endl
                 << " {image file path}..." << std::endl;
       return 0;
-    } else if (arg == "--codec" && arg_index + 1 < argc) {
+    } else if (arg == "--codec" && arg_index + 2 < argc) {
       const std::string codec = argv[++arg_index];
       if (codec == "jpegturbo" || codec == "turbojpeg") {
-        codec_settings.push_back({codec_compare_gen::Codec::kJpegturbo});
+        codec_settings.push_back({Codec::kJpegturbo});
       } else if (codec == "jpegli") {
-        codec_settings.push_back({codec_compare_gen::Codec::kJpegli});
+        codec_settings.push_back({Codec::kJpegli});
       } else if (codec == "jpegmoz" || codec == "mozjpeg") {
-        codec_settings.push_back({codec_compare_gen::Codec::kJpegmoz});
+        codec_settings.push_back({Codec::kJpegmoz});
       } else if (arg_index + 2 < argc) {
         const int effort = std::stoi(argv[++arg_index]);
         if (codec == "webp") {
-          codec_settings.push_back({codec_compare_gen::Codec::kWebp, effort});
+          codec_settings.push_back({Codec::kWebp, effort});
         } else if (codec == "wp2" || codec == "webp2") {
-          codec_settings.push_back({codec_compare_gen::Codec::kWebp2, effort});
+          codec_settings.push_back({Codec::kWebp2, effort});
         } else if (codec == "jxl" || codec == "jpegxl") {
-          codec_settings.push_back({codec_compare_gen::Codec::kJpegXl, effort});
+          codec_settings.push_back({Codec::kJpegXl, effort});
         } else if (codec == "avif") {
-          codec_settings.push_back({codec_compare_gen::Codec::kAvif, effort});
+          codec_settings.push_back({Codec::kAvif, effort});
         } else if (codec == "combination") {
-          codec_settings.push_back(
-              {codec_compare_gen::Codec::kCombination, effort});
+          codec_settings.push_back({Codec::kCombination, effort});
         } else if (codec == "jpegsimple" || codec == "simplejpeg" ||
                    codec == "sjpeg") {
-          codec_settings.push_back(
-              {codec_compare_gen::Codec::kJpegsimple, effort});
+          codec_settings.push_back({Codec::kJpegsimple, effort});
         } else {
           std::cerr << "Error: Unknown codec \"" << codec << "\"" << std::endl;
           return 1;
@@ -125,6 +124,10 @@ int main(int argc, char* argv[]) {
                   << std::endl;
         return 1;
       }
+      const StatusOr<Subsampling> subsampling =
+          SubsamplingFromString(argv[++arg_index], /*quiet=*/false);
+      if (subsampling.status != Status::kOk) return 1;
+      codec_settings.back().chroma_subsampling = subsampling.value;
     } else if (arg == "--repeat" && arg_index + 1 < argc) {
       settings.num_repetitions = std::stoul(argv[++arg_index]);
     } else if (arg == "--recompute_distortion") {
@@ -162,8 +165,10 @@ int main(int argc, char* argv[]) {
       break;
     } else {
       if (!arg.empty() && arg[0] == '-') {
-        std::cerr << "Error: Unknown argument \"" << arg << "\""
-                  << " (prepend -- to consider it as a file path)" << std::endl;
+        std::cerr
+            << "Error: Unknown argument \"" << arg
+            << "\" or missing following arguments (prepend -- to consider \""
+            << arg << "\" as a file path)" << std::endl;
         return 1;
       }
       GetAllFilesIn(arg, image_paths);
@@ -187,32 +192,37 @@ int main(int argc, char* argv[]) {
   }
 
   if (lossy) {
-    std::vector<std::vector<int>> qualities(
-        static_cast<int>(codec_compare_gen::Codec::kJpegmoz) + 1);
+    std::vector<std::vector<int>> qualities(static_cast<int>(Codec::kJpegmoz) +
+                                            1);
     for (size_t i = 0; i < qualities.size(); ++i) {
-      qualities[i] = codec_compare_gen::CodecLossyQualities(
-          static_cast<codec_compare_gen::Codec>(i));
+      qualities[i] = CodecLossyQualities(static_cast<Codec>(i));
     }
     for (const CodecEffort& setting : codec_settings) {
       for (const int quality : qualities.at(static_cast<int>(setting.codec))) {
         if (allowed_qualities.empty() ||
             allowed_qualities.find(quality) != allowed_qualities.end()) {
-          settings.codec_settings.push_back(
-              {setting.codec, setting.effort, quality});
+          settings.codec_settings.push_back({setting.codec, setting.effort,
+                                             setting.chroma_subsampling,
+                                             quality});
         }
       }
     }
   } else {
     for (const CodecEffort& setting : codec_settings) {
-      settings.codec_settings.push_back(
-          {setting.codec, setting.effort, codec_compare_gen::kQualityLossless});
+      settings.codec_settings.push_back({setting.codec, setting.effort,
+                                         setting.chroma_subsampling,
+                                         kQualityLossless});
     }
   }
 
-  if (codec_compare_gen::Compare(
-          image_paths, settings, completed_tasks_file_path,
-          results_folder_path) != codec_compare_gen::Status::kOk) {
+  if (Compare(image_paths, settings, completed_tasks_file_path,
+              results_folder_path) != Status::kOk) {
     return 1;
   }
   return 0;
 }
+
+}  // namespace
+}  // namespace codec_compare_gen
+
+int main(int argc, char* argv[]) { codec_compare_gen::Main(argc, argv); }

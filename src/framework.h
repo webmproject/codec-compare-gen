@@ -26,6 +26,7 @@ namespace codec_compare_gen {
 struct CodecSettings {
   Codec codec;
   int effort;
+  Subsampling chroma_subsampling;
   int quality;  // kQualityLossless or in [0:100] (exact range depends on codec)
 };
 

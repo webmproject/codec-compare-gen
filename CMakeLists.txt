@@ -16,7 +16,7 @@ cmake_minimum_required(VERSION 3.20)
 project(
   codec-compare-gen
   LANGUAGES CXX
-  VERSION 0.1.1)
+  VERSION 0.1.2)
 set(CMAKE_CXX_STANDARD 17)
 
 option(BUILD_SHARED_LIBS "Build the shared codec-compare-gen library" ON)
@@ -155,6 +155,7 @@ if(BUILD_TESTING)
 
   add_ccgen_gtest(test_codec tests/data)
   add_ccgen_gtest(test_codec_avif)
+  add_ccgen_gtest(test_codec_sjpeg tests/data)
   add_ccgen_gtest(test_framework tests/data)
   add_ccgen_gtest(test_serialization)
   add_ccgen_gtest(test_task)

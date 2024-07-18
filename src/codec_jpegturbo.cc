@@ -21,6 +21,7 @@
 #include <vector>
 
 #include "src/base.h"
+#include "src/serialization.h"
 #include "src/task.h"
 
 #if defined(HAS_WEBP2)
@@ -59,17 +60,29 @@ StatusOr<WP2::Data> EncodeJpegturbo(const TaskInput& input,
                                     bool quiet) {
   CHECK_OR_RETURN(input.codec_settings.effort == 0, quiet);
   CHECK_OR_RETURN(original_image.format() == WP2_RGB_24, quiet);
+  TJSAMP chroma_subsampling;
+  if (input.codec_settings.chroma_subsampling == Subsampling::kDefault ||
+      input.codec_settings.chroma_subsampling == Subsampling::k420) {
+    chroma_subsampling = TJSAMP_420;
+  } else {
+    CHECK_OR_RETURN(
+        input.codec_settings.chroma_subsampling == Subsampling::k444, quiet)
+        << "jpegturbo does not support chroma subsampling "
+        << SubsamplingToString(input.codec_settings.chroma_subsampling);
+    chroma_subsampling = TJSAMP_444;
+  }
 
   long unsigned int compressed_num_bytes = 0;
   unsigned char* compressed_image = nullptr;
 
   const tjhandle handle = tjInitCompress();
   CHECK_OR_RETURN(handle != nullptr, quiet) << "tjInitCompress() failed";
-  int result = tjCompress2(handle, original_image.GetRow8(0),
-                           static_cast<int>(original_image.width()), kPitch,
-                           static_cast<int>(original_image.height()), TJPF_RGB,
-                           &compressed_image, &compressed_num_bytes, TJSAMP_444,
-                           input.codec_settings.quality, TJFLAG_FASTDCT);
+  int result =
+      tjCompress2(handle, original_image.GetRow8(0),
+                  static_cast<int>(original_image.width()), kPitch,
+                  static_cast<int>(original_image.height()), TJPF_RGB,
+                  &compressed_image, &compressed_num_bytes, chroma_subsampling,
+                  input.codec_settings.quality, TJFLAG_FASTDCT);
   CHECK_OR_RETURN(result == 0, quiet) << "tjCompress2() failed with " << result;
   result = tjDestroy(handle);
   CHECK_OR_RETURN(result == 0, quiet) << "tjDestroy() failed with " << result;

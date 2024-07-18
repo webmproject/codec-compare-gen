@@ -61,5 +61,17 @@ TEST(SerializationTest, Unescape) {
   EXPECT_EQ(Unescape("\" a \"", kQuiet).value, " a ");
 }
 
+TEST(SerializationTest, Subsampling) {
+  for (Subsampling subsampling :
+       {Subsampling::kDefault, Subsampling::k420, Subsampling::k444}) {
+    EXPECT_EQ(
+        subsampling,
+        SubsamplingFromString(SubsamplingToString(subsampling), /*quiet=*/false)
+            .value);
+  }
+  EXPECT_EQ(SubsamplingFromString("456", /*quiet=*/false).status,
+            Status::kUnknownError);
+}
+
 }  // namespace
 }  // namespace codec_compare_gen

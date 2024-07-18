@@ -83,4 +83,24 @@ StatusOr<std::string> Unescape(const std::string& escaped_str, bool quiet) {
   return str;
 }
 
+std::string SubsamplingToString(Subsampling chroma_subsampling) {
+  switch (chroma_subsampling) {
+    case Subsampling::k444:
+      return "444";
+    case Subsampling::k420:
+      return "420";
+    case Subsampling::kDefault:
+      break;
+  }
+  return "4XX";
+}
+StatusOr<Subsampling> SubsamplingFromString(const std::string& str,
+                                            bool quiet) {
+  if (str == "444") return Subsampling::k444;
+  if (str == "420") return Subsampling::k420;
+  CHECK_OR_RETURN(str == "4XX", quiet)
+      << "Unknown subsampling \"" << str << "\"";
+  return Status::kUnknownError;
+}
+
 }  // namespace codec_compare_gen
