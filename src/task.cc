@@ -48,8 +48,7 @@ std::string GetEncodedFilePath(const std::string& folder_path,
   if (codec_settings.quality != kQualityLossless ||
       codec_settings.chroma_subsampling != Subsampling::k444) {
     // 444/420 could be prepended by "yuv" but it makes the file name longer and
-    // it could be misleading for RGB 444. Just make it appear before the "e" of
-    // effort instead.
+    // it could be misleading for RGB 444.
     ext << SubsamplingToString(codec_settings.chroma_subsampling);
   }
   ext << "e" << codec_settings.effort;
@@ -64,8 +63,8 @@ std::string GetEncodedFilePath(const std::string& folder_path,
 }
 
 bool operator==(const CodecSettings& a, const CodecSettings& b) {
-  return a.codec == b.codec && a.effort == b.effort &&
-         a.chroma_subsampling == b.chroma_subsampling && a.quality == b.quality;
+  return a.codec == b.codec && a.chroma_subsampling == b.chroma_subsampling &&
+         a.effort == b.effort && a.quality == b.quality;
 }
 
 }  // namespace
@@ -81,9 +80,9 @@ bool operator==(const TaskInput& a, const TaskInput& b) {
 std::string TaskOutput::Serialize() const {
   std::stringstream ss;
   ss << Escape(CodecName(task_input.codec_settings.codec)) << ", "
-     << task_input.codec_settings.effort << ", "
      << SubsamplingToString(task_input.codec_settings.chroma_subsampling)
-     << ", " << task_input.codec_settings.quality << ", "
+     << ", " << task_input.codec_settings.effort << ", "
+     << task_input.codec_settings.quality << ", "
      << Escape(task_input.image_path) << ", " << image_width << ", "
      << image_height << ", " << Escape(task_input.encoded_path) << ", "
      << encoded_size << ", " << encoding_duration << ", " << decoding_duration
@@ -113,12 +112,12 @@ StatusOr<TaskOutput> UnserializeNoDistortion(
   ASSIGN_OR_RETURN(task.task_input.codec_settings.codec,
                    CodecFromName(codec_name, quiet));
 
+  ASSIGN_OR_RETURN(task.task_input.codec_settings.chroma_subsampling,
+                   SubsamplingFromString(tokens[t++], quiet));
+
   task.task_input.codec_settings.effort = std::stoul(tokens[t++]);
   CHECK_OR_RETURN(task.task_input.codec_settings.effort <= 10, quiet)
       << "Unknown effort in \"" << serialized_task << "\"";
-
-  ASSIGN_OR_RETURN(task.task_input.codec_settings.chroma_subsampling,
-                   SubsamplingFromString(tokens[t++], quiet));
 
   task.task_input.codec_settings.quality = std::stoi(tokens[t++]);
   CHECK_OR_RETURN(task.task_input.codec_settings.quality == kQualityLossless ||
@@ -287,10 +286,14 @@ SplitByCodecSettingsAndAggregateByImageAndQuality(
 
   auto cmp = [](const CodecSettings& a, const CodecSettings& b) {
     // Multiple qualities can coexist in the same aggregate (meaning in the same
-    // output JSON single file). Only split by codec and effort.
-    return a.codec < b.codec || (a.codec == b.codec && a.effort < b.effort) ||
-           (a.codec == b.codec && a.effort == b.effort &&
-            a.chroma_subsampling < b.chroma_subsampling);
+    // output JSON single file). Only split by codec, chroma subsampling and
+    // effort.
+    return a.codec < b.codec ||
+           (a.codec == b.codec &&
+            a.chroma_subsampling < b.chroma_subsampling) ||
+           (a.codec == b.codec &&
+            a.chroma_subsampling == b.chroma_subsampling &&
+            a.effort < b.effort);
   };
   std::map<CodecSettings, std::vector<TaskOutput>, decltype(cmp)> map(cmp);
   for (const TaskOutput& result : results) {
@@ -304,8 +307,8 @@ SplitByCodecSettingsAndAggregateByImageAndQuality(
     ASSIGN_OR_RETURN(aggregate,
                      AggregateResultsByImageAndQuality(results, quiet));
 
-    // codec and effort are the same in these results so only sort by original
-    // image name and quality.
+    // codec, chroma subsampling and effort are the same in these results so
+    // only sort by original image name and quality.
     std::sort(aggregate.begin(), aggregate.end(),
               [](const TaskOutput& a, const TaskOutput& b) {
                 return a.task_input.image_path < b.task_input.image_path ||

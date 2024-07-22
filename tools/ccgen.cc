@@ -43,8 +43,8 @@ void GetAllFilesIn(const std::string& file_or_directory_path,
 
 struct CodecEffort {
   Codec codec;
-  int effort;
   Subsampling chroma_subsampling;
+  int effort;
 };
 
 int Main(int argc, char* argv[]) {
@@ -65,14 +65,14 @@ int Main(int argc, char* argv[]) {
     const std::string arg = argv[arg_index];
     if (arg == "-h" || arg == "--help") {
       std::cout << "Usage: " << argv[0] << std::endl
-                << " [--codec webp {effort} {444|420}]" << std::endl
-                << " [--codec webp2 {effort} {444|420}]" << std::endl
-                << " [--codec jpegxl {effort} 444]" << std::endl
-                << " [--codec avif {effort} {444|420}]" << std::endl
-                << " [--codec combination {effort} {444|420}]" << std::endl
+                << " [--codec webp {444|420} {effort}]" << std::endl
+                << " [--codec webp2 {444|420} {effort}]" << std::endl
+                << " [--codec jpegxl 444 {effort}]" << std::endl
+                << " [--codec avif {444|420} {effort}]" << std::endl
+                << " [--codec combination {444|420} {effort}]" << std::endl
                 << " [--codec jpegturbo {444|420}]" << std::endl
                 << " [--codec jpegli {444|420}]" << std::endl
-                << " [--codec jpegsimple {effort} {444|420}]" << std::endl
+                << " [--codec jpegsimple {444|420} {effort}]" << std::endl
                 << " [--codec jpegmoz {444|420}]" << std::endl
                 << " --lossy|--lossless" << std::endl
                 << " [--qualities {unique|min:max}]"
@@ -94,27 +94,32 @@ int Main(int argc, char* argv[]) {
       return 0;
     } else if (arg == "--codec" && arg_index + 2 < argc) {
       const std::string codec = argv[++arg_index];
+      const StatusOr<Subsampling> subsampling =
+          SubsamplingFromString(argv[++arg_index], /*quiet=*/false);
+      if (subsampling.status != Status::kOk) return 1;
       if (codec == "jpegturbo" || codec == "turbojpeg") {
-        codec_settings.push_back({Codec::kJpegturbo});
+        codec_settings.push_back({Codec::kJpegturbo, subsampling.value});
       } else if (codec == "jpegli") {
-        codec_settings.push_back({Codec::kJpegli});
+        codec_settings.push_back({Codec::kJpegli, subsampling.value});
       } else if (codec == "jpegmoz" || codec == "mozjpeg") {
-        codec_settings.push_back({Codec::kJpegmoz});
+        codec_settings.push_back({Codec::kJpegmoz, subsampling.value});
       } else if (arg_index + 2 < argc) {
         const int effort = std::stoi(argv[++arg_index]);
         if (codec == "webp") {
-          codec_settings.push_back({Codec::kWebp, effort});
+          codec_settings.push_back({Codec::kWebp, subsampling.value, effort});
         } else if (codec == "wp2" || codec == "webp2") {
-          codec_settings.push_back({Codec::kWebp2, effort});
+          codec_settings.push_back({Codec::kWebp2, subsampling.value, effort});
         } else if (codec == "jxl" || codec == "jpegxl") {
-          codec_settings.push_back({Codec::kJpegXl, effort});
+          codec_settings.push_back({Codec::kJpegXl, subsampling.value, effort});
         } else if (codec == "avif") {
-          codec_settings.push_back({Codec::kAvif, effort});
+          codec_settings.push_back({Codec::kAvif, subsampling.value, effort});
         } else if (codec == "combination") {
-          codec_settings.push_back({Codec::kCombination, effort});
+          codec_settings.push_back(
+              {Codec::kCombination, subsampling.value, effort});
         } else if (codec == "jpegsimple" || codec == "simplejpeg" ||
                    codec == "sjpeg") {
-          codec_settings.push_back({Codec::kJpegsimple, effort});
+          codec_settings.push_back(
+              {Codec::kJpegsimple, subsampling.value, effort});
         } else {
           std::cerr << "Error: Unknown codec \"" << codec << "\"" << std::endl;
           return 1;
@@ -124,10 +129,6 @@ int Main(int argc, char* argv[]) {
                   << std::endl;
         return 1;
       }
-      const StatusOr<Subsampling> subsampling =
-          SubsamplingFromString(argv[++arg_index], /*quiet=*/false);
-      if (subsampling.status != Status::kOk) return 1;
-      codec_settings.back().chroma_subsampling = subsampling.value;
     } else if (arg == "--repeat" && arg_index + 1 < argc) {
       settings.num_repetitions = std::stoul(argv[++arg_index]);
     } else if (arg == "--recompute_distortion") {
@@ -201,17 +202,17 @@ int Main(int argc, char* argv[]) {
       for (const int quality : qualities.at(static_cast<int>(setting.codec))) {
         if (allowed_qualities.empty() ||
             allowed_qualities.find(quality) != allowed_qualities.end()) {
-          settings.codec_settings.push_back({setting.codec, setting.effort,
+          settings.codec_settings.push_back({setting.codec,
                                              setting.chroma_subsampling,
-                                             quality});
+                                             setting.effort, quality});
         }
       }
     }
   } else {
     for (const CodecEffort& setting : codec_settings) {
-      settings.codec_settings.push_back({setting.codec, setting.effort,
+      settings.codec_settings.push_back({setting.codec,
                                          setting.chroma_subsampling,
-                                         kQualityLossless});
+                                         setting.effort, kQualityLossless});
     }
   }
 
