@@ -250,8 +250,6 @@ Status RemoveCompletedTasksFromRemainingTasks(
     bool operator()(const TaskInput& a, const TaskInput& b) const {
       if (a.codec_settings.codec < b.codec_settings.codec) return true;
       if (a.codec_settings.codec > b.codec_settings.codec) return false;
-      if (a.codec_settings.effort < b.codec_settings.effort) return true;
-      if (a.codec_settings.effort > b.codec_settings.effort) return false;
       if (a.codec_settings.chroma_subsampling <
           b.codec_settings.chroma_subsampling) {
         return true;
@@ -260,6 +258,8 @@ Status RemoveCompletedTasksFromRemainingTasks(
           b.codec_settings.chroma_subsampling) {
         return false;
       }
+      if (a.codec_settings.effort < b.codec_settings.effort) return true;
+      if (a.codec_settings.effort > b.codec_settings.effort) return false;
       if (a.codec_settings.quality < b.codec_settings.quality) return true;
       if (a.codec_settings.quality > b.codec_settings.quality) return false;
       return a.image_path < b.image_path;
@@ -380,8 +380,8 @@ Status Compare(const std::vector<std::string>& image_paths,
         tasks.front().task_input.codec_settings;
     const std::string batch_name =
         CodecName(codec_settings.codec) + "_" +
-        std::to_string(codec_settings.effort) + "_" +
-        SubsamplingToString(codec_settings.chroma_subsampling);
+        SubsamplingToString(codec_settings.chroma_subsampling) + "_" +
+        std::to_string(codec_settings.effort);
     OK_OR_RETURN(TasksToJson(
         batch_name, codec_settings, tasks, settings.quiet,
         std::filesystem::path(results_folder_path) / (batch_name + ".json")));

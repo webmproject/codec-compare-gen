@@ -54,7 +54,7 @@ TEST(TrivialFrameworkTest, Empty) {
 TEST_F(FrameworkTest, Simple) {
   ComparisonSettings settings;
   settings.codec_settings.push_back(
-      {Codec::kWebp, /*effort=*/0, Subsampling::kDefault, kQualityLossless});
+      {Codec::kWebp, Subsampling::kDefault, /*effort=*/0, kQualityLossless});
   EXPECT_EQ(Compare({std::string(data_path) + "gradient32x32.png"}, settings,
                     TempPath("completed_tasks.csv"), TempPath()),
             Status::kOk);
@@ -63,15 +63,15 @@ TEST_F(FrameworkTest, Simple) {
 TEST_F(FrameworkTest, AllCodecsWithAlpha) {
   ComparisonSettings settings;
   settings.codec_settings.push_back(
-      {Codec::kWebp, /*effort=*/0, Subsampling::kDefault, kQualityLossless});
+      {Codec::kWebp, Subsampling::kDefault, /*effort=*/0, kQualityLossless});
   settings.codec_settings.push_back(
-      {Codec::kWebp2, /*effort=*/0, Subsampling::kDefault, /*quality=*/0});
+      {Codec::kWebp2, Subsampling::kDefault, /*effort=*/0, /*quality=*/0});
   settings.codec_settings.push_back(
-      {Codec::kJpegXl, /*effort=*/1, Subsampling::kDefault, /*quality=*/50});
+      {Codec::kJpegXl, Subsampling::kDefault, /*effort=*/1, /*quality=*/50});
   settings.codec_settings.push_back(
-      {Codec::kAvif, /*effort=*/9, Subsampling::kDefault, /*quality=*/10});
-  settings.codec_settings.push_back({Codec::kCombination, /*effort=*/0,
-                                     Subsampling::kDefault, /*quality=*/90});
+      {Codec::kAvif, Subsampling::kDefault, /*effort=*/9, /*quality=*/10});
+  settings.codec_settings.push_back({Codec::kCombination, Subsampling::kDefault,
+                                     /*effort=*/0, /*quality=*/90});
   EXPECT_EQ(Compare({std::string(data_path) + "gradient32x32.png",
                      std::string(data_path) + "alpha1x17.png"},
                     settings, TempPath("completed_tasks.csv"), TempPath()),
@@ -81,16 +81,16 @@ TEST_F(FrameworkTest, AllCodecsWithAlpha) {
 TEST_F(FrameworkTest, AllTraditionalCodecs) {
   ComparisonSettings settings;
   settings.codec_settings.push_back(
-      {Codec::kWebp, /*effort=*/6, Subsampling::k420, /*quality=*/75});
+      {Codec::kWebp, Subsampling::k420, /*effort=*/6, /*quality=*/75});
   settings.codec_settings.push_back(
-      {Codec::kJpegturbo, /*effort=*/0, Subsampling::k420, /*quality=*/90});
+      {Codec::kJpegturbo, Subsampling::k420, /*effort=*/0, /*quality=*/90});
   settings.codec_settings.push_back(
-      {Codec::kJpegli, /*effort=*/0, Subsampling::k420, /*quality=*/80});
+      {Codec::kJpegli, Subsampling::k420, /*effort=*/0, /*quality=*/80});
   settings.codec_settings.push_back(
-      {Codec::kJpegsimple, /*effort=*/8, Subsampling::k420, /*quality=*/70});
+      {Codec::kJpegsimple, Subsampling::k420, /*effort=*/8, /*quality=*/70});
   // copybara:insert_begin(no mozjpeg in google3)
   // settings.codec_settings.push_back(
-  //     {Codec::kJpegmoz, /*effort=*/0, Subsampling::k420, /*quality=*/60});
+  //     {Codec::kJpegmoz, Subsampling::k420, /*effort=*/0, /*quality=*/60});
   // }
   // copybara:insert_end
   EXPECT_EQ(Compare({std::string(data_path) + "gradient32x32.png"}, settings,
@@ -101,11 +101,11 @@ TEST_F(FrameworkTest, AllTraditionalCodecs) {
 TEST_F(FrameworkTest, AllChromaSubsamplings) {
   ComparisonSettings settings;
   settings.codec_settings.push_back(
-      {Codec::kWebp2, /*effort=*/0, Subsampling::k420, /*quality=*/75});
+      {Codec::kWebp2, Subsampling::k420, /*effort=*/0, /*quality=*/75});
   settings.codec_settings.push_back(
-      {Codec::kWebp2, /*effort=*/0, Subsampling::k444, /*quality=*/75});
+      {Codec::kWebp2, Subsampling::k444, /*effort=*/0, /*quality=*/75});
   settings.codec_settings.push_back(
-      {Codec::kWebp2, /*effort=*/0, Subsampling::kDefault, /*quality=*/75});
+      {Codec::kWebp2, Subsampling::kDefault, /*effort=*/0, /*quality=*/75});
   EXPECT_EQ(Compare({std::string(data_path) + "gradient32x32.png"}, settings,
                     TempPath("completed_tasks.csv"), TempPath()),
             Status::kOk);
@@ -116,7 +116,7 @@ TEST_F(FrameworkTest, AllChromaSubsamplings) {
 TEST_F(FrameworkTest, Incremental) {
   ComparisonSettings settings;
   settings.codec_settings.push_back(
-      {Codec::kWebp, /*effort=*/0, Subsampling::k444, kQualityLossless});
+      {Codec::kWebp, Subsampling::k444, /*effort=*/0, kQualityLossless});
   const std::vector<std::string> images = {
       std::string(data_path) + "alpha1x17.png",
       std::string(data_path) + "gradient32x32.png"};
@@ -128,7 +128,7 @@ TEST_F(FrameworkTest, Incremental) {
   // Make sure the output files were created.
   ASSERT_EQ(std::filesystem::exists(TempPath("completed_tasks.csv")), true);
   const std::string expected_webp_results_file_path =
-      TempPath("webp_0_444.json");
+      TempPath("webp_444_0.json");
   ASSERT_EQ(std::filesystem::exists(expected_webp_results_file_path), true);
   const uintmax_t completed_tasks_file_size =
       std::filesystem::file_size(TempPath("completed_tasks.csv"));
@@ -139,7 +139,7 @@ TEST_F(FrameworkTest, Incremental) {
 
   // Call it again, with one more codec.
   settings.codec_settings.push_back(
-      {Codec::kWebp2, /*effort=*/0, Subsampling::k444, kQualityLossless});
+      {Codec::kWebp2, Subsampling::k444, /*effort=*/0, kQualityLossless});
   EXPECT_EQ(
       Compare(images, settings, TempPath("completed_tasks.csv"), TempPath()),
       Status::kOk);
@@ -172,8 +172,8 @@ TEST_F(FrameworkTest, Incremental) {
 TEST_F(FrameworkTest, InconvenientFilePaths) {
   ComparisonSettings settings;
   settings.codec_settings = {
-      {Codec::kWebp, /*effort=*/0, Subsampling::k444, kQualityLossless},
-      {Codec::kWebp2, /*effort=*/0, Subsampling::k444, kQualityLossless}};
+      {Codec::kWebp, Subsampling::k444, /*effort=*/0, kQualityLossless},
+      {Codec::kWebp2, Subsampling::k444, /*effort=*/0, kQualityLossless}};
   const std::string image_alpha1x17_file_path = TempPath("al,pha1x17.\"png");
   std::filesystem::copy(std::string(data_path) + "alpha1x17.png",
                         image_alpha1x17_file_path);
@@ -201,8 +201,8 @@ TEST_F(FrameworkTest, DifferentImageSetOrCodecOrQuality) {
   ComparisonSettings settings;
   settings.quiet = false;
   settings.codec_settings = {
-      {Codec::kWebp, /*effort=*/0, Subsampling::k444, kQualityLossless},
-      {Codec::kWebp2, /*effort=*/0, Subsampling::k444, kQualityLossless}};
+      {Codec::kWebp, Subsampling::k444, /*effort=*/0, kQualityLossless},
+      {Codec::kWebp2, Subsampling::k444, /*effort=*/0, kQualityLossless}};
 
   EXPECT_EQ(Compare({std::string(data_path) + "alpha1x17.png",
                      std::string(data_path) + "gradient32x32.png"},
@@ -223,7 +223,7 @@ TEST_F(FrameworkTest, DifferentImageSetOrCodecOrQuality) {
 
   // Call it again, with a different quality.
   settings.codec_settings.push_back(
-      {Codec::kWebp2, /*effort=*/0, Subsampling::k444, /*quality=*/100});
+      {Codec::kWebp2, Subsampling::k444, /*effort=*/0, /*quality=*/100});
   EXPECT_EQ(Compare({std::string(data_path) + "alpha1x17.png",
                      std::string(data_path) + "gradient32x32.png"},
                     settings, TempPath("completed_tasks.csv"), TempPath()),
@@ -231,7 +231,7 @@ TEST_F(FrameworkTest, DifferentImageSetOrCodecOrQuality) {
 
   // Call it again, with the missing element added back.
   settings.codec_settings.push_back(
-      {Codec::kWebp2, /*effort=*/0, Subsampling::k444, kQualityLossless});
+      {Codec::kWebp2, Subsampling::k444, /*effort=*/0, kQualityLossless});
   EXPECT_EQ(Compare({std::string(data_path) + "alpha1x17.png",
                      std::string(data_path) + "gradient32x32.png"},
                     settings, TempPath("completed_tasks.csv"), TempPath()),

@@ -31,7 +31,7 @@ const char* data_path = nullptr;
 TEST(SjpegTest, Subsamplings) {
   const std::string image_path = std::string(data_path) + "gradient32x32.png";
   TaskInput input = {
-      {Codec::kJpegsimple, /*effort=*/0, Subsampling::k444, /*quality=*/75},
+      {Codec::kJpegsimple, Subsampling::k444, /*effort=*/0, /*quality=*/75},
       image_path};
 
   const StatusOr<TaskOutput> result444 =

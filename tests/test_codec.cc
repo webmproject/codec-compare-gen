@@ -47,42 +47,42 @@ constexpr Subsampling kDef = Subsampling::kDefault;
 
 TEST(CodecTest, WebPMinEffort) {
   TaskInput input;
-  input.codec_settings = {Codec::kWebp, /*effort=*/0, kDef, kQualityLossless};
+  input.codec_settings = {Codec::kWebp, kDef, /*effort=*/0, kQualityLossless};
   input.image_path = std::string(data_path) + "gradient32x32.png";
   EXPECT_EQ(EncodeDecodeTest(input), Status::kOk);
 }
 
 TEST(CodecTest, WebPMaxEffort) {
   TaskInput input;
-  input.codec_settings = {Codec::kWebp, /*effort=*/9, kDef, kQualityLossless};
+  input.codec_settings = {Codec::kWebp, kDef, /*effort=*/9, kQualityLossless};
   input.image_path = std::string(data_path) + "alpha1x17.png";
   EXPECT_EQ(EncodeDecodeTest(input), Status::kOk);
 }
 
 TEST(CodecTest, WebPLossyMinQuality) {
   TaskInput input;
-  input.codec_settings = {Codec::kWebp, /*effort=*/5, kDef, /*quality=*/0};
+  input.codec_settings = {Codec::kWebp, kDef, /*effort=*/5, /*quality=*/0};
   input.image_path = std::string(data_path) + "gradient32x32.png";
   EXPECT_EQ(EncodeDecodeTest(input), Status::kOk);
 }
 
 TEST(CodecTest, WebPLossyMaxQuality) {
   TaskInput input;
-  input.codec_settings = {Codec::kWebp, /*effort=*/5, kDef, /*quality=*/100};
+  input.codec_settings = {Codec::kWebp, kDef, /*effort=*/5, /*quality=*/100};
   input.image_path = std::string(data_path) + "alpha1x17.png";
   EXPECT_EQ(EncodeDecodeTest(input), Status::kOk);
 }
 
 TEST(CodecTest, WebPWrongEffort) {
   TaskInput input;
-  input.codec_settings = {Codec::kWebp, /*effort=*/10, kDef, kQualityLossless};
+  input.codec_settings = {Codec::kWebp, kDef, /*effort=*/10, kQualityLossless};
   input.image_path = std::string(data_path) + "gradient32x32.png";
   EXPECT_EQ(EncodeDecodeTest(input, /*quiet=*/true), Status::kUnknownError);
 }
 
 TEST(CodecTest, WebPWrongQuality) {
   TaskInput input;
-  input.codec_settings = {Codec::kWebp, /*effort=*/5, kDef, 123};
+  input.codec_settings = {Codec::kWebp, kDef, /*effort=*/5, 123};
   input.image_path = std::string(data_path) + "alpha1x17.png";
   EXPECT_EQ(EncodeDecodeTest(input, /*quiet=*/true), Status::kUnknownError);
 }
@@ -91,28 +91,28 @@ TEST(CodecTest, WebPWrongQuality) {
 
 TEST(CodecTest, WebP2MinEffort) {
   TaskInput input;
-  input.codec_settings = {Codec::kWebp2, /*effort=*/0, kDef, kQualityLossless};
+  input.codec_settings = {Codec::kWebp2, kDef, /*effort=*/0, kQualityLossless};
   input.image_path = std::string(data_path) + "gradient32x32.png";
   EXPECT_EQ(EncodeDecodeTest(input), Status::kOk);
 }
 
 TEST(CodecTest, WebP2MaxEffort) {
   TaskInput input;
-  input.codec_settings = {Codec::kWebp2, /*effort=*/9, kDef, kQualityLossless};
+  input.codec_settings = {Codec::kWebp2, kDef, /*effort=*/9, kQualityLossless};
   input.image_path = std::string(data_path) + "alpha1x17.png";
   EXPECT_EQ(EncodeDecodeTest(input), Status::kOk);
 }
 
 TEST(CodecTest, Web2PLossyMinQuality) {
   TaskInput input;
-  input.codec_settings = {Codec::kWebp2, /*effort=*/5, kDef, /*quality=*/0};
+  input.codec_settings = {Codec::kWebp2, kDef, /*effort=*/5, /*quality=*/0};
   input.image_path = std::string(data_path) + "gradient32x32.png";
   EXPECT_EQ(EncodeDecodeTest(input), Status::kOk);
 }
 
 TEST(CodecTest, Web2PLossyMaxQuality) {
   TaskInput input;
-  input.codec_settings = {Codec::kWebp2, /*effort=*/5, kDef, /*quality=*/95};
+  input.codec_settings = {Codec::kWebp2, kDef, /*effort=*/5, /*quality=*/95};
   input.image_path = std::string(data_path) + "alpha1x17.png";
   EXPECT_EQ(EncodeDecodeTest(input), Status::kOk);
 }
@@ -121,28 +121,28 @@ TEST(CodecTest, Web2PLossyMaxQuality) {
 
 TEST(CodecTest, JpegXlMinEffort) {
   TaskInput input;
-  input.codec_settings = {Codec::kJpegXl, /*effort=*/1, kDef, kQualityLossless};
+  input.codec_settings = {Codec::kJpegXl, kDef, /*effort=*/1, kQualityLossless};
   input.image_path = std::string(data_path) + "gradient32x32.png";
   EXPECT_EQ(EncodeDecodeTest(input), Status::kOk);
 }
 
 TEST(CodecTest, JpegXlMaxEffort) {
   TaskInput input;
-  input.codec_settings = {Codec::kJpegXl, /*effort=*/9, kDef, kQualityLossless};
+  input.codec_settings = {Codec::kJpegXl, kDef, /*effort=*/9, kQualityLossless};
   input.image_path = std::string(data_path) + "alpha1x17.png";
   EXPECT_EQ(EncodeDecodeTest(input), Status::kOk);
 }
 
 TEST(CodecTest, JpegXlLossyMinQuality) {
   TaskInput input;
-  input.codec_settings = {Codec::kJpegXl, /*effort=*/5, kDef, /*quality=*/5};
+  input.codec_settings = {Codec::kJpegXl, kDef, /*effort=*/5, /*quality=*/5};
   input.image_path = std::string(data_path) + "gradient32x32.png";
   EXPECT_EQ(EncodeDecodeTest(input), Status::kOk);
 }
 
 TEST(CodecTest, JpegXlLossyMaxQuality) {
   TaskInput input;
-  input.codec_settings = {Codec::kJpegXl, /*effort=*/5, kDef, /*quality=*/99};
+  input.codec_settings = {Codec::kJpegXl, kDef, /*effort=*/5, /*quality=*/99};
   input.image_path = std::string(data_path) + "alpha1x17.png";
   EXPECT_EQ(EncodeDecodeTest(input), Status::kOk);
 }
@@ -151,14 +151,14 @@ TEST(CodecTest, JpegXlLossyMaxQuality) {
 
 TEST(CodecTest, AvifMinEffort) {
   TaskInput input;
-  input.codec_settings = {Codec::kAvif, /*effort=*/9, kDef};  // max speed
+  input.codec_settings = {Codec::kAvif, kDef, /*effort=*/9};  // max speed
   input.image_path = std::string(data_path) + "gradient32x32.png";
   EXPECT_EQ(EncodeDecodeTest(input), Status::kOk);
 }
 
 TEST(CodecTest, AvifMaxEffort) {
   TaskInput input;
-  input.codec_settings = {Codec::kAvif, /*effort=*/0, kDef};  // min speed
+  input.codec_settings = {Codec::kAvif, kDef, /*effort=*/0};  // min speed
   input.image_path = std::string(data_path) + "alpha1x17.png";
   EXPECT_EQ(EncodeDecodeTest(input), Status::kOk);
 }
@@ -167,7 +167,7 @@ TEST(CodecTest, AvifMaxEffort) {
 
 TEST(CodecTest, CodecCombinationMinEffort) {
   TaskInput input;
-  input.codec_settings = {Codec::kCombination, /*effort=*/0, kDef,
+  input.codec_settings = {Codec::kCombination, kDef, /*effort=*/0,
                           kQualityLossless};
   input.image_path = std::string(data_path) + "gradient32x32.png";
   EXPECT_EQ(EncodeDecodeTest(input), Status::kOk);
@@ -175,7 +175,7 @@ TEST(CodecTest, CodecCombinationMinEffort) {
 
 TEST(CodecTest, CodecCombinationMediumEffort) {
   TaskInput input;
-  input.codec_settings = {Codec::kCombination, /*effort=*/5, kDef,
+  input.codec_settings = {Codec::kCombination, kDef, /*effort=*/5,
                           kQualityLossless};
   input.image_path = std::string(data_path) + "alpha1x17.png";
   EXPECT_EQ(EncodeDecodeTest(input), Status::kOk);
@@ -183,7 +183,7 @@ TEST(CodecTest, CodecCombinationMediumEffort) {
 
 TEST(CodecTest, CodecCombinationMaxEffort) {
   TaskInput input;
-  input.codec_settings = {Codec::kCombination, /*effort=*/9, kDef,
+  input.codec_settings = {Codec::kCombination, kDef, /*effort=*/9,
                           kQualityLossless};
   input.image_path = std::string(data_path) + "alpha1x17.png";
   EXPECT_EQ(EncodeDecodeTest(input), Status::kOk);
@@ -191,7 +191,7 @@ TEST(CodecTest, CodecCombinationMaxEffort) {
 
 TEST(CodecTest, CodecCombinationLossyMinQuality) {
   TaskInput input;
-  input.codec_settings = {Codec::kCombination, /*effort=*/5, kDef,
+  input.codec_settings = {Codec::kCombination, kDef, /*effort=*/5,
                           /*quality=*/5};
   input.image_path = std::string(data_path) + "gradient32x32.png";
   EXPECT_EQ(EncodeDecodeTest(input), Status::kOk);
@@ -199,7 +199,7 @@ TEST(CodecTest, CodecCombinationLossyMinQuality) {
 
 TEST(CodecTest, CodecCombinationLossyMaxQuality) {
   TaskInput input;
-  input.codec_settings = {Codec::kCombination, /*effort=*/5, kDef,
+  input.codec_settings = {Codec::kCombination, kDef, /*effort=*/5,
                           /*quality=*/95};
   input.image_path = std::string(data_path) + "alpha1x17.png";
   EXPECT_EQ(EncodeDecodeTest(input), Status::kOk);
@@ -209,14 +209,14 @@ TEST(CodecTest, CodecCombinationLossyMaxQuality) {
 
 TEST(CodecTest, JpegturboMinQuality) {
   TaskInput input;
-  input.codec_settings = {Codec::kJpegturbo, /*effort=*/0, kDef, /*quality=*/0};
+  input.codec_settings = {Codec::kJpegturbo, kDef, /*effort=*/0, /*quality=*/0};
   input.image_path = std::string(data_path) + "gradient32x32.png";
   EXPECT_EQ(EncodeDecodeTest(input), Status::kOk);
 }
 
 TEST(CodecTest, JpegturboMaxQuality) {
   TaskInput input;
-  input.codec_settings = {Codec::kJpegturbo, /*effort=*/0, kDef,
+  input.codec_settings = {Codec::kJpegturbo, kDef, /*effort=*/0,
                           /*quality=*/100};
   input.image_path = std::string(data_path) + "gradient32x32.png";
   EXPECT_EQ(EncodeDecodeTest(input), Status::kOk);
@@ -226,14 +226,14 @@ TEST(CodecTest, JpegturboMaxQuality) {
 
 TEST(CodecTest, JpegliMinQuality) {
   TaskInput input;
-  input.codec_settings = {Codec::kJpegli, /*effort=*/0, kDef, /*quality=*/0};
+  input.codec_settings = {Codec::kJpegli, kDef, /*effort=*/0, /*quality=*/0};
   input.image_path = std::string(data_path) + "gradient32x32.png";
   EXPECT_EQ(EncodeDecodeTest(input), Status::kOk);
 }
 
 TEST(CodecTest, JpegliMaxQuality) {
   TaskInput input;
-  input.codec_settings = {Codec::kJpegli, /*effort=*/0, kDef, /*quality=*/100};
+  input.codec_settings = {Codec::kJpegli, kDef, /*effort=*/0, /*quality=*/100};
   input.image_path = std::string(data_path) + "gradient32x32.png";
   EXPECT_EQ(EncodeDecodeTest(input), Status::kOk);
 }
@@ -242,7 +242,7 @@ TEST(CodecTest, JpegliMaxQuality) {
 
 TEST(CodecTest, JpegsimpleMinQualityMinEffort) {
   TaskInput input;
-  input.codec_settings = {Codec::kJpegsimple, /*effort=*/0, kDef,
+  input.codec_settings = {Codec::kJpegsimple, kDef, /*effort=*/0,
                           /*quality=*/0};
   input.image_path = std::string(data_path) + "gradient32x32.png";
   EXPECT_EQ(EncodeDecodeTest(input), Status::kOk);
@@ -250,7 +250,7 @@ TEST(CodecTest, JpegsimpleMinQualityMinEffort) {
 
 TEST(CodecTest, JpegsimpleMaxQualityMaxEffort) {
   TaskInput input;
-  input.codec_settings = {Codec::kJpegsimple, /*effort=*/8, kDef,
+  input.codec_settings = {Codec::kJpegsimple, kDef, /*effort=*/8,
                           /*quality=*/100};
   input.image_path = std::string(data_path) + "gradient32x32.png";
   EXPECT_EQ(EncodeDecodeTest(input), Status::kOk);
@@ -261,7 +261,7 @@ TEST(CodecTest, JpegsimpleMaxQualityMaxEffort) {
 // copybara:insert_begin(no mozjpeg in google3)
 // TEST(CodecTest, JpegmozMinQuality) {
 //   TaskInput input;
-//   input.codec_settings = {Codec::kJpegmoz, /*effort=*/0, kDef,
+//   input.codec_settings = {Codec::kJpegmoz, kDef, /*effort=*/0,
 //                           /*quality=*/0};
 //   input.image_path = std::string(data_path) + "gradient32x32.png";
 //   EXPECT_EQ(EncodeDecodeTest(input), Status::kOk);
@@ -269,7 +269,7 @@ TEST(CodecTest, JpegsimpleMaxQualityMaxEffort) {
 
 // TEST(CodecTest, JpegmozMaxQuality) {
 //   TaskInput input;
-//   input.codec_settings = {Codec::kJpegmoz, /*effort=*/0, kDef,
+//   input.codec_settings = {Codec::kJpegmoz, kDef, /*effort=*/0,
 //                           /*quality=*/100};
 //   input.image_path = std::string(data_path) + "gradient32x32.png";
 //   EXPECT_EQ(EncodeDecodeTest(input), Status::kOk);
@@ -280,7 +280,7 @@ TEST(CodecTest, JpegsimpleMaxQualityMaxEffort) {
 
 TEST(CodecTest, EncodeToDiskAndLoadFromDisk) {
   TaskInput input;
-  input.codec_settings = {Codec::kWebp, /*effort=*/2, kDef, /*quality=*/95};
+  input.codec_settings = {Codec::kWebp, kDef, /*effort=*/2, /*quality=*/95};
   input.image_path = std::string(data_path) + "alpha1x17.png";
   input.encoded_path =
       std::filesystem::path(::testing::TempDir()) / "alpha1x17_webp_e2q95.webp";

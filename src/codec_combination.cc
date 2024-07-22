@@ -78,8 +78,8 @@ StatusOr<WP2::Data> EncodeCodecCombination(
   WP2::Data data;
   for (int i = 0; i < kMaxNumCodecs; ++i) {
     const TaskInput specialized_input = {
-        {combination[i].codec, combination[i].effort,
-         input.codec_settings.chroma_subsampling, input.codec_settings.quality},
+        {combination[i].codec, input.codec_settings.chroma_subsampling,
+         combination[i].effort, input.codec_settings.quality},
         input.image_path};
     if (specialized_input.codec_settings.effort == kNone.effort) break;
 

@@ -54,7 +54,7 @@ constexpr Subsampling kDef = Subsampling::kDefault;
 
 TEST(SplitByCodecSettingsAndAggregateByImageTest, Simple) {
   const std::vector<TaskOutput> results = {
-      {{{kWebp, /*effort=*/0, kDef, /*quality=*/0}, "img"}, 1, 2, 3, 0}};
+      {{{kWebp, kDef, /*effort=*/0, /*quality=*/0}, "img"}, 1, 2, 3, 0}};
   const auto aggregate = SplitByCodecSettingsAndAggregateByImageAndQuality(
       results, /*quiet=*/false);
   ASSERT_EQ(aggregate.status, Status::kOk);
@@ -63,11 +63,11 @@ TEST(SplitByCodecSettingsAndAggregateByImageTest, Simple) {
 
 TEST(SplitByCodecSettingsAndAggregateByImageTest, Multiple) {
   const std::vector<TaskInput> single_inputs = {
-      {{kWebp, /*effort=*/0, kDef, /*quality=*/0}, "imgA"},
-      {{kWebp, /*effort=*/0, kDef, /*quality=*/0}, "imgB"},
-      {{kWebp, /*effort=*/1, kDef, /*quality=*/0}, "imgA"},
-      {{kWebp, /*effort=*/0, kDef, /*quality=*/100}, "imgA"},
-      {{kWebp2, /*effort=*/0, kDef, /*quality=*/0}, "imgA"}};
+      {{kWebp, kDef, /*effort=*/0, /*quality=*/0}, "imgA"},
+      {{kWebp, kDef, /*effort=*/0, /*quality=*/0}, "imgB"},
+      {{kWebp, kDef, /*effort=*/1, /*quality=*/0}, "imgA"},
+      {{kWebp, kDef, /*effort=*/0, /*quality=*/100}, "imgA"},
+      {{kWebp2, kDef, /*effort=*/0, /*quality=*/0}, "imgA"}};
   std::vector<TaskOutput> results;
   results.reserve(single_inputs.size() * 2);
   constexpr uint32_t kImageWidth = 8;
@@ -106,11 +106,11 @@ TEST(SplitByCodecSettingsAndAggregateByImageTest, Multiple) {
   ASSERT_EQ(aggregate.status, Status::kOk);
   ExpectEq(
       aggregate.value,
-      {{{{{kWebp, 0, kDef, 0}, "imgA"}, 8, 9, 1u, 1.5, 1.5, 0.5, {20.0}},
-        {{{kWebp, 0, kDef, 100}, "imgA"}, 8, 9, 4u, 7.5, 7.5, 3.5, {23.0}},
-        {{{kWebp, 0, kDef, 0}, "imgB"}, 8, 9, 2u, 3.5, 3.5, 1.5, {21.0}}},
-       {{{{kWebp, 1, kDef, 0}, "imgA"}, 8, 9, 3u, 5.5, 5.5, 2.5, {22.0}}},
-       {{{{kWebp2, 0, kDef, 0}, "imgA"}, 8, 9, 5u, 9.5, 9.5, 4.5, {24.0}}}});
+      {{{{{kWebp, kDef, 0, 0}, "imgA"}, 8, 9, 1u, 1.5, 1.5, 0.5, {20.0}},
+        {{{kWebp, kDef, 0, 100}, "imgA"}, 8, 9, 4u, 7.5, 7.5, 3.5, {23.0}},
+        {{{kWebp, kDef, 0, 0}, "imgB"}, 8, 9, 2u, 3.5, 3.5, 1.5, {21.0}}},
+       {{{{kWebp, kDef, 1, 0}, "imgA"}, 8, 9, 3u, 5.5, 5.5, 2.5, {22.0}}},
+       {{{{kWebp2, kDef, 0, 0}, "imgA"}, 8, 9, 5u, 9.5, 9.5, 4.5, {24.0}}}});
 }
 
 }  // namespace
