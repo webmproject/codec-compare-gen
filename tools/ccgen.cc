@@ -226,4 +226,4 @@ int Main(int argc, char* argv[]) {
 }  // namespace
 }  // namespace codec_compare_gen
 
-int main(int argc, char* argv[]) { codec_compare_gen::Main(argc, argv); }
+int main(int argc, char* argv[]) { return codec_compare_gen::Main(argc, argv); }
