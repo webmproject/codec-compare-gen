@@ -19,8 +19,10 @@
 #include <chrono>
 #include <cstddef>
 #include <cstdint>
+#include <cstring>
 #include <filesystem>
 #include <fstream>
+#include <iomanip>
 #include <iostream>
 #include <random>
 #include <string>
@@ -35,6 +37,7 @@
 #include "src/result_json.h"
 #include "src/serialization.h"
 #include "src/task.h"
+#include "src/timer.h"
 #include "src/worker.h"
 
 using seconds = std::chrono::duration<double>;
@@ -319,16 +322,12 @@ Status Compare(const std::vector<std::string>& image_paths,
                const ComparisonSettings& settings,
                const std::string& completed_tasks_file_path,
                const std::string& results_folder_path) {
-  CHECK_OR_RETURN(!completed_tasks_file_path.empty(), settings.quiet)
-      << "No specified file path to store the progress";
-  CHECK_OR_RETURN(!results_folder_path.empty(), settings.quiet)
-      << "No specified folder path to store the results";
-
   WorkerContext context;
   ASSIGN_OR_RETURN(context.remaining_tasks, PlanTasks(image_paths, settings));
   ASSIGN_OR_RETURN(context.completed_tasks,
                    LoadTasks(settings, completed_tasks_file_path));
-  if (settings.discard_distortion_values) {
+  if (settings.discard_distortion_values &&
+      std::filesystem::exists(completed_tasks_file_path)) {
     // Backup the old CSV file.
     std::filesystem::rename(completed_tasks_file_path,
                             completed_tasks_file_path + ".bck");
@@ -352,9 +351,11 @@ Status Compare(const std::vector<std::string>& image_paths,
       context.completed_tasks.size() + context.remaining_tasks.size();
 
   context.completed_tasks_file_path = completed_tasks_file_path;
-  context.completed_tasks_file.open(completed_tasks_file_path, std::ios::app);
-  CHECK_OR_RETURN(context.completed_tasks_file.is_open(), settings.quiet)
-      << "Could not open " << completed_tasks_file_path << " for writing";
+  if (!completed_tasks_file_path.empty()) {
+    context.completed_tasks_file.open(completed_tasks_file_path, std::ios::app);
+    CHECK_OR_RETURN(context.completed_tasks_file.is_open(), settings.quiet)
+        << "Could not open " << completed_tasks_file_path << " for writing";
+  }
   context.metric_binary_folder_path = settings.metric_binary_folder_path;
 
   if (!settings.quiet) {
@@ -362,11 +363,13 @@ Status Compare(const std::vector<std::string>& image_paths,
               << std::endl;
   }
 
-  const chrono::time_point start_time = chrono::now();
+  const Timer timer;
 
   WorkerPool<WorkerContext, TaskWorker> pool(1 + settings.num_extra_threads);
   pool.Run(context);
-  context.completed_tasks_file.close();
+  if (!completed_tasks_file_path.empty()) {
+    context.completed_tasks_file.close();
+  }
   if (context.num_failures > kMaxNumFailures ||
       context.num_completed_tasks_since_start == 0) {
     OK_OR_RETURN(context.status);
@@ -375,43 +378,68 @@ Status Compare(const std::vector<std::string>& image_paths,
   std::vector<std::vector<TaskOutput>> results;
   ASSIGN_OR_RETURN(results, SplitByCodecSettingsAndAggregateByImageAndQuality(
                                 context.completed_tasks, settings.quiet));
-  for (const std::vector<TaskOutput>& tasks : results) {
-    const CodecSettings& codec_settings =
-        tasks.front().task_input.codec_settings;
-    const std::string batch_name =
-        CodecName(codec_settings.codec) + "_" +
-        SubsamplingToString(codec_settings.chroma_subsampling) + "_" +
-        std::to_string(codec_settings.effort);
-    OK_OR_RETURN(TasksToJson(
-        batch_name, codec_settings, tasks, settings.quiet,
-        std::filesystem::path(results_folder_path) / (batch_name + ".json")));
+  const bool single_result = results.size() == 1 && results.front().size() == 1;
+
+  if (!results_folder_path.empty()) {
+    for (const std::vector<TaskOutput>& tasks : results) {
+      const CodecSettings& codec_settings =
+          tasks.front().task_input.codec_settings;
+      const std::string batch_name =
+          CodecName(codec_settings.codec) + "_" +
+          SubsamplingToString(codec_settings.chroma_subsampling) + "_" +
+          std::to_string(codec_settings.effort);
+      OK_OR_RETURN(TasksToJson(
+          batch_name, codec_settings, tasks, settings.quiet,
+          std::filesystem::path(results_folder_path) / (batch_name + ".json")));
+    }
+  } else if (!single_result) {
+    std::cout << "Warning: no JSON results folder path specified" << std::endl;
   }
 
-  // TODO(yguyon): std::cout a quick summary of the comparison results
-  //               (overall arith and geo means).
-
   if (!settings.quiet) {
-    const double duration = seconds(chrono::now() - start_time).count();
-    double total_duration = 0;
-    uint64_t total_encoded_size = 0;
-    for (const TaskOutput& task_output : context.completed_tasks) {
-      total_duration +=
-          task_output.encoding_duration + task_output.decoding_duration;
-      total_encoded_size += task_output.encoded_size;
-    }
-    std::cout << "Took " << duration
-              << " seconds (estimated overall duration: " << total_duration
-              << " seconds / " << (settings.num_extra_threads + 1)
-              << " threads = "
-              << total_duration / (settings.num_extra_threads + 1)
-              << " seconds of encoding/decoding)" << std::endl;
-    std::cout << "Represents " << total_encoded_size
-              << " encoded bytes (average: "
-              << static_cast<float>(total_encoded_size) /
-                     context.completed_tasks.size()
-              << "B per encoding)" << std::endl;
+    std::cout << "Took " << Timer::SecondsToString(timer.seconds())
+              << std::endl;
     if (context.num_failures > 0) {
       std::cout << " /!\\ Warning: " << context.num_failures << " failures"
+                << std::endl;
+    }
+  }
+
+  if (single_result) {
+    const TaskOutput& task = results.front().front();
+    const TaskInput& input = task.task_input;
+    const CodecSettings& codec_settings = input.codec_settings;
+    std::cout << std::endl
+              << "Input settings" << std::endl
+              << "  Codec:              " << CodecName(codec_settings.codec)
+              << std::endl
+              << "  Chroma subsampling: "
+              << SubsamplingToString(codec_settings.chroma_subsampling)
+              << std::endl
+              << "  Effort:             " << codec_settings.effort << std::endl
+              << "  Quality:            " << codec_settings.quality << std::endl
+              << "  Original file path: " << input.image_path << std::endl
+              << "  Image dimensions:   " << task.image_width << "x"
+              << task.image_height << std::endl
+              << "  Encoded file path:  " << input.encoded_path << std::endl;
+    std::cout << "Output stats" << std::endl
+              << "  Encoded size:       " << task.encoded_size << std::endl
+              << "  Encoding duration:  "
+              << Timer::SecondsToString(task.encoding_duration) << std::endl
+              << "  Decoding duration:  "
+              << Timer::SecondsToString(task.decoding_duration) << std::endl
+              << "  Color conversion duration (if available): "
+              << Timer::SecondsToString(task.decoding_color_conversion_duration)
+              << std::endl;
+    const size_t longest_metric_name = std::strlen(*std::max_element(
+        kDistortionMetricToStr, kDistortionMetricToStr + kNumDistortionMetrics,
+        [](const char* a, const char* b) {
+          return std::strlen(a) < std::strlen(b);
+        }));
+    for (uint32_t i = 0; i < kNumDistortionMetrics; ++i) {
+      std::cout << "  Distortion ("
+                << std::setw(static_cast<int>(longest_metric_name)) << std::left
+                << kDistortionMetricToStr[i] << "): " << task.distortions[i]
                 << std::endl;
     }
   }

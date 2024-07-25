@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.1.4
+
+Make --progress_file and --results_folder optional in ccgen.cc.
+Print single result summary.
+
 ## v0.1.3
 
 Swap the order of the effort and chroma subsampling parameters everywhere.

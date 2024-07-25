@@ -16,11 +16,31 @@
 #define SRC_TIMER_H_
 
 #include <chrono>
+#include <iomanip>
+#include <ios>
+#include <sstream>
+#include <string>
 
 namespace codec_compare_gen {
 
 class Timer {
  public:
+  static std::string SecondsToString(double seconds) {
+    std::stringstream ss;
+    const double hours = seconds / 3600;
+    if (hours > 1) {
+      ss << std::setprecision(2) << hours << " hours";
+    } else {
+      const double minutes = seconds / 60;
+      if (minutes > 1) {
+        ss << std::setprecision(2) << minutes << " minutes";
+      } else {
+        ss << std::fixed << std::setprecision(3) << seconds << " seconds";
+      }
+    }
+    return ss.str();
+  }
+
   Timer() : start_(std::chrono::high_resolution_clock::now()) {}
   double seconds() const {
     return std::chrono::duration<double>(
