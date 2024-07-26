@@ -1,8 +1,13 @@
 # Changelog
 
+## v0.1.5
+
+Bump the versions of the dependencies in deps.sh.
+Allow values of `DistortionMetric::kLibjxlButteraugli` greater than 99.
+
 ## v0.1.4
 
-Make --progress_file and --results_folder optional in ccgen.cc.
+Make `--progress_file` and `--results_folder` optional in `ccgen.cc`.
 Print single result summary.
 
 ## v0.1.3
