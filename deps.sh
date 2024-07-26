@@ -25,7 +25,7 @@ pushd third_party
 
   git clone https://github.com/AOMediaCodec/libavif.git
   pushd libavif
-    git checkout cdb1c3df9f3e02b2bbe2686474440a081ebb9b6a
+    git checkout 183485b155ff8e56501753d0f73b6c58bb170a24 # v1.1.0
     pushd ext
       ./aom.cmd
       ./dav1d.cmd
@@ -48,7 +48,7 @@ pushd third_party
 
   git clone https://chromium.googlesource.com/webm/libwebp
   pushd libwebp
-    git checkout 1fb9f3dcf18b2aff35dcb7a8f6fa4a6c756efb75
+    git checkout a443170fc0ebdfc3abbf89ac81f35e7eb656a3da # v1.4.0
     cmake -S . -B build \
       -DWEBP_BUILD_CWEBP=ON \
       -DWEBP_BUILD_DWEBP=ON \
@@ -63,7 +63,7 @@ pushd third_party
 
   git clone https://chromium.googlesource.com/codecs/libwebp2
   pushd libwebp2
-    git checkout 543e052dc2673dfa3d18bc9d511c8870316d3389
+    git checkout 9dd38de9c8905af1eab0914fd40531e970b309c5
     cmake -S . -B build \
       -DCMAKE_PREFIX_PATH="../libwebp/src/;../libwebp/build/" \
       -DWP2_BUILD_TESTS=OFF \
@@ -78,8 +78,8 @@ pushd third_party
   # https://github.com/cloudinary/ssimulacra2/blob/d2be72505ddc5c92aeb30f4a7f3ab53db45b314b/build_ssimulacra_from_libjxl_repo
   git clone https://github.com/libjxl/libjxl.git
   pushd libjxl
-    # https://github.com/libjxl/libjxl/releases/tag/v0.10.0
-    git checkout 19bcd827dbf44bdc7ef30af8925696a5b82dcdf2
+    # https://github.com/libjxl/libjxl/releases/tag/v0.10.3
+    git checkout 4a3b22d2600f92d8706fb72d85d52bfee2acbd54
     ./deps.sh
     # DEVTOOLS=ON for metric binaries. See
     # https://github.com/cloudinary/ssimulacra2/blob/d2be72505ddc5c92aeb30f4a7f3ab53db45b314b/build_ssimulacra_from_libjxl_repo

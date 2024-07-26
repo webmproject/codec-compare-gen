@@ -179,9 +179,11 @@ StatusOr<TaskOutput> TaskOutput::Unserialize(const std::string& serialized_task,
     for (size_t metric = 0; metric < kNumDistortionMetrics; ++metric) {
       task.distortions[metric] =
           std::stof(tokens[kNumNonDistortionTokens + metric]);
-      CHECK_OR_RETURN(task.distortions[metric] <= 99, quiet)
-          << "Bad " << kDistortionMetricToStr[metric] << " metric value "
-          << task.distortions[metric] << " in \"" << serialized_task << "\"";
+      if (metric != static_cast<size_t>(DistortionMetric::kLibjxlButteraugli)) {
+        CHECK_OR_RETURN(task.distortions[metric] <= 99, quiet)
+            << "Bad " << kDistortionMetricToStr[metric] << " metric value "
+            << task.distortions[metric] << " in \"" << serialized_task << "\"";
+      }
     }
   }
   return task;
