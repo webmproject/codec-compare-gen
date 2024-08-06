@@ -155,7 +155,8 @@ Status TasksToJson(const std::string& batch_name, CodecSettings settings,
   "field_descriptions": [
     {"original_name": "Original image file name"},
     {"width": "Pixel columns in the original image"},
-    {"height": "Pixel rows in the original image"},)json";
+    {"height": "Pixel rows in the original image"},
+    {"frame_count": "Number of frames in the original image"},)json";
   if (!lossless) {
     file << R"json(
     {"chroma_subsampling": "Compression chroma subsampling parameter"},)json";
@@ -199,6 +200,7 @@ Status TasksToJson(const std::string& batch_name, CodecSettings settings,
          << ",";
     file << task.image_width << ",";
     file << task.image_height << ",";
+    file << task.num_frames << ",";
     if (!lossless) {
       file << SubsamplingToString(
                   task.task_input.codec_settings.chroma_subsampling)

@@ -60,7 +60,7 @@ TEST_F(FrameworkTest, Simple) {
             Status::kOk);
 }
 
-TEST_F(FrameworkTest, AllCodecsWithAlpha) {
+TEST_F(FrameworkTest, AllCodecsWithAlphaAndAnimation) {
   ComparisonSettings settings;
   settings.codec_settings.push_back(
       {Codec::kWebp, Subsampling::kDefault, /*effort=*/0, kQualityLossless});
@@ -73,7 +73,8 @@ TEST_F(FrameworkTest, AllCodecsWithAlpha) {
   settings.codec_settings.push_back({Codec::kCombination, Subsampling::kDefault,
                                      /*effort=*/0, /*quality=*/90});
   EXPECT_EQ(Compare({std::string(data_path) + "gradient32x32.png",
-                     std::string(data_path) + "alpha1x17.png"},
+                     std::string(data_path) + "alpha1x17.png",
+                     std::string(data_path) + "anim80x80.webp"},
                     settings, TempPath("completed_tasks.csv"), TempPath()),
             Status::kOk);
 }

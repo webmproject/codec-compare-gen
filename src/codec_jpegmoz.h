@@ -20,6 +20,7 @@
 #include <vector>
 
 #include "src/base.h"
+#include "src/frame.h"
 #include "src/task.h"
 
 #if defined(HAS_WEBP2)
@@ -34,10 +35,10 @@ std::vector<int> JpegmozLossyQualities();
 
 #if defined(HAS_WEBP2)
 StatusOr<WP2::Data> EncodeJpegmoz(const TaskInput& input,
-                                  const WP2::ArgbBuffer& original_image,
-                                  bool quiet);
-StatusOr<std::pair<WP2::ArgbBuffer, double>> DecodeJpegmoz(
-    const TaskInput& input, const WP2::Data& encoded_image, bool quiet);
+                                  const Image& original_image, bool quiet);
+StatusOr<std::pair<Image, double>> DecodeJpegmoz(const TaskInput& input,
+                                                 const WP2::Data& encoded_image,
+                                                 bool quiet);
 #endif  // HAS_WEBP2
 
 }  // namespace codec_compare_gen

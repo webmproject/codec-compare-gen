@@ -420,7 +420,8 @@ Status Compare(const std::vector<std::string>& image_paths,
               << "  Quality:            " << codec_settings.quality << std::endl
               << "  Original file path: " << input.image_path << std::endl
               << "  Image dimensions:   " << task.image_width << "x"
-              << task.image_height << std::endl
+              << task.image_height << " (" << task.num_frames << " frames)"
+              << std::endl
               << "  Encoded file path:  " << input.encoded_path << std::endl;
     std::cout << "Output stats" << std::endl
               << "  Encoded size:       " << task.encoded_size << std::endl

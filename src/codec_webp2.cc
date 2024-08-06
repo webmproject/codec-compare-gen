@@ -15,12 +15,14 @@
 #include "src/codec_webp2.h"
 
 #include <cassert>
+#include <cstdint>
 #include <numeric>
 #include <string>
 #include <utility>
 #include <vector>
 
 #include "src/base.h"
+#include "src/frame.h"
 #include "src/framework.h"
 #include "src/serialization.h"
 #include "src/task.h"
@@ -59,8 +61,7 @@ std::vector<int> Webp2LossyQualities() {
 #if defined(HAS_WEBP2)
 
 StatusOr<WP2::Data> EncodeWebp2(const TaskInput& input,
-                                const WP2::ArgbBuffer& original_image,
-                                bool quiet) {
+                                const Image& original_image, bool quiet) {
   WP2::Data data;
   WP2::DataWriter writer(&data);
   WP2::EncoderConfig config;
@@ -86,30 +87,56 @@ StatusOr<WP2::Data> EncodeWebp2(const TaskInput& input,
   }
   config.effort = input.codec_settings.effort;
   config.thread_level = 0;
-  const WP2Status status = WP2::Encode(original_image, &writer, config);
-  CHECK_OR_RETURN(status == WP2_STATUS_OK, quiet)
-      << "WP2::Encode() failed with \"" << WP2GetStatusMessage(status)
-      << "\" when encoding " << input.image_path;
+  if (original_image.size() == 1) {
+    const WP2Status status =
+        WP2::Encode(original_image.front().pixels, &writer, config);
+    CHECK_OR_RETURN(status == WP2_STATUS_OK, quiet)
+        << "WP2::Encode() failed with \"" << WP2GetStatusMessage(status)
+        << "\" when encoding " << input.image_path;
+  } else {
+    WP2::AnimationEncoder encoder;
+    for (const Frame& frame : original_image) {
+      const WP2Status status =
+          encoder.AddFrame(frame.pixels, frame.duration_ms);
+      CHECK_OR_RETURN(status == WP2_STATUS_OK, quiet)
+          << "WP2::AnimationEncoder::AddFrame() failed with \""
+          << WP2GetStatusMessage(status) << "\" when encoding "
+          << input.image_path;
+    }
+    const WP2Status status = encoder.Encode(&writer, config);
+    CHECK_OR_RETURN(status == WP2_STATUS_OK, quiet)
+        << "WP2::AnimationEncoder::Encode() failed with \""
+        << WP2GetStatusMessage(status) << "\" when encoding "
+        << input.image_path;
+  }
   return data;
 }
 
-StatusOr<std::pair<WP2::ArgbBuffer, double>> DecodeWebp2(
-    const TaskInput& input, const WP2::Data& encoded_image, bool quiet) {
-  // TODO(yguyon): Measure color conversion time.
-  std::pair<WP2::ArgbBuffer, double> image_and_color_conversion_duration(
-      WP2_ARGB_32, 0.);
+StatusOr<std::pair<Image, double>> DecodeWebp2(const TaskInput& input,
+                                               const WP2::Data& encoded_image,
+                                               bool quiet) {
+  // TODO: Fix the following error when compiled with gcc --enable-default-pie:
+  //         codec_webp2.cc.o:(.data.rel.ro.ArrayDecoderE):
+  //         undefined reference to typeinfo for WP2::Decoder
+
   WP2::DecoderConfig config;
   if (input.codec_settings.quality == kQualityLossless) {
     config.exact = true;
   }
   config.thread_level = 0;
-  const WP2Status status =
-      WP2::Decode(encoded_image.bytes, encoded_image.size,
-                  &image_and_color_conversion_duration.first, config);
-  CHECK_OR_RETURN(status == WP2_STATUS_OK, quiet)
-      << "WP2::Decode() failed with \"" << WP2GetStatusMessage(status)
-      << "\" when decoding WebP2 " << input.image_path;
-  return image_and_color_conversion_duration;
+  WP2::ArrayDecoder decoder(encoded_image.bytes, encoded_image.size, config);
+  Image image;
+
+  uint32_t duration_ms;
+  while (decoder.ReadFrame(&duration_ms)) {
+    image.emplace_back(WP2::ArgbBuffer(WP2_ARGB_32), duration_ms);
+    CHECK_OR_RETURN(
+        image.back().pixels.ConvertFrom(decoder.GetPixels()) == WP2_STATUS_OK,
+        quiet);
+  }
+  CHECK_OR_RETURN(decoder.GetStatus() == WP2_STATUS_OK, quiet)
+      << decoder.GetStatus();
+  return std::pair<Image, double>(std::move(image), 0);
 }
 
 #endif  // HAS_WEBP2

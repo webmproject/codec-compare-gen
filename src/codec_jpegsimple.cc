@@ -23,6 +23,7 @@
 
 #include "src/base.h"
 #include "src/codec_jpegturbo.h"
+#include "src/frame.h"
 #include "src/serialization.h"
 #include "src/task.h"
 
@@ -57,14 +58,15 @@ std::vector<int> JpegsimpleLossyQualities() {
 #if defined(HAS_JPEGSIMPLE) && defined(HAS_JPEGTURBO)
 
 StatusOr<WP2::Data> EncodeJpegsimple(const TaskInput& input,
-                                     const WP2::ArgbBuffer& original_image,
-                                     bool quiet) {
+                                     const Image& original_image, bool quiet) {
+  CHECK_OR_RETURN(original_image.size() == 1, quiet);
+  const WP2::ArgbBuffer& pixels = original_image.front().pixels;
   CHECK_OR_RETURN(
       input.codec_settings.effort >= 0 && input.codec_settings.effort <= 8,
       quiet)
       << "sjpeg method " << input.codec_settings.effort
       << " must be between 0 and 8";
-  CHECK_OR_RETURN(original_image.format() == WP2_RGB_24, quiet);
+  CHECK_OR_RETURN(pixels.format() == WP2_RGB_24, quiet);
   SjpegYUVMode chroma_subsampling;
   if (input.codec_settings.chroma_subsampling == Subsampling::kDefault ||
       input.codec_settings.chroma_subsampling == Subsampling::k420) {
@@ -77,14 +79,13 @@ StatusOr<WP2::Data> EncodeJpegsimple(const TaskInput& input,
     chroma_subsampling = SJPEG_YUV_444;
   }
 
-  const uint32_t stride =
-      original_image.width() * WP2FormatBpp(original_image.format());
+  const uint32_t stride = pixels.width() * WP2FormatBpp(pixels.format());
   uint8_t* buffer;
-  const size_t size = SjpegEncode(
-      original_image.GetRow8(0), static_cast<int>(original_image.width()),
-      static_cast<int>(original_image.height()), static_cast<int>(stride),
-      &buffer, input.codec_settings.quality, input.codec_settings.effort,
-      chroma_subsampling);
+  const size_t size =
+      SjpegEncode(pixels.GetRow8(0), static_cast<int>(pixels.width()),
+                  static_cast<int>(pixels.height()), static_cast<int>(stride),
+                  &buffer, input.codec_settings.quality,
+                  input.codec_settings.effort, chroma_subsampling);
   CHECK_OR_RETURN(size != 0, quiet);
 
   // Copy the data to avoid a delete[]/free() mismatch.
@@ -94,20 +95,20 @@ StatusOr<WP2::Data> EncodeJpegsimple(const TaskInput& input,
   return data;
 }
 
-StatusOr<std::pair<WP2::ArgbBuffer, double>> DecodeJpegsimple(
+StatusOr<std::pair<Image, double>> DecodeJpegsimple(
     const TaskInput& input, const WP2::Data& encoded_image, bool quiet) {
   return DecodeJpegturbo(input, encoded_image, quiet);
 }
 
 #else
-StatusOr<WP2::Data> EncodeJpegsimple(const TaskInput&, const WP2::ArgbBuffer&,
+StatusOr<WP2::Data> EncodeJpegsimple(const TaskInput&, const Image&,
                                      bool quiet) {
   CHECK_OR_RETURN(false, quiet)
       << "Encoding images requires HAS_JPEGSIMPLE and HAS_JPEGTURBO";
 }
-StatusOr<std::pair<WP2::ArgbBuffer, double>> DecodeJpegsimple(const TaskInput&,
-                                                              const WP2::Data&,
-                                                              bool quiet) {
+StatusOr<std::pair<Image, double>> DecodeJpegsimple(const TaskInput&,
+                                                    const WP2::Data&,
+                                                    bool quiet) {
   CHECK_OR_RETURN(false, quiet)
       << "Decoding images requires HAS_JPEGSIMPLE and HAS_JPEGTURBO";
 }

@@ -25,6 +25,7 @@
 #include <vector>
 
 #include "src/base.h"
+#include "src/frame.h"
 #if defined(HAS_JPEGMOZ) && defined(HAS_WEBP2)
 #include "src/serialization.h"
 #endif
@@ -73,8 +74,9 @@ void jpeg_catch_error(j_common_ptr cinfo) {
 }  // namespace
 
 StatusOr<WP2::Data> EncodeJpegmoz(const TaskInput& input,
-                                  const WP2::ArgbBuffer& original_image,
-                                  bool quiet) {
+                                  const Image& original_image, bool quiet) {
+  CHECK_OR_RETURN(original_image.size() == 1, quiet);
+  const WP2::ArgbBuffer& pixels = original_image.front().pixels;
   CHECK_OR_RETURN(input.codec_settings.effort == 0, quiet);
 
   struct jpeg_compress_struct cinfo;
@@ -95,9 +97,9 @@ StatusOr<WP2::Data> EncodeJpegmoz(const TaskInput& input,
   unsigned long outsize = 0;
   jpeg_mem_dest(&cinfo, &outbuffer, &outsize);
 
-  cinfo.image_width = static_cast<int>(original_image.width());
-  cinfo.image_height = static_cast<int>(original_image.height());
-  CHECK_OR_RETURN(original_image.format() == WP2_RGB_24, quiet);
+  cinfo.image_width = static_cast<int>(pixels.width());
+  cinfo.image_height = static_cast<int>(pixels.height());
+  CHECK_OR_RETURN(pixels.format() == WP2_RGB_24, quiet);
   cinfo.input_components = 3;
   cinfo.in_color_space = JCS_RGB;
   jpeg_set_defaults(&cinfo);
@@ -139,7 +141,7 @@ StatusOr<WP2::Data> EncodeJpegmoz(const TaskInput& input,
   while (cinfo.next_scanline < cinfo.image_height) {
     JSAMPROW row_pointer[1];  // pointer to JSAMPLE rows
     row_pointer[0] = reinterpret_cast<JSAMPLE*>(const_cast<JSAMPLE*>(
-        original_image.GetRow8(static_cast<uint32_t>(cinfo.next_scanline))));
+        pixels.GetRow8(static_cast<uint32_t>(cinfo.next_scanline))));
     num_scanlines = jpeg_write_scanlines(&cinfo, row_pointer, 1);
     if (num_scanlines != 1) break;
   }
@@ -157,8 +159,9 @@ StatusOr<WP2::Data> EncodeJpegmoz(const TaskInput& input,
   return data;
 }
 
-StatusOr<std::pair<WP2::ArgbBuffer, double>> DecodeJpegmoz(
-    const TaskInput& input, const WP2::Data& encoded_image, bool quiet) {
+StatusOr<std::pair<Image, double>> DecodeJpegmoz(const TaskInput& input,
+                                                 const WP2::Data& encoded_image,
+                                                 bool quiet) {
   struct jpeg_decompress_struct cinfo;
   struct jpeg_error_mgr jerr;
   cinfo.err = jpeg_std_error(&jerr);
@@ -171,23 +174,24 @@ StatusOr<std::pair<WP2::ArgbBuffer, double>> DecodeJpegmoz(
   }
   (void)jpeg_start_decompress(&cinfo);
 
-  std::pair<WP2::ArgbBuffer, double> image_and_color_conversion_duration(
-      WP2_RGB_24, 0.);
-  WP2::ArgbBuffer& image = image_and_color_conversion_duration.first;
+  Image image;
+  image.reserve(1);
+  image.emplace_back(WP2::ArgbBuffer(WP2_RGB_24), /*duration_ms=*/0);
   CHECK_OR_RETURN(
-      image.Resize(static_cast<uint32_t>(cinfo.output_width),
-                   static_cast<uint32_t>(cinfo.output_height)) == WP2_STATUS_OK,
+      image.back().pixels.Resize(static_cast<uint32_t>(cinfo.output_width),
+                                 static_cast<uint32_t>(cinfo.output_height)) ==
+          WP2_STATUS_OK,
       quiet);
   CHECK_OR_RETURN(
-      image.stride() ==
+      image.back().pixels.stride() ==
           static_cast<uint32_t>(cinfo.output_width * cinfo.output_components),
       quiet);
 
   int num_scanlines = 0;
   while (cinfo.output_scanline < cinfo.output_height) {
     JSAMPROW row_pointer[1];  // pointer to JSAMPLE rows
-    row_pointer[0] = reinterpret_cast<JSAMPLE*>(
-        image.GetRow8(static_cast<uint32_t>(cinfo.output_scanline)));
+    row_pointer[0] = reinterpret_cast<JSAMPLE*>(image.back().pixels.GetRow8(
+        static_cast<uint32_t>(cinfo.output_scanline)));
     num_scanlines = jpeg_read_scanlines(&cinfo, row_pointer, 1);
     if (num_scanlines != 1) break;
   }
@@ -197,17 +201,15 @@ StatusOr<std::pair<WP2::ArgbBuffer, double>> DecodeJpegmoz(
 
   CHECK_OR_RETURN(num_scanlines == 1, quiet)
       << "num_scanlines: " << num_scanlines;
-  return image_and_color_conversion_duration;
+  return std::pair<Image, double>(std::move(image), 0);
 }
 
 #else
-StatusOr<WP2::Data> EncodeJpegmoz(const TaskInput&, const WP2::ArgbBuffer&,
-                                  bool quiet) {
+StatusOr<WP2::Data> EncodeJpegmoz(const TaskInput&, const Image&, bool quiet) {
   CHECK_OR_RETURN(false, quiet) << "Encoding images requires HAS_JPEGMOZ";
 }
-StatusOr<std::pair<WP2::ArgbBuffer, double>> DecodeJpegmoz(const TaskInput&,
-                                                           const WP2::Data&,
-                                                           bool quiet) {
+StatusOr<std::pair<Image, double>> DecodeJpegmoz(const TaskInput&,
+                                                 const WP2::Data&, bool quiet) {
   CHECK_OR_RETURN(false, quiet) << "Decoding images requires HAS_JPEGMOZ";
 }
 #endif  // HAS_JPEGMOZ

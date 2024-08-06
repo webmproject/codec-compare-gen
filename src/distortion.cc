@@ -24,6 +24,7 @@
 
 #include "src/base.h"
 #include "src/codec.h"
+#include "src/frame.h"
 #include "src/framework.h"
 #include "src/serialization.h"
 #include "src/task.h"
@@ -233,8 +234,6 @@ StatusOr<float> GetDssimDistortion(const std::string& reference_path,
   return std::stof(Trim(Split(standard_output, '\t').front()));
 }
 
-}  // namespace
-
 StatusOr<float> GetDistortion(
     const std::string& reference_path, const WP2::ArgbBuffer& reference,
     const std::string& image_path, const WP2::ArgbBuffer& image,
@@ -260,6 +259,35 @@ StatusOr<float> GetDistortion(
   return Status::kUnknownError;
 }
 
+}  // namespace
+
+StatusOr<float> GetAverageDistortion(
+    const std::string& reference_path, const Image& reference,
+    const std::string& image_path, const Image& image, const TaskInput& task,
+    const std::string& metric_binary_folder_path, DistortionMetric metric,
+    size_t thread_id, bool quiet) {
+  CHECK_OR_RETURN(reference.size() == image.size(), quiet);
+  float distortion_sum = 0;
+  for (size_t i = 0; i < reference.size(); ++i) {
+    CHECK_OR_RETURN(reference[i].duration_ms == image[i].duration_ms, quiet)
+        << reference[i].duration_ms << " vs " << image[i].duration_ms;
+    ASSIGN_OR_RETURN(
+        const float distortion,
+        GetDistortion(reference_path, reference[i].pixels, image_path,
+                      image[i].pixels, task, metric_binary_folder_path, metric,
+                      thread_id, quiet));
+    distortion_sum += distortion;
+  }
+  return distortion_sum / reference.size();
+}
+
+#else
+StatusOr<float> GetAverageDistortion(const std::string&, const Image&,
+                                     const std::string&, const Image&,
+                                     const TaskInput&, const std::string&,
+                                     DistortionMetric, size_t, bool quiet) {
+  CHECK_OR_RETURN(false, quiet) << "Computing distortions requires HAS_WEBP2";
+}
 #endif  // HAS_WEBP2
 
 }  // namespace codec_compare_gen

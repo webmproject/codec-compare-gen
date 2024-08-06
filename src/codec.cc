@@ -17,6 +17,7 @@
 #include <algorithm>
 #include <cassert>
 #include <cstddef>
+#include <cstdint>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
@@ -35,15 +36,12 @@
 #include "src/codec_webp.h"
 #include "src/codec_webp2.h"
 #include "src/distortion.h"
+#include "src/frame.h"
 #include "src/framework.h"
 #include "src/task.h"
 #include "src/timer.h"
 
 #if defined(HAS_WEBP2)
-#include "third_party/libwebp2/imageio/file_format.h"
-#include "third_party/libwebp2/imageio/image_dec.h"
-#include "third_party/libwebp2/imageio/image_enc.h"
-#include "third_party/libwebp2/imageio/imageio_util.h"
 #include "third_party/libwebp2/src/wp2/base.h"
 #endif  // HAS_WEBP2
 
@@ -134,22 +132,24 @@ bool CodecIsSupportedByBrowsers(Codec codec) {
 
 namespace {
 
-Status SaveImage(const WP2::ArgbBuffer& image, const std::string& file_path,
-                 bool quiet) {
-  const WP2Status status =
-      WP2::SaveImage(image, file_path.c_str(), /*overwrite=*/true);
-  if (status == WP2_STATUS_UNSUPPORTED_FEATURE &&
-      image.format() != WP2_Argb_32 && image.format() != WP2_ARGB_32) {
-    WP2::ArgbBuffer image4(WP2IsPremultiplied(image.format()) ? WP2_Argb_32
-                                                              : WP2_ARGB_32);
-    CHECK_OR_RETURN(image4.ConvertFrom(image) == WP2_STATUS_OK, quiet);
-    return ::codec_compare_gen::SaveImage(image4, file_path, quiet);
+// Returns the format layout required by the API of the given codec.
+WP2SampleFormat CodecToNeededFormat(Codec codec, bool has_transparency) {
+  if (codec == Codec::kWebp) {
+    return WebPPictureFormat();
   }
-
-  CHECK_OR_RETURN(status == WP2_STATUS_OK, quiet)
-      << "SaveImage(" << file_path
-      << ") failed: " << WP2GetStatusMessage(status);
-  return Status::kOk;
+  if (codec == Codec::kJpegXl) {
+    return has_transparency ? WP2_RGBA_32 : WP2_RGB_24;
+  }
+  if (codec == Codec::kAvif) {
+    return has_transparency ? WP2_ARGB_32 : WP2_RGB_24;
+  }
+  if (codec == Codec::kJpegturbo || codec == Codec::kJpegli ||
+      codec == Codec::kJpegsimple || codec == Codec::kJpegmoz) {
+    return WP2_RGB_24;
+    return WP2_ARGB_32;
+  }
+  // Other formats support this layout even for opaque images.
+  return WP2_ARGB_32;
 }
 
 }  // namespace
@@ -161,37 +161,28 @@ StatusOr<TaskOutput> EncodeDecode(const TaskInput& input,
   TaskOutput task;
   task.task_input = input;
 
-  // Reuse libwebp2's wrapper for simplicity.
-  // TODO(yguyon): Check PNG metadata reading capabilities.
-  WP2::ArgbBuffer original_image(WP2_ARGB_32);
-  const WP2Status status =
-      WP2::ReadImage(input.image_path.c_str(), &original_image,
-                     /*file_size=*/nullptr, WP2::FileFormat::AUTO,
-                     quiet ? WP2::LogLevel::QUIET : WP2::LogLevel::VERBOSE);
-  CHECK_OR_RETURN(status == WP2_STATUS_OK, quiet)
-      << "Got " << WP2GetStatusMessage(status) << " when reading "
-      << input.image_path;
+  const WP2SampleFormat initial_format = CodecToNeededFormat(
+      input.codec_settings.codec, /*has_transparency=*/true);
+  ASSIGN_OR_RETURN(Image original_image,
+                   ReadStillImageOrAnimation(input.image_path.c_str(),
+                                             initial_format, quiet));
 
-  // TODO(yguyon): Read all frames of GIF.
-
+  bool has_transparency = false;
+  for (const Frame& frame : original_image) {
+    has_transparency |= frame.pixels.HasTransparency();
+  }
   const WP2SampleFormat needed_format =
-      input.codec_settings.codec == Codec::kJpegXl
-          ? (original_image.HasTransparency() ? WP2_RGBA_32 : WP2_RGB_24)
-      : input.codec_settings.codec == Codec::kAvif
-          ? (original_image.HasTransparency() ? WP2_ARGB_32 : WP2_RGB_24)
-      : input.codec_settings.codec == Codec::kJpegturbo ||
-              input.codec_settings.codec == Codec::kJpegli ||
-              input.codec_settings.codec == Codec::kJpegsimple ||
-              input.codec_settings.codec == Codec::kJpegmoz
-          ? WP2_RGB_24
-          : WP2_ARGB_32;
-  if (original_image.format() != needed_format) {
-    WP2::ArgbBuffer image(needed_format);
-    CHECK_OR_RETURN(image.ConvertFrom(original_image) == WP2_STATUS_OK, quiet);
-    original_image = std::move(image);
+      CodecToNeededFormat(input.codec_settings.codec, has_transparency);
+  if (initial_format != needed_format) {
+    ASSIGN_OR_RETURN(original_image,
+                     CloneAs(original_image, needed_format, quiet));
   }
 
-  original_image.metadata_.Clear();
+  // Make sure pixels are interpreted the same way by all codecs by stripping
+  // any metadata that could be handled differently by some codecs.
+  for (Frame& frame : original_image) {
+    frame.pixels.metadata_.Clear();
+  }
 
   auto encode_func =
       input.codec_settings.codec == Codec::kWebp     ? &EncodeWebp
@@ -234,12 +225,13 @@ StatusOr<TaskOutput> EncodeDecode(const TaskInput& input,
     ASSIGN_OR_RETURN(encoded_image, encode_func(input, original_image, quiet));
   }
   task.encoding_duration = encoding_duration.seconds();
-  task.image_width = original_image.width();
-  task.image_height = original_image.height();
+  task.image_width = original_image.front().pixels.width();
+  task.image_height = original_image.front().pixels.height();
+  task.num_frames = static_cast<uint32_t>(original_image.size());
   task.encoded_size = encoded_image.size;
 
   const Timer decoding_duration;
-  WP2::ArgbBuffer decoded_image;
+  Image decoded_image;
   CHECK_OR_RETURN(decode_func != nullptr, quiet);
   {
     ASSIGN_OR_RETURN(auto image_and_color_conversion_duration,
@@ -259,19 +251,20 @@ StatusOr<TaskOutput> EncodeDecode(const TaskInput& input,
 
     // Some image formats are not supported by all major browsers.
     if (!CodecIsSupportedByBrowsers(input.codec_settings.codec)) {
-      // Also write a PNG of the decoded image to disk for convenience.
+      // Also write a PNG or WebP of the decoded image to disk for convenience.
+      // Keep the PNG extension for the simplicity of the whole pipeline.
       decoded_path = input.encoded_path + ".png";
-      OK_OR_RETURN(
-          ::codec_compare_gen::SaveImage(decoded_image, decoded_path, quiet));
+      OK_OR_RETURN(WriteStillImageOrAnimation(decoded_image,
+                                              decoded_path.c_str(), quiet));
     }
   }
 
   for (size_t m = 0; m < kNumDistortionMetrics; ++m) {
-    ASSIGN_OR_RETURN(
-        task.distortions[m],
-        GetDistortion(input.image_path, original_image, decoded_path,
-                      decoded_image, input, metric_binary_folder_path,
-                      static_cast<DistortionMetric>(m), thread_id, quiet));
+    ASSIGN_OR_RETURN(task.distortions[m],
+                     GetAverageDistortion(
+                         input.image_path, original_image, decoded_path,
+                         decoded_image, input, metric_binary_folder_path,
+                         static_cast<DistortionMetric>(m), thread_id, quiet));
 
     static_assert(static_cast<size_t>(DistortionMetric::kLibwebp2Psnr) == 0);
     if (m == static_cast<int>(DistortionMetric::kLibwebp2Psnr) &&

@@ -87,6 +87,20 @@ TEST(CodecTest, WebPWrongQuality) {
   EXPECT_EQ(EncodeDecodeTest(input, /*quiet=*/true), Status::kUnknownError);
 }
 
+TEST(CodecTest, WebPAnimatedLossy) {
+  TaskInput input;
+  input.codec_settings = {Codec::kWebp, kDef, /*effort=*/4, /*quality=*/25};
+  input.image_path = std::string(data_path) + "anim80x80.gif";
+  EXPECT_EQ(EncodeDecodeTest(input), Status::kOk);
+}
+
+TEST(CodecTest, WebPAnimatedLossless) {
+  TaskInput input;
+  input.codec_settings = {Codec::kWebp, kDef, /*effort=*/6, kQualityLossless};
+  input.image_path = std::string(data_path) + "anim80x80.gif";
+  EXPECT_EQ(EncodeDecodeTest(input), Status::kOk);
+}
+
 //------------------------------------------------------------------------------
 
 TEST(CodecTest, WebP2MinEffort) {
@@ -103,17 +117,31 @@ TEST(CodecTest, WebP2MaxEffort) {
   EXPECT_EQ(EncodeDecodeTest(input), Status::kOk);
 }
 
-TEST(CodecTest, Web2PLossyMinQuality) {
+TEST(CodecTest, WebP2PLossyMinQuality) {
   TaskInput input;
   input.codec_settings = {Codec::kWebp2, kDef, /*effort=*/5, /*quality=*/0};
   input.image_path = std::string(data_path) + "gradient32x32.png";
   EXPECT_EQ(EncodeDecodeTest(input), Status::kOk);
 }
 
-TEST(CodecTest, Web2PLossyMaxQuality) {
+TEST(CodecTest, WebP2PLossyMaxQuality) {
   TaskInput input;
   input.codec_settings = {Codec::kWebp2, kDef, /*effort=*/5, /*quality=*/95};
   input.image_path = std::string(data_path) + "alpha1x17.png";
+  EXPECT_EQ(EncodeDecodeTest(input), Status::kOk);
+}
+
+TEST(CodecTest, WebP2AnimatedLossy) {
+  TaskInput input;
+  input.codec_settings = {Codec::kWebp2, kDef, /*effort=*/1, /*quality=*/75};
+  input.image_path = std::string(data_path) + "anim80x80.webp";
+  EXPECT_EQ(EncodeDecodeTest(input), Status::kOk);
+}
+
+TEST(CodecTest, WebP2AnimatedLossless) {
+  TaskInput input;
+  input.codec_settings = {Codec::kWebp2, kDef, /*effort=*/1, kQualityLossless};
+  input.image_path = std::string(data_path) + "anim80x80.webp";
   EXPECT_EQ(EncodeDecodeTest(input), Status::kOk);
 }
 
@@ -147,6 +175,20 @@ TEST(CodecTest, JpegXlLossyMaxQuality) {
   EXPECT_EQ(EncodeDecodeTest(input), Status::kOk);
 }
 
+TEST(CodecTest, JpegXlAnimatedLossy) {
+  TaskInput input;
+  input.codec_settings = {Codec::kJpegXl, kDef, /*effort=*/5, /*quality=*/75};
+  input.image_path = std::string(data_path) + "anim80x80.webp";
+  EXPECT_EQ(EncodeDecodeTest(input), Status::kOk);
+}
+
+TEST(CodecTest, JpegXlAnimatedLossless) {
+  TaskInput input;
+  input.codec_settings = {Codec::kJpegXl, kDef, /*effort=*/5, kQualityLossless};
+  input.image_path = std::string(data_path) + "anim80x80.webp";
+  EXPECT_EQ(EncodeDecodeTest(input), Status::kOk);
+}
+
 //------------------------------------------------------------------------------
 
 TEST(CodecTest, AvifMinEffort) {
@@ -160,6 +202,41 @@ TEST(CodecTest, AvifMaxEffort) {
   TaskInput input;
   input.codec_settings = {Codec::kAvif, kDef, /*effort=*/0};  // min speed
   input.image_path = std::string(data_path) + "alpha1x17.png";
+  EXPECT_EQ(EncodeDecodeTest(input), Status::kOk);
+}
+
+TEST(CodecTest, AvifMinQuality) {
+  TaskInput input;
+  input.codec_settings = {Codec::kAvif, kDef, /*effort=*/6, /*quality=*/0};
+  input.image_path = std::string(data_path) + "gradient32x32.png";
+  EXPECT_EQ(EncodeDecodeTest(input), Status::kOk);
+}
+
+TEST(CodecTest, AvifMaxQuality) {
+  TaskInput input;
+  input.codec_settings = {Codec::kAvif, kDef, /*effort=*/6, /*quality=*/100};
+  input.image_path = std::string(data_path) + "alpha1x17.png";
+  EXPECT_EQ(EncodeDecodeTest(input), Status::kOk);
+}
+
+TEST(CodecTest, AvifLossless) {
+  TaskInput input;
+  input.codec_settings = {Codec::kAvif, kDef, /*effort=*/6, kQualityLossless};
+  input.image_path = std::string(data_path) + "alpha1x17.png";
+  EXPECT_EQ(EncodeDecodeTest(input), Status::kOk);
+}
+
+TEST(CodecTest, AvifAnimatedLossy) {
+  TaskInput input;
+  input.codec_settings = {Codec::kAvif, kDef, /*effort=*/6, /*quality=*/75};
+  input.image_path = std::string(data_path) + "anim80x80.webp";
+  EXPECT_EQ(EncodeDecodeTest(input), Status::kOk);
+}
+
+TEST(CodecTest, AvifAnimatedLossless) {
+  TaskInput input;
+  input.codec_settings = {Codec::kAvif, kDef, /*effort=*/6, kQualityLossless};
+  input.image_path = std::string(data_path) + "anim80x80.webp";
   EXPECT_EQ(EncodeDecodeTest(input), Status::kOk);
 }
 
@@ -205,6 +282,14 @@ TEST(CodecTest, CodecCombinationLossyMaxQuality) {
   EXPECT_EQ(EncodeDecodeTest(input), Status::kOk);
 }
 
+TEST(CodecTest, CodecCombinationAnimated) {
+  TaskInput input;
+  input.codec_settings = {Codec::kCombination, kDef, /*effort=*/5,
+                          kQualityLossless};
+  input.image_path = std::string(data_path) + "anim80x80.webp";
+  EXPECT_EQ(EncodeDecodeTest(input), Status::kOk);
+}
+
 //------------------------------------------------------------------------------
 
 TEST(CodecTest, JpegturboMinQuality) {
@@ -220,6 +305,15 @@ TEST(CodecTest, JpegturboMaxQuality) {
                           /*quality=*/100};
   input.image_path = std::string(data_path) + "gradient32x32.png";
   EXPECT_EQ(EncodeDecodeTest(input), Status::kOk);
+}
+
+TEST(CodecTest, JpegturboAlphaAnimated) {
+  TaskInput input;
+  input.codec_settings = {Codec::kJpegturbo, kDef, /*effort=*/0,
+                          /*quality=*/100};
+  input.image_path = std::string(data_path) + "anim80x80.webp";
+  // Core JPEG does not support alpha nor animations.
+  EXPECT_EQ(EncodeDecodeTest(input, /*quiet=*/true), Status::kUnknownError);
 }
 
 //------------------------------------------------------------------------------
@@ -284,6 +378,19 @@ TEST(CodecTest, EncodeToDiskAndLoadFromDisk) {
   input.image_path = std::string(data_path) + "alpha1x17.png";
   input.encoded_path =
       std::filesystem::path(::testing::TempDir()) / "alpha1x17_webp_e2q95.webp";
+  EXPECT_EQ(EncodeDecode(input, "", 0, EncodeMode::kEncodeAndSaveToDisk, false)
+                .status,
+            Status::kOk);
+  EXPECT_EQ(EncodeDecode(input, "", 0, EncodeMode::kLoadFromDisk, false).status,
+            Status::kOk);
+}
+
+TEST(CodecTest, EncodeToDiskAndLoadFromDiskAnimated) {
+  TaskInput input;
+  input.codec_settings = {Codec::kWebp, kDef, /*effort=*/2, /*quality=*/95};
+  input.image_path = std::string(data_path) + "anim80x80.gif";
+  input.encoded_path =
+      std::filesystem::path(::testing::TempDir()) / "anim80x80_webp_e2q95.webp";
   EXPECT_EQ(EncodeDecode(input, "", 0, EncodeMode::kEncodeAndSaveToDisk, false)
                 .status,
             Status::kOk);
