@@ -20,6 +20,7 @@
 #include <vector>
 
 #include "src/base.h"
+#include "src/frame.h"
 #include "src/task.h"
 
 #if defined(HAS_WEBP2)
@@ -37,12 +38,13 @@ std::vector<int> CodecCombinationLossyQualities();
 // Tries encoding the original_image as WebP, WebP2 and/or JpegXL at various
 // efforts depending on input.codec_settings.effort. Returns the smallest
 // encoded payload.
-StatusOr<WP2::Data> EncodeCodecCombination(
-    const TaskInput& input, const WP2::ArgbBuffer& original_image, bool quiet);
+StatusOr<WP2::Data> EncodeCodecCombination(const TaskInput& input,
+                                           const Image& original_image,
+                                           bool quiet);
 
 // Returns the encoded_image decoded by the first successful codec among WebP,
 // WebP2 and JpegXL and the color conversion duration.
-StatusOr<std::pair<WP2::ArgbBuffer, double>> DecodeCodecCombination(
+StatusOr<std::pair<Image, double>> DecodeCodecCombination(
     const TaskInput& input, const WP2::Data& encoded_image, bool quiet);
 
 #endif  // HAS_WEBP2

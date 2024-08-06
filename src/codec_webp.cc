@@ -15,26 +15,29 @@
 #include "src/codec_webp.h"
 
 #include <cassert>
+#include <cstddef>
+#include <cstdint>
+#include <memory>
 #include <numeric>
 #include <string>
 #include <utility>
 #include <vector>
 
 #include "src/base.h"
+#include "src/frame.h"
 #include "src/task.h"
 #include "src/timer.h"
+#include "third_party/libwebp/src/webp/mux_types.h"
 
 #if defined(HAS_WEBP2)
-#include "third_party/libwebp2/imageio/file_format.h"
-#include "third_party/libwebp2/imageio/image_dec.h"
-#include "third_party/libwebp2/imageio/image_enc.h"
-#include "third_party/libwebp2/imageio/imageio_util.h"
 #include "third_party/libwebp2/src/wp2/base.h"
 #endif
 
-#if defined(WP2_HAVE_WEBP)
+#if defined(HAS_WEBP)
 #include "third_party/libwebp/src/webp/decode.h"
+#include "third_party/libwebp/src/webp/demux.h"
 #include "third_party/libwebp/src/webp/encode.h"
+#include "third_party/libwebp/src/webp/mux.h"
 #endif
 
 namespace codec_compare_gen {
@@ -48,7 +51,7 @@ std::string VersionToString(int version) {
 }  // namespace
 
 std::string WebpVersion() {
-#if defined(WP2_HAVE_WEBP)
+#if defined(HAS_WEBP)
   if (WebPGetEncoderVersion() == WebPGetDecoderVersion()) {
     return VersionToString(WebPGetEncoderVersion());
   }
@@ -67,11 +70,45 @@ std::vector<int> WebpLossyQualities() {
 
 #if defined(HAS_WEBP2)
 
-#if defined(WP2_HAVE_WEBP)
+WP2SampleFormat WebPPictureFormat() {
+  const uint32_t is_little_endian = 1;
+  return reinterpret_cast<const uint8_t*>(&is_little_endian)[0] ? WP2_BGRA_32
+                                                                : WP2_ARGB_32;
+}
+
+#if defined(HAS_WEBP)
+
+namespace {
+
+// Returns a WebPPicture that points to the given ArgbBuffer.
+StatusOr<WebPPicture> ArgbBufferToWebPPicture(WP2::ArgbBuffer& buffer,
+                                              bool quiet) {
+  WebPPicture picture = {};
+  CHECK_OR_RETURN(WebPPictureInit(&picture), quiet);
+  picture.use_argb = 1;
+  picture.width = static_cast<int>(buffer.width());
+  picture.height = static_cast<int>(buffer.height());
+  // Avoid WebPPictureAlloc() and a copy.
+  CHECK_OR_RETURN(buffer.format() == WebPPictureFormat(), quiet);
+  picture.argb =
+      reinterpret_cast<uint32_t*>(const_cast<uint8_t*>(buffer.GetRow8(0)));
+  picture.argb_stride =
+      static_cast<int>(buffer.stride()) / WP2FormatBpp(buffer.format());
+  return picture;
+}
+
+// WebPWriterFunction implementation.
+int WriterFunction(const uint8_t* data, size_t data_size,
+                   const WebPPicture* picture) {
+  WP2::Data& bytes =
+      *reinterpret_cast<WP2::Data*>(const_cast<void*>(picture->custom_ptr));
+  return bytes.Append(data, data_size) == WP2_STATUS_OK ? 1 : 0;
+}
+
+}  // namespace
 
 StatusOr<WP2::Data> EncodeWebp(const TaskInput& input,
-                               const WP2::ArgbBuffer& original_image,
-                               bool quiet) {
+                               const Image& original_image, bool quiet) {
   const bool lossless = input.codec_settings.quality == kQualityLossless;
   const Subsampling subsampling = input.codec_settings.chroma_subsampling;
   if (lossless) {
@@ -86,7 +123,6 @@ StatusOr<WP2::Data> EncodeWebp(const TaskInput& input,
         << "WebP only supports lossy 4:2:0 (chroma subsampling)";
   }
 
-  // Reuse libwebp2's wrapper for simplicity.
   WP2::Data data;
   WP2::DataWriter writer(&data);
   WebPConfig config;
@@ -101,42 +137,104 @@ StatusOr<WP2::Data> EncodeWebp(const TaskInput& input,
     config.quality = input.codec_settings.quality;
     config.alpha_quality = input.codec_settings.quality;
     config.method = input.codec_settings.effort;
+    config.use_sharp_yuv = 1;
   }
   config.thread_level = 0;
-  const WP2Status status = WP2::CompressWebP(original_image, config, &writer);
-  CHECK_OR_RETURN(status == WP2_STATUS_OK, quiet)
-      << "CompressWebP() failed with \"" << WP2GetStatusMessage(status)
-      << "\" when encoding " << input.image_path;
+
+  const int width = static_cast<int>(original_image.front().pixels.width());
+  const int height = static_cast<int>(original_image.front().pixels.height());
+
+  if (original_image.size() == 1) {
+    // Assume WebPEncode() below does not modify the pixels.
+    ASSIGN_OR_RETURN(WebPPicture picture,
+                     ArgbBufferToWebPPicture(const_cast<WP2::ArgbBuffer&>(
+                                                 original_image.front().pixels),
+                                             quiet));
+    std::unique_ptr<WebPPicture, decltype(&WebPPictureFree)> picture_releaser(
+        &picture, WebPPictureFree);
+    picture.custom_ptr = &data;
+    picture.writer = WriterFunction;
+    CHECK_OR_RETURN(WebPEncode(&config, &picture), quiet);
+  } else {
+    WebPAnimEncoderOptions enc_options;
+    CHECK_OR_RETURN(WebPAnimEncoderOptionsInit(&enc_options), quiet);
+    enc_options.minimize_size = config.method >= 5;  // arbitrary
+    enc_options.allow_mixed = !lossless;
+    std::unique_ptr<WebPAnimEncoder, decltype(&WebPAnimEncoderDelete)> enc(
+        WebPAnimEncoderNew(width, height, &enc_options), WebPAnimEncoderDelete);
+    CHECK_OR_RETURN(enc != nullptr, quiet);
+
+    int timestamp_ms = 0;
+    for (const Frame& frame : original_image) {
+      // Assume WebPAnimEncoderAdd() below does not modify the pixels.
+      ASSIGN_OR_RETURN(WebPPicture picture,
+                       ArgbBufferToWebPPicture(
+                           const_cast<WP2::ArgbBuffer&>(frame.pixels), quiet));
+      std::unique_ptr<WebPPicture, decltype(&WebPPictureFree)> picture_releaser(
+          &picture, WebPPictureFree);
+      CHECK_OR_RETURN(
+          WebPAnimEncoderAdd(enc.get(), &picture, timestamp_ms, &config),
+          quiet);
+      timestamp_ms += static_cast<int>(frame.duration_ms);
+    }
+    CHECK_OR_RETURN(
+        WebPAnimEncoderAdd(enc.get(), nullptr, timestamp_ms, nullptr), quiet);
+    WebPData webp_data;
+    WebPDataInit(&webp_data);
+    CHECK_OR_RETURN(WebPAnimEncoderAssemble(enc.get(), &webp_data), quiet);
+    data.bytes = const_cast<uint8_t*>(webp_data.bytes);
+    data.size = webp_data.size;
+  }
   return data;
 }
 
-StatusOr<std::pair<WP2::ArgbBuffer, double>> DecodeWebp(
-    const TaskInput& input, const WP2::Data& encoded_image, bool quiet) {
-  // Reuse libwebp2's wrapper for simplicity.
-  // TODO(yguyon): Measure color conversion time.
-  std::pair<WP2::ArgbBuffer, double> image_and_color_conversion_duration(
-      WP2_ARGB_32, 0.);
-  const WP2Status status = WP2::ReadImage(
-      encoded_image.bytes, encoded_image.size,
-      &image_and_color_conversion_duration.first, WP2::FileFormat::AUTO,
-      quiet ? WP2::LogLevel::QUIET : WP2::LogLevel::VERBOSE);
-  CHECK_OR_RETURN(status == WP2_STATUS_OK, quiet)
-      << "ReadImage() failed with \"" << WP2GetStatusMessage(status)
-      << "\" when decoding WebP " << input.image_path;
-  return image_and_color_conversion_duration;
+StatusOr<std::pair<Image, double>> DecodeWebp(const TaskInput& input,
+                                              const WP2::Data& encoded_image,
+                                              bool quiet) {
+  WebPAnimDecoderOptions dec_options;
+  CHECK_OR_RETURN(WebPAnimDecoderOptionsInit(&dec_options), quiet);
+  dec_options.color_mode = MODE_BGRA;
+  dec_options.use_threads = 0;
+  const WebPData webp_data = {encoded_image.bytes, encoded_image.size};
+  std::unique_ptr<WebPAnimDecoder, decltype(&WebPAnimDecoderDelete)> dec(
+      WebPAnimDecoderNew(&webp_data, &dec_options), WebPAnimDecoderDelete);
+  CHECK_OR_RETURN(dec != nullptr, quiet);
+
+  WebPAnimInfo anim_info;
+  CHECK_OR_RETURN(WebPAnimDecoderGetInfo(dec.get(), &anim_info), quiet);
+
+  Image image;
+  image.reserve(anim_info.frame_count);
+  int previous_timestamp = 0;
+  while (WebPAnimDecoderHasMoreFrames(dec.get())) {
+    uint8_t* buf;
+    int timestamp;
+    CHECK_OR_RETURN(WebPAnimDecoderGetNext(dec.get(), &buf, &timestamp), quiet);
+
+    // This does not depend on endianness so no need for WebPPictureFormat().
+    WP2::ArgbBuffer buffer(WP2_BGRA_32);
+    CHECK_OR_RETURN(
+        buffer.Import(buffer.format(), anim_info.canvas_width,
+                      anim_info.canvas_height, buf,
+                      anim_info.canvas_width * WP2FormatBpp(buffer.format())) ==
+            WP2_STATUS_OK,
+        quiet);
+    image.emplace_back(std::move(buffer),
+                       static_cast<uint32_t>(timestamp - previous_timestamp));
+    previous_timestamp = timestamp;
+  }
+  return std::pair<Image, double>(std::move(image), 0);
 }
 
 #else
-StatusOr<WP2::Data> EncodeWebp(const TaskInput&, const WP2::ArgbBuffer&,
-                               bool quiet) {
-  CHECK_OR_RETURN(false, quiet) << "Encoding images requires WP2_HAVE_WEBP";
+StatusOr<WP2::Data> EncodeWebp(const TaskInput&, const Image&, bool quiet) {
+  CHECK_OR_RETURN(false, quiet) << "Encoding images requires HAS_WEBP";
 }
-StatusOr<std::pair<WP2::ArgbBuffer, double>> DecodeWebp(const TaskInput&,
-                                                        const WP2::Data&,
-                                                        bool quiet) {
-  CHECK_OR_RETURN(false, quiet) << "Decoding images requires WP2_HAVE_WEBP";
+StatusOr<std::pair<Image, double>> DecodeWebp(const TaskInput&,
+                                              const WP2::Data&, bool quiet) {
+  CHECK_OR_RETURN(false, quiet) << "Decoding images requires HAS_WEBP";
 }
-#endif  // WP2_HAVE_WEBP
+#endif  // HAS_WEBP
 
 #endif  // HAS_WEBP2
 

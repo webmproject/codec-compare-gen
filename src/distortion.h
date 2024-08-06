@@ -19,23 +19,18 @@
 #include <string>
 
 #include "src/base.h"
+#include "src/frame.h"
 #include "src/task.h"
-
-#if defined(HAS_WEBP2)
-#include "third_party/libwebp2/src/wp2/base.h"
-#endif
 
 namespace codec_compare_gen {
 
-#if defined(HAS_WEBP2)
-
-StatusOr<float> GetDistortion(
-    const std::string& reference_path, const WP2::ArgbBuffer& reference,
-    const std::string& image_path, const WP2::ArgbBuffer& image,
-    const TaskInput& task, const std::string& metric_binary_folder_path,
-    DistortionMetric metric, size_t thread_id, bool quiet);
-
-#endif  // HAS_WEBP2
+// Computes the average distortion between the given frame sequences.
+// They must have the same number of frames.
+StatusOr<float> GetAverageDistortion(
+    const std::string& reference_path, const Image& reference,
+    const std::string& image_path, const Image& image, const TaskInput& task,
+    const std::string& metric_binary_folder_path, DistortionMetric metric,
+    size_t thread_id, bool quiet);
 
 }  // namespace codec_compare_gen
 

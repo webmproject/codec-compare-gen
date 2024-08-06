@@ -23,6 +23,7 @@
 #include <vector>
 
 #include "src/base.h"
+#include "src/frame.h"
 #include "src/task.h"
 #include "src/timer.h"
 
@@ -84,12 +85,8 @@ size_t ArgbBufferSize(const WP2::ArgbBuffer& image) {
 }  // namespace
 
 StatusOr<WP2::Data> EncodeJxl(const TaskInput& input,
-                              const WP2::ArgbBuffer& original_image,
-                              bool quiet) {
-  CHECK_OR_RETURN(original_image.format() == WP2_RGBA_32 ||
-                      original_image.format() == WP2_RGB_24,
-                  quiet)
-      << "libjxl requires RGB(A)";
+                              const Image& original_image, bool quiet) {
+  const WP2::ArgbBuffer& first_frame = original_image.front().pixels;
   CHECK_OR_RETURN(
       input.codec_settings.chroma_subsampling == Subsampling::kDefault ||
           input.codec_settings.chroma_subsampling == Subsampling::k444,
@@ -102,20 +99,25 @@ StatusOr<WP2::Data> EncodeJxl(const TaskInput& input,
 
   JxlBasicInfo basic_info;
   JxlEncoderInitBasicInfo(&basic_info);
-  basic_info.xsize = original_image.width();
-  basic_info.ysize = original_image.height();
-  basic_info.bits_per_sample = WP2Formatbpc(original_image.format());
+  basic_info.xsize = first_frame.width();
+  basic_info.ysize = first_frame.height();
+  basic_info.bits_per_sample = WP2Formatbpc(first_frame.format());
   basic_info.uses_original_profile =
       input.codec_settings.quality == kQualityLossless ? JXL_TRUE : JXL_FALSE;
   basic_info.num_color_channels = 3;
-  if (WP2FormatHasAlpha(original_image.format())) {
+  if (WP2FormatHasAlpha(first_frame.format())) {
     basic_info.num_extra_channels =
-        WP2FormatHasAlpha(original_image.format()) ? 1 : 0;
+        WP2FormatHasAlpha(first_frame.format()) ? 1 : 0;
     basic_info.alpha_bits = basic_info.bits_per_sample;
-    basic_info.alpha_premultiplied =
-        WP2IsPremultiplied(original_image.format());
+    basic_info.alpha_premultiplied = WP2IsPremultiplied(first_frame.format());
     // JxlEncoderSetExtraChannelInfo() does not need to be called for alpha
     // apparently.
+  }
+  if (original_image.size() > 1) {
+    basic_info.have_animation = true;
+    // Make the unit of frame_header.duration below be milliseconds.
+    basic_info.animation.tps_numerator = 1;
+    basic_info.animation.tps_denominator = 1000;
   }
   JxlEncoderStatus status = JxlEncoderSetBasicInfo(encoder.get(), &basic_info);
   CHECK_OR_RETURN(status == JXL_ENC_SUCCESS, quiet)
@@ -165,15 +167,28 @@ StatusOr<WP2::Data> EncodeJxl(const TaskInput& input,
       << JxlEncoderGetError(encoder.get()) << " when encoding "
       << input.image_path;
 
-  const JxlPixelFormat pixel_format =
-      ArgbBufferToJxlPixelFormat(original_image);
-  status = JxlEncoderAddImageFrame(frame_settings, &pixel_format,
-                                   original_image.GetRow(0),
-                                   ArgbBufferSize(original_image));
-  CHECK_OR_RETURN(status == JXL_ENC_SUCCESS, quiet)
-      << "JxlEncoderAddImageFrame() failed with error code "
-      << JxlEncoderGetError(encoder.get()) << " when encoding "
-      << input.image_path;
+  for (const Frame& frame : original_image) {
+    JxlFrameHeader frame_header;
+    JxlEncoderInitFrameHeader(&frame_header);
+    frame_header.duration = frame.duration_ms;
+    CHECK_OR_RETURN(JxlEncoderSetFrameHeader(frame_settings, &frame_header) ==
+                        JXL_ENC_SUCCESS,
+                    quiet);
+
+    CHECK_OR_RETURN(frame.pixels.format() == WP2_RGBA_32 ||
+                        frame.pixels.format() == WP2_RGB_24,
+                    quiet)
+        << "libjxl requires RGB(A)";
+    const JxlPixelFormat pixel_format =
+        ArgbBufferToJxlPixelFormat(frame.pixels);
+    status = JxlEncoderAddImageFrame(frame_settings, &pixel_format,
+                                     frame.pixels.GetRow(0),
+                                     ArgbBufferSize(frame.pixels));
+    CHECK_OR_RETURN(status == JXL_ENC_SUCCESS, quiet)
+        << "JxlEncoderAddImageFrame() failed with error "
+        << JxlEncoderGetError(encoder.get()) << " when encoding "
+        << input.image_path;
+  }
   JxlEncoderCloseInput(encoder.get());
 
   WP2::Data data;
@@ -203,8 +218,9 @@ StatusOr<WP2::Data> EncodeJxl(const TaskInput& input,
   return data;
 }
 
-StatusOr<std::pair<WP2::ArgbBuffer, double>> DecodeJxl(
-    const TaskInput& input, const WP2::Data& encoded_image, bool quiet) {
+StatusOr<std::pair<Image, double>> DecodeJxl(const TaskInput& input,
+                                             const WP2::Data& encoded_image,
+                                             bool quiet) {
   const JxlDecoderPtr decoder = JxlDecoderMake(nullptr);
   CHECK_OR_RETURN(decoder != nullptr, quiet) << "JxlDecoderMake() failed";
 
@@ -231,49 +247,57 @@ StatusOr<std::pair<WP2::ArgbBuffer, double>> DecodeJxl(
   CHECK_OR_RETURN(status == JXL_DEC_SUCCESS, quiet)
       << "JxlDecoderGetBasicInfo() failed with error code " << status
       << " when decoding " << input.image_path;
+  if (info.have_animation) {
+    CHECK_OR_RETURN(info.animation.tps_numerator == 1 &&
+                        info.animation.tps_denominator == 1000,
+                    quiet);
+  }
+  const WP2SampleFormat format = info.alpha_bits > 0 ? WP2_RGBA_32 : WP2_RGB_24;
 
-  status = JxlDecoderProcessInput(decoder.get());
-  CHECK_OR_RETURN(status == JXL_DEC_NEED_IMAGE_OUT_BUFFER, quiet)
-      << "Second call to JxlDecoderProcessInput() unexpectedly returned "
-      << status << " when decoding " << input.image_path;
+  Image image;
+  while ((status = JxlDecoderProcessInput(decoder.get())) ==
+         JXL_DEC_NEED_IMAGE_OUT_BUFFER) {
+    if (info.have_animation) {
+      JxlFrameHeader frame_header;
+      status = JxlDecoderGetFrameHeader(decoder.get(), &frame_header);
+      CHECK_OR_RETURN(status == JXL_DEC_SUCCESS, quiet)
+          << "JxlDecoderGetFrameHeader() failed with error code " << status
+          << " when decoding " << input.image_path;
+      image.emplace_back(WP2::ArgbBuffer(format), frame_header.duration);
+    } else {
+      CHECK_OR_RETURN(image.empty(), quiet);
+      image.reserve(1);
+      image.emplace_back(WP2::ArgbBuffer(format), /*duration_ms=*/0);
+    }
 
-  std::pair<WP2::ArgbBuffer, double> image_and_color_conversion_duration(
-      info.alpha_bits > 0 ? WP2_RGBA_32 : WP2_RGB_24, 0.);
-  WP2::ArgbBuffer& image = image_and_color_conversion_duration.first;
-  CHECK_OR_RETURN(image.Resize(info.xsize, info.ysize) == WP2_STATUS_OK, quiet);
-  const JxlPixelFormat pixel_format = ArgbBufferToJxlPixelFormat(image);
-  status = JxlDecoderSetImageOutBuffer(decoder.get(), &pixel_format,
-                                       image.GetRow(0), ArgbBufferSize(image));
+    WP2::ArgbBuffer& buffer = image.back().pixels;
+    CHECK_OR_RETURN(buffer.Resize(info.xsize, info.ysize) == WP2_STATUS_OK,
+                    quiet);
+    const JxlPixelFormat pixel_format = ArgbBufferToJxlPixelFormat(buffer);
+    status = JxlDecoderSetImageOutBuffer(
+        decoder.get(), &pixel_format, buffer.GetRow(0), ArgbBufferSize(buffer));
+    CHECK_OR_RETURN(status == JXL_DEC_SUCCESS, quiet)
+        << "JxlDecoderSetImageOutBuffer() failed with error code " << status
+        << " when decoding " << input.image_path;
+
+    status = JxlDecoderProcessInput(decoder.get());
+    CHECK_OR_RETURN(status == JXL_DEC_FULL_IMAGE, quiet)
+        << "JxlDecoderProcessInput() unexpectedly returned " << status
+        << " instead of JXL_DEC_FULL_IMAGE when decoding " << input.image_path;
+  }
   CHECK_OR_RETURN(status == JXL_DEC_SUCCESS, quiet)
-      << "JxlDecoderSetImageOutBuffer() failed with error code " << status
-      << " when decoding " << input.image_path;
-
-  status = JxlDecoderProcessInput(decoder.get());
-  CHECK_OR_RETURN(status == JXL_DEC_FULL_IMAGE, quiet)
-      << "Third call to JxlDecoderProcessInput() unexpectedly returned "
-      << status << " when decoding " << input.image_path;
-
-  // Not sure when the color conversion is actually performed.
-  const Timer color_conversion_duration;
-
-  status = JxlDecoderProcessInput(decoder.get());
-  CHECK_OR_RETURN(status == JXL_DEC_SUCCESS, quiet)
-      << "Third call to JxlDecoderProcessInput() failed with error code "
-      << status << " when decoding " << input.image_path;
-
-  image_and_color_conversion_duration.second =
-      color_conversion_duration.seconds();
-  return image_and_color_conversion_duration;
+      << "Last call to JxlDecoderProcessInput() unexpectedly returned "
+      << status << " instead of JXL_DEC_SUCCESS when decoding "
+      << input.image_path;
+  return std::pair<Image, double>(std::move(image), 0);
 }
 
 #else
-StatusOr<WP2::Data> EncodeJxl(const TaskInput&, const WP2::ArgbBuffer&,
-                              bool quiet) {
+StatusOr<WP2::Data> EncodeJxl(const TaskInput&, const Image&, bool quiet) {
   CHECK_OR_RETURN(false, quiet) << "Encoding images requires HAS_JPEGXL";
 }
-StatusOr<std::pair<WP2::ArgbBuffer, double>> DecodeJxl(const TaskInput&,
-                                                       const WP2::Data&,
-                                                       bool quiet) {
+StatusOr<std::pair<Image, double>> DecodeJxl(const TaskInput&, const WP2::Data&,
+                                             bool quiet) {
   CHECK_OR_RETURN(false, quiet) << "Decoding images requires HAS_JPEGXL";
 }
 #endif  // HAS_JPEGXL

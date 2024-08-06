@@ -20,6 +20,7 @@
 #include <vector>
 
 #include "src/base.h"
+#include "src/frame.h"
 #include "src/task.h"
 
 #if defined(HAS_WEBP2)
@@ -34,9 +35,8 @@ std::vector<int> JpegturboLossyQualities();
 
 #if defined(HAS_WEBP2)
 StatusOr<WP2::Data> EncodeJpegturbo(const TaskInput& input,
-                                    const WP2::ArgbBuffer& original_image,
-                                    bool quiet);
-StatusOr<std::pair<WP2::ArgbBuffer, double>> DecodeJpegturbo(
+                                    const Image& original_image, bool quiet);
+StatusOr<std::pair<Image, double>> DecodeJpegturbo(
     const TaskInput& input, const WP2::Data& encoded_image, bool quiet);
 #endif  // HAS_WEBP2
 

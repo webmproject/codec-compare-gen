@@ -24,7 +24,7 @@ Clone the codec-compare-gen repository. Then run from its root folder:
 
 ```sh
 ./deps.sh
-cmake -S . -B build
+cmake -S . -B build -DCMAKE_CXX_COMPILER=clang++
 cmake --build build
 ```
 
@@ -63,9 +63,9 @@ The following instructions are used to make sure the unit tests pass.
 `libgtest-dev` must be installed on the system. Run `deps.sh` if not done yet.
 
 ```sh
-cmake -S . -B build -DBUILD_TESTING=ON
+cmake -S . -B build -DBUILD_TESTING=ON -DCMAKE_CXX_COMPILER=clang++
 cmake --build build --parallel
-ctest --test-dir build
+ctest --test-dir build --output-on-failure
 ```
 
 ## C++ style

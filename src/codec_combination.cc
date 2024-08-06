@@ -25,6 +25,7 @@
 #include "src/codec_jpegxl.h"
 #include "src/codec_webp.h"
 #include "src/codec_webp2.h"
+#include "src/frame.h"
 #include "src/task.h"
 #include "src/timer.h"
 
@@ -46,13 +47,25 @@ std::vector<int> CodecCombinationLossyQualities() {
 
 #if defined(HAS_WEBP2)
 
+namespace {
+
+bool HasTransparency(const Image& image) {
+  for (const Frame& frame : image) {
+    if (frame.pixels.HasTransparency()) return true;
+  }
+  return false;
+}
+
 struct CodecEffort {
   Codec codec;
   int effort;
 };
 
-StatusOr<WP2::Data> EncodeCodecCombination(
-    const TaskInput& input, const WP2::ArgbBuffer& original_image, bool quiet) {
+}  // namespace
+
+StatusOr<WP2::Data> EncodeCodecCombination(const TaskInput& input,
+                                           const Image& original_image,
+                                           bool quiet) {
   constexpr CodecEffort kNone = {Codec::kCombination, -1};
   constexpr int kMaxNumCodecs = 3;
   constexpr int kMaxEffort = 9;
@@ -85,8 +98,10 @@ StatusOr<WP2::Data> EncodeCodecCombination(
 
     using std::swap;
     if (specialized_input.codec_settings.codec == Codec::kWebp) {
+      ASSIGN_OR_RETURN(const Image image,
+                       CloneAs(original_image, WebPPictureFormat(), quiet));
       ASSIGN_OR_RETURN(WP2::Data candidate,
-                       EncodeWebp(specialized_input, original_image, quiet));
+                       EncodeWebp(specialized_input, image, quiet));
       if (data.IsEmpty() || candidate.size < data.size) swap(data, candidate);
     } else if (specialized_input.codec_settings.codec == Codec::kWebp2) {
       ASSIGN_OR_RETURN(WP2::Data candidate,
@@ -94,10 +109,10 @@ StatusOr<WP2::Data> EncodeCodecCombination(
       if (data.IsEmpty() || candidate.size < data.size) swap(data, candidate);
     } else {
       assert(specialized_input.codec_settings.codec == Codec::kJpegXl);
-      WP2::ArgbBuffer image(!original_image.HasTransparency() ? WP2_RGB_24
-                                                              : WP2_RGBA_32);
-      CHECK_OR_RETURN(image.ConvertFrom(original_image) == WP2_STATUS_OK,
-                      quiet);
+      const WP2SampleFormat jxl_format =
+          HasTransparency(original_image) ? WP2_RGBA_32 : WP2_RGB_24;
+      ASSIGN_OR_RETURN(const Image image,
+                       CloneAs(original_image, jxl_format, quiet));
       ASSIGN_OR_RETURN(WP2::Data candidate,
                        EncodeJxl(specialized_input, image, quiet));
       if (data.IsEmpty() || candidate.size < data.size) swap(data, candidate);
@@ -106,12 +121,16 @@ StatusOr<WP2::Data> EncodeCodecCombination(
   return data;
 }
 
-StatusOr<std::pair<WP2::ArgbBuffer, double>> DecodeCodecCombination(
+StatusOr<std::pair<Image, double>> DecodeCodecCombination(
     const TaskInput& input, const WP2::Data& encoded_image, bool quiet) {
   if (encoded_image.size >= 12 &&
       std::equal(encoded_image.bytes, encoded_image.bytes + 4, "RIFF") &&
       std::equal(encoded_image.bytes + 8, encoded_image.bytes + 12, "WEBP")) {
-    return DecodeWebp(input, encoded_image, quiet);
+    ASSIGN_OR_RETURN(auto webp, DecodeWebp(input, encoded_image, quiet));
+    const Timer color_conversion_duration;
+    ASSIGN_OR_RETURN(Image clone, CloneAs(webp.first, WP2_ARGB_32, quiet));
+    return std::pair<Image, double>(
+        std::move(clone), webp.second + color_conversion_duration.seconds());
   }
 
   if (encoded_image.size >= 3 && encoded_image.bytes[0] == 0xf4 &&
@@ -120,15 +139,10 @@ StatusOr<std::pair<WP2::ArgbBuffer, double>> DecodeCodecCombination(
   }
 
   ASSIGN_OR_RETURN(auto jxl, DecodeJxl(input, encoded_image, quiet));
-  std::pair<WP2::ArgbBuffer, double> image_and_color_conversion_duration(
-      WP2_ARGB_32, jxl.second);
   const Timer color_conversion_duration;
-  CHECK_OR_RETURN(image_and_color_conversion_duration.first.ConvertFrom(
-                      jxl.first) == WP2_STATUS_OK,
-                  quiet);
-  image_and_color_conversion_duration.second +=
-      color_conversion_duration.seconds();
-  return image_and_color_conversion_duration;
+  ASSIGN_OR_RETURN(Image clone, CloneAs(jxl.first, WP2_ARGB_32, quiet));
+  return std::pair<Image, double>(
+      std::move(clone), jxl.second + color_conversion_duration.seconds());
 }
 
 #endif  // HAS_WEBP2
