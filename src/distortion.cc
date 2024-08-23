@@ -14,7 +14,9 @@
 
 #include "src/distortion.h"
 
+#include <algorithm>
 #include <cstddef>
+#include <cstdint>
 #include <cstdio>
 #include <cstring>
 #include <filesystem>
@@ -269,8 +271,9 @@ StatusOr<float> GetAverageDistortion(
   CHECK_OR_RETURN(reference.size() == image.size(), quiet);
   float distortion_sum = 0;
   for (size_t i = 0; i < reference.size(); ++i) {
-    CHECK_OR_RETURN(reference[i].duration_ms == image[i].duration_ms, quiet)
-        << reference[i].duration_ms << " vs " << image[i].duration_ms;
+    CHECK_OR_RETURN(reference[i].duration_ms == image[i].duration_ms, quiet);
+  }
+  for (size_t i = 0; i < reference.size(); ++i) {
     ASSIGN_OR_RETURN(
         const float distortion,
         GetDistortion(reference_path, reference[i].pixels, image_path,
@@ -281,12 +284,42 @@ StatusOr<float> GetAverageDistortion(
   return distortion_sum / reference.size();
 }
 
+StatusOr<bool> PixelEquality(const WP2::ArgbBuffer& a, const WP2::ArgbBuffer& b,
+                             bool quiet) {
+  CHECK_OR_RETURN(a.format() == b.format(), quiet);
+  CHECK_OR_RETURN(a.width() == b.width() && a.height() == b.height(), quiet);
+  for (uint32_t y = 0; y < a.height(); ++y) {
+    if (!std::equal(a.GetRow8(y),
+                    a.GetRow8(y) + a.width() * WP2FormatBpp(a.format()),
+                    b.GetRow8(y))) {
+      return false;
+    }
+  }
+  return true;
+}
+
+StatusOr<bool> PixelEquality(const Image& a, const Image& b, bool quiet) {
+  CHECK_OR_RETURN(a.size() == b.size(), quiet);
+  for (size_t i = 0; i < a.size(); ++i) {
+    CHECK_OR_RETURN(a[i].duration_ms == b[i].duration_ms, quiet);
+  }
+  for (size_t i = 0; i < a.size(); ++i) {
+    ASSIGN_OR_RETURN(const bool pixel_equality,
+                     PixelEquality(a[i].pixels, b[i].pixels, quiet));
+    if (!pixel_equality) return false;
+  }
+  return true;
+}
+
 #else
 StatusOr<float> GetAverageDistortion(const std::string&, const Image&,
                                      const std::string&, const Image&,
                                      const TaskInput&, const std::string&,
                                      DistortionMetric, size_t, bool quiet) {
   CHECK_OR_RETURN(false, quiet) << "Computing distortions requires HAS_WEBP2";
+}
+StatusOr<bool> PixelEquality(const Image&, const Image&, bool quiet) {
+  CHECK_OR_RETURN(false, quiet) << "Equality check requires HAS_WEBP2";
 }
 #endif  // HAS_WEBP2
 

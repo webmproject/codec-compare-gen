@@ -178,12 +178,6 @@ StatusOr<TaskOutput> EncodeDecode(const TaskInput& input,
                      CloneAs(original_image, needed_format, quiet));
   }
 
-  // Make sure pixels are interpreted the same way by all codecs by stripping
-  // any metadata that could be handled differently by some codecs.
-  for (Frame& frame : original_image) {
-    frame.pixels.metadata_.Clear();
-  }
-
   auto encode_func =
       input.codec_settings.codec == Codec::kWebp     ? &EncodeWebp
       : input.codec_settings.codec == Codec::kWebp2  ? &EncodeWebp2
@@ -259,20 +253,31 @@ StatusOr<TaskOutput> EncodeDecode(const TaskInput& input,
     }
   }
 
-  for (size_t m = 0; m < kNumDistortionMetrics; ++m) {
-    ASSIGN_OR_RETURN(task.distortions[m],
+  ASSIGN_OR_RETURN(const bool pixel_equality,
+                   PixelEquality(original_image, decoded_image, quiet));
+  if (task.task_input.codec_settings.quality == kQualityLossless &&
+      !pixel_equality) {
+    ASSIGN_OR_RETURN(const float psnr,
                      GetAverageDistortion(
                          input.image_path, original_image, decoded_path,
                          decoded_image, input, metric_binary_folder_path,
-                         static_cast<DistortionMetric>(m), thread_id, quiet));
+                         DistortionMetric::kLibwebp2Psnr, thread_id, quiet));
+    CHECK_OR_RETURN(false, quiet)
+        << input.image_path << " encoded with "
+        << CodecName(task.task_input.codec_settings.codec)
+        << " was not decoded losslessly (PSNR " << psnr << "dB)";
+  }
 
-    static_assert(static_cast<size_t>(DistortionMetric::kLibwebp2Psnr) == 0);
-    if (m == static_cast<int>(DistortionMetric::kLibwebp2Psnr) &&
-        task.distortions[m] == kNoDistortion) {
-      // The first metric PSNR said there is no loss. Skip the other metrics.
-      std::fill(task.distortions + 1, task.distortions + kNumDistortionMetrics,
-                kNoDistortion);
-      break;
+  if (pixel_equality) {
+    std::fill(task.distortions, task.distortions + kNumDistortionMetrics,
+              kNoDistortion);
+  } else {
+    for (size_t m = 0; m < kNumDistortionMetrics; ++m) {
+      ASSIGN_OR_RETURN(task.distortions[m],
+                       GetAverageDistortion(
+                           input.image_path, original_image, decoded_path,
+                           decoded_image, input, metric_binary_folder_path,
+                           static_cast<DistortionMetric>(m), thread_id, quiet));
     }
   }
   return task;

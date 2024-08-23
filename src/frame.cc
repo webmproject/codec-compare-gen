@@ -19,9 +19,11 @@
 #include <cstdint>
 #include <fstream>
 #include <iostream>
+#include <utility>
 
 #include "src/base.h"
 #include "src/codec_webp.h"
+#include "src/distortion.h"
 #include "src/task.h"
 #include "third_party/libwebp2/imageio/anim_image_dec.h"
 #include "third_party/libwebp2/imageio/image_enc.h"
@@ -66,9 +68,28 @@ StatusOr<Image> ReadStillImageOrAnimation(const char* file_path,
           << "Got " << WP2GetStatusMessage(status) << " when reading frame "
           << image.size() << " of " << file_path;
 
-      image.emplace_back(WP2::ArgbBuffer(format), duration_ms);
-      CHECK_OR_RETURN(image.back().pixels.ConvertFrom(buffer) == WP2_STATUS_OK,
-                      quiet);
+      if (duration_ms == 0 && !is_last) {
+        std::cout << "Warning: 0-second frame " << image.size() << " of "
+                  << file_path << " was ignored" << std::endl;
+        continue;
+      }
+
+      WP2::ArgbBuffer pixels(format);
+      // All metadata is discarded during the conversion.
+      CHECK_OR_RETURN(pixels.ConvertFrom(buffer) == WP2_STATUS_OK, quiet);
+
+      if (!image.empty()) {
+        ASSIGN_OR_RETURN(const bool pixel_equality,
+                         PixelEquality(image.back().pixels, pixels, quiet));
+        if (pixel_equality) {
+          // Merge duplicate frames. Duplicate frames are fairly common in GIFs
+          // found in the wild so no need to log them.
+          image.back().duration_ms += duration_ms;
+          continue;
+        }
+      }
+
+      image.emplace_back(std::move(pixels), duration_ms);
     } while (!is_last);
   }
   CHECK_OR_RETURN(!image.empty(), quiet);

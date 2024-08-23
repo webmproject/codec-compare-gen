@@ -1,11 +1,18 @@
 # Changelog
 
+## v0.2.1
+
+- Merge identical consecutive frames when reading animations.
+- Warn about and discard 0-second frames when reading animations.
+- Bump the version of libwebp2 in deps.sh.
+
 ## v0.2.0
 
 - Add animation support.
 - Replace the libwebp2 wrapper in codec_webp by libwebp API calls to save a
   buffer copy.
 - Use SharpYUV with the WebP codec.
+- Bump the version of libwebp2 in deps.sh.
 
 ## v0.1.5
 

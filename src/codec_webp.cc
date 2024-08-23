@@ -178,7 +178,7 @@ StatusOr<WP2::Data> EncodeWebp(const TaskInput& input,
       timestamp_ms += static_cast<int>(frame.duration_ms);
     }
     CHECK_OR_RETURN(
-        WebPAnimEncoderAdd(enc.get(), nullptr, timestamp_ms, nullptr), quiet);
+        WebPAnimEncoderAdd(enc.get(), nullptr, timestamp_ms, &config), quiet);
     WebPData webp_data;
     WebPDataInit(&webp_data);
     CHECK_OR_RETURN(WebPAnimEncoderAssemble(enc.get(), &webp_data), quiet);
