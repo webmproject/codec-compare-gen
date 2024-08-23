@@ -16,7 +16,7 @@ cmake_minimum_required(VERSION 3.20)
 project(
   codec-compare-gen
   LANGUAGES CXX
-  VERSION 0.2.0)
+  VERSION 0.2.1)
 set(CMAKE_CXX_STANDARD 17)
 
 option(BUILD_SHARED_LIBS "Build the shared codec-compare-gen library" ON)
@@ -148,6 +148,7 @@ if(BUILD_TESTING)
     add_executable(${TEST_NAME} tests/${TEST_NAME}.cc)
     target_include_directories(${TEST_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
     target_link_libraries(${TEST_NAME} PRIVATE libccgen GTest::gtest)
+    target_compile_definitions(${TEST_NAME} PRIVATE HAS_WEBP2)
     if(${ARGC} EQUAL 2)
       add_test(NAME ${TEST_NAME} COMMAND ${TEST_NAME}
                                          ${CMAKE_CURRENT_SOURCE_DIR}/${ARGV1}/)
@@ -160,6 +161,7 @@ if(BUILD_TESTING)
   add_ccgen_gtest(test_codec tests/data)
   add_ccgen_gtest(test_codec_avif)
   add_ccgen_gtest(test_codec_sjpeg tests/data)
+  add_ccgen_gtest(test_distortion tests/data)
   add_ccgen_gtest(test_framework tests/data)
   add_ccgen_gtest(test_serialization)
   add_ccgen_gtest(test_task)

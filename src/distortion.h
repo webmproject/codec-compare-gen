@@ -22,6 +22,10 @@
 #include "src/frame.h"
 #include "src/task.h"
 
+#if defined(HAS_WEBP2)
+#include "third_party/libwebp2/src/wp2/base.h"
+#endif
+
 namespace codec_compare_gen {
 
 // Computes the average distortion between the given frame sequences.
@@ -31,6 +35,14 @@ StatusOr<float> GetAverageDistortion(
     const std::string& image_path, const Image& image, const TaskInput& task,
     const std::string& metric_binary_folder_path, DistortionMetric metric,
     size_t thread_id, bool quiet);
+
+// Returns true if all pixels match between the two given frame sequences.
+StatusOr<bool> PixelEquality(const Image& a, const Image& b, bool quiet);
+
+#if defined(HAS_WEBP2)
+StatusOr<bool> PixelEquality(const WP2::ArgbBuffer& a, const WP2::ArgbBuffer& b,
+                             bool quiet);
+#endif
 
 }  // namespace codec_compare_gen
 

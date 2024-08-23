@@ -68,7 +68,7 @@ StatusOr<WP2::Data> EncodeWebp2(const TaskInput& input,
   if (input.codec_settings.quality == kQualityLossless) {
     config.quality = 100.0f;
     config.alpha_quality = 100.0f;
-    config.exact = true;
+    config.keep_unmultiplied = true;
     config.tile_shape = WP2::TILE_SHAPE_WIDE;
   } else {
     config.quality = input.codec_settings.quality;
@@ -120,9 +120,6 @@ StatusOr<std::pair<Image, double>> DecodeWebp2(const TaskInput& input,
   //         undefined reference to typeinfo for WP2::Decoder
 
   WP2::DecoderConfig config;
-  if (input.codec_settings.quality == kQualityLossless) {
-    config.exact = true;
-  }
   config.thread_level = 0;
   WP2::ArrayDecoder decoder(encoded_image.bytes, encoded_image.size, config);
   Image image;
