@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.2.2
+
+- Bump the version of libwebp2 in deps.sh.
+
 ## v0.2.1
 
 - Merge identical consecutive frames when reading animations.

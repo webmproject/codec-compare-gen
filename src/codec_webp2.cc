@@ -132,7 +132,9 @@ StatusOr<std::pair<Image, double>> DecodeWebp2(const TaskInput& input,
         quiet);
   }
   CHECK_OR_RETURN(decoder.GetStatus() == WP2_STATUS_OK, quiet)
-      << decoder.GetStatus();
+      << "WP2::ArrayDecoder::ReadFrame() failed with \""
+      << WP2GetStatusMessage(decoder.GetStatus()) << "\" when decoding "
+      << input.image_path;
   return std::pair<Image, double>(std::move(image), 0);
 }
 
