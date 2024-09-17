@@ -183,7 +183,8 @@ StatusOr<TaskOutput> TaskOutput::Unserialize(const std::string& serialized_task,
     for (size_t metric = 0; metric < kNumDistortionMetrics; ++metric) {
       task.distortions[metric] =
           std::stof(tokens[kNumNonDistortionTokens + metric]);
-      if (metric != static_cast<size_t>(DistortionMetric::kLibjxlButteraugli)) {
+      if (metric != static_cast<size_t>(DistortionMetric::kLibjxlButteraugli) &&
+          metric != static_cast<size_t>(DistortionMetric::kLibjxlSsimulacra2)) {
         CHECK_OR_RETURN(task.distortions[metric] <= 99, quiet)
             << "Bad " << kDistortionMetricToStr[metric] << " metric value "
             << task.distortions[metric] << " in \"" << serialized_task << "\"";

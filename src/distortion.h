@@ -29,14 +29,15 @@
 namespace codec_compare_gen {
 
 // Computes the average distortion between the given frame sequences.
-// They must have the same number of frames.
+// They must have the same total duration.
 StatusOr<float> GetAverageDistortion(
-    const std::string& reference_path, const Image& reference,
-    const std::string& image_path, const Image& image, const TaskInput& task,
+    const std::string& a_path, const Image& a, const std::string& b_path,
+    const Image& b, const TaskInput& task,
     const std::string& metric_binary_folder_path, DistortionMetric metric,
     size_t thread_id, bool quiet);
 
 // Returns true if all pixels match between the two given frame sequences.
+// They must have the same total duration.
 StatusOr<bool> PixelEquality(const Image& a, const Image& b, bool quiet);
 
 #if defined(HAS_WEBP2)

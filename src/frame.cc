@@ -14,9 +14,9 @@
 
 #include "src/frame.h"
 
-#if defined(HAS_WEBP2)
-
 #include <cstdint>
+
+#if defined(HAS_WEBP2)
 #include <fstream>
 #include <iostream>
 #include <utility>
@@ -28,8 +28,19 @@
 #include "third_party/libwebp2/imageio/anim_image_dec.h"
 #include "third_party/libwebp2/imageio/image_enc.h"
 #include "third_party/libwebp2/src/wp2/base.h"
+#endif  // HAS_WEBP2
 
 namespace codec_compare_gen {
+
+uint32_t GetDurationMs(const Image& image) {
+  uint32_t duration_ms = 0;
+  for (const Frame& frame : image) {
+    duration_ms += frame.duration_ms;
+  }
+  return duration_ms;
+}
+
+#if defined(HAS_WEBP2)
 
 StatusOr<Image> CloneAs(const Image& from, WP2SampleFormat format, bool quiet) {
   Image to;
@@ -134,6 +145,6 @@ Status WriteStillImageOrAnimation(const Image& image, const char* file_path,
   return Status::kOk;
 }
 
-}  // namespace codec_compare_gen
-
 #endif  // HAS_WEBP2
+
+}  // namespace codec_compare_gen
