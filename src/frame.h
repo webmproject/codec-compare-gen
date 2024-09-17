@@ -42,6 +42,8 @@ struct Frame {
 // Still or animated image.
 using Image = std::vector<Frame>;
 
+uint32_t GetDurationMs(const Image& image);
+
 #if defined(HAS_WEBP2)
 
 // Makes a deep copy of the given frame sequence and converts the pixels to the

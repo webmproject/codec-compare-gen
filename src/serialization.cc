@@ -17,24 +17,30 @@
 #include <cctype>
 #include <cstddef>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include "src/base.h"
 
 namespace codec_compare_gen {
 
-std::string Trim(const std::string& str) {
+bool EndsWith(std::string_view str, std::string_view suffix) {
+  return suffix.empty() || (str.size() >= suffix.size() &&
+                            str.substr(str.size() - suffix.size()) == suffix);
+}
+
+std::string Trim(std::string_view str) {
   for (size_t i = 0; i < str.size(); ++i) {
     if (std::isspace(str[i])) continue;
     for (size_t n = str.size(); n > i; --n) {
       if (std::isspace(str[n - 1])) continue;
-      return str.substr(i, n - i);
+      return std::string(str.substr(i, n - i));
     }
   }
   return "";
 }
 
-std::vector<std::string> Split(const std::string& str, char delimiter) {
+std::vector<std::string> Split(std::string_view str, char delimiter) {
   std::vector<std::string> tokens(1);
   bool is_escaped = false;
   bool in_literal_string = false;
@@ -53,7 +59,7 @@ std::vector<std::string> Split(const std::string& str, char delimiter) {
   return tokens;
 }
 
-std::string Escape(const std::string& str) {
+std::string Escape(std::string_view str) {
   std::string escaped_str("\"");
   for (size_t i = 0; i < str.size(); ++i) {
     if (str[i] == '"') {
@@ -65,7 +71,7 @@ std::string Escape(const std::string& str) {
   return escaped_str;
 }
 
-StatusOr<std::string> Unescape(const std::string& escaped_str, bool quiet) {
+StatusOr<std::string> Unescape(std::string_view escaped_str, bool quiet) {
   CHECK_OR_RETURN(escaped_str.size() >= 2 && escaped_str.front() == '"' &&
                       escaped_str.back() == '"' &&
                       escaped_str[escaped_str.size() - 2] != '\\',
@@ -94,8 +100,7 @@ std::string SubsamplingToString(Subsampling chroma_subsampling) {
   }
   return "4XX";
 }
-StatusOr<Subsampling> SubsamplingFromString(const std::string& str,
-                                            bool quiet) {
+StatusOr<Subsampling> SubsamplingFromString(std::string_view str, bool quiet) {
   if (str == "444") return Subsampling::k444;
   if (str == "420") return Subsampling::k420;
   CHECK_OR_RETURN(str == "4XX", quiet)

@@ -16,27 +16,30 @@
 #define SRC_SERIALIZATION_H_
 
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include "src/base.h"
 
 namespace codec_compare_gen {
 
+bool EndsWith(std::string_view str, std::string_view suffix);
+
 // Removes trailing or tailing spaces.
-std::string Trim(const std::string& str);
+std::string Trim(std::string_view str);
 
 // Splits the input string into tokens separated by delimiter.
 // Keeps escaped tokens as is. Example: "a,b",c gives two tokens.
-std::vector<std::string> Split(const std::string& str, char delimiter);
+std::vector<std::string> Split(std::string_view str, char delimiter);
 
 // Escapes the quotes in the input string and adds leading and trailing quotes.
-std::string Escape(const std::string& str);
+std::string Escape(std::string_view str);
 // Removes leading and trailing quotes and replaces each \" by ".
-StatusOr<std::string> Unescape(const std::string& escaped_str, bool quiet);
+StatusOr<std::string> Unescape(std::string_view escaped_str, bool quiet);
 
 // Enum/string conversions.
 std::string SubsamplingToString(Subsampling chroma_subsampling);
-StatusOr<Subsampling> SubsamplingFromString(const std::string& str, bool quiet);
+StatusOr<Subsampling> SubsamplingFromString(std::string_view str, bool quiet);
 
 }  // namespace codec_compare_gen
 

@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.3.0
+
+- Add lossy animation support.
+- Bump the version of libwebp2 in deps.sh.
+
 ## v0.2.2
 
 - Bump the version of libwebp2 in deps.sh.
@@ -12,7 +17,7 @@
 
 ## v0.2.0
 
-- Add animation support.
+- Add lossless animation support.
 - Replace the libwebp2 wrapper in codec_webp by libwebp API calls to save a
   buffer copy.
 - Use SharpYUV with the WebP codec.

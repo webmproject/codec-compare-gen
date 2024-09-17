@@ -23,6 +23,7 @@
 #include <iostream>
 #include <memory>
 #include <string>
+#include <string_view>
 
 #include "src/base.h"
 #include "src/codec.h"
@@ -106,7 +107,7 @@ StatusOr<float> GetLibwebp2Distortion(const WP2::ArgbBuffer& reference,
       (task.codec_settings.quality == kQualityLossless
            ? overall_distortion != kNoDistortion
            : overall_distortion <
-                 (task.codec_settings.quality > 90 ? 20 : 2))) {
+                 (task.codec_settings.quality > 90 ? 10 : 2))) {
     if (!quiet) {
       std::cerr << "Error: " << task.image_path
                 << " was encoded or decoded with loss in "
@@ -156,22 +157,37 @@ StatusOr<std::string> GetBinaryDistortion(const std::string& reference_path,
   CHECK_OR_RETURN(!reference_path.empty(), quiet);
   CHECK_OR_RETURN(!metric_binary_path.empty(), quiet);
 
-  // Create a PNG file containing the decoded pixels if not done.
+  // Create a PNG file containing the original pixels of the current frame if
+  // not PNG (could be a GIF with multiple frames for example).
+  const bool maybeAnimated = !EndsWith(reference_path, ".png");
+  std::string temp_reference_path;
+  std::string_view final_reference_path = reference_path;
+  if (maybeAnimated) {
+    // Thread-safe file name.
+    temp_reference_path =
+        std::filesystem::temp_directory_path() /
+        ("codec_compare_gen_reference" + std::to_string(thread_id) + ".png");
+    OK_OR_RETURN(SaveImage(reference, temp_reference_path, quiet));
+    final_reference_path = temp_reference_path;
+  }
+  const FileDeleter temp_reference_path_deleter(temp_reference_path);
+
+  // Create a PNG file containing the decoded pixels if not done or if animated.
   std::string temp_image_path;
-  if (image_path.empty()) {
+  std::string_view final_image_path = image_path;
+  if (image_path.empty() || maybeAnimated) {
     // Thread-safe file name.
     temp_image_path =
         std::filesystem::temp_directory_path() /
         ("codec_compare_gen_image" + std::to_string(thread_id) + ".png");
     OK_OR_RETURN(SaveImage(image, temp_image_path, quiet));
+    final_image_path = temp_image_path;
   }
   const FileDeleter temp_image_path_deleter(temp_image_path);
-  const std::string& final_image_path =
-      image_path.empty() ? temp_image_path : image_path;
 
-  const std::string binary_path_and_args =
-      metric_binary_path + " " + reference_path + " " + final_image_path;
-
+  const std::string binary_path_and_args = Escape(metric_binary_path) + " " +
+                                           Escape(final_reference_path) + " " +
+                                           Escape(final_image_path);
   return RunProcess(binary_path_and_args.c_str(), quiet);
 }
 
@@ -180,7 +196,7 @@ StatusOr<float> GetLibjxlDistortion(
     const std::string& image_path, const WP2::ArgbBuffer& image,
     const TaskInput& task, const std::string& metric_binary_folder_path,
     DistortionMetric metric, size_t thread_id, bool quiet) {
-  // Metric binaries are not available: just return 0 for simplicity.
+  // Metric binaries are not available: just return -1 for simplicity.
   if (metric_binary_folder_path.empty()) return -1;
 
   const char* metric_binary_name;
@@ -223,7 +239,7 @@ StatusOr<float> GetDssimDistortion(const std::string& reference_path,
                                    const TaskInput& task,
                                    const std::string& metric_binary_folder_path,
                                    size_t thread_id, bool quiet) {
-  // Metric binaries are not available: just return 0 for simplicity.
+  // Metric binaries are not available: just return -1 for simplicity.
   if (metric_binary_folder_path.empty()) return -1;
 
   const std::string metric_binary_path =
@@ -264,24 +280,50 @@ StatusOr<float> GetDistortion(
 }  // namespace
 
 StatusOr<float> GetAverageDistortion(
-    const std::string& reference_path, const Image& reference,
-    const std::string& image_path, const Image& image, const TaskInput& task,
+    const std::string& a_path, const Image& a, const std::string& b_path,
+    const Image& b, const TaskInput& task,
     const std::string& metric_binary_folder_path, DistortionMetric metric,
     size_t thread_id, bool quiet) {
-  CHECK_OR_RETURN(reference.size() == image.size(), quiet);
-  float distortion_sum = 0;
-  for (size_t i = 0; i < reference.size(); ++i) {
-    CHECK_OR_RETURN(reference[i].duration_ms == image[i].duration_ms, quiet);
+  CHECK_OR_RETURN(!a.empty() && !b.empty(), quiet);
+  if (a.size() == 1 && b.size() == 1) {
+    return GetDistortion(a_path, a.front().pixels, b_path, b.front().pixels,
+                         task, metric_binary_folder_path, metric, thread_id,
+                         quiet);
   }
-  for (size_t i = 0; i < reference.size(); ++i) {
+
+  const uint32_t a_duration_ms = GetDurationMs(a);
+  CHECK_OR_RETURN(a_duration_ms > 0, quiet);
+  CHECK_OR_RETURN(a_duration_ms == GetDurationMs(b), quiet);
+
+  float distortion_sum = 0;
+  size_t a_index = 0, b_index = 0;
+  uint32_t previous_time = 0, a_time = 0, b_time = 0;  // milliseconds
+  do {
     ASSIGN_OR_RETURN(
         const float distortion,
-        GetDistortion(reference_path, reference[i].pixels, image_path,
-                      image[i].pixels, task, metric_binary_folder_path, metric,
-                      thread_id, quiet));
-    distortion_sum += distortion;
-  }
-  return distortion_sum / reference.size();
+        GetDistortion(a_path, a[a_index].pixels, b_path, b[b_index].pixels,
+                      task, metric_binary_folder_path, metric, thread_id,
+                      quiet));
+
+    const uint32_t next_a_time = a_time + a[a_index].duration_ms;
+    const uint32_t next_b_time = b_time + b[b_index].duration_ms;
+    const uint32_t current_time = std::min(next_a_time, next_b_time);
+    // Weigh the distortion by frame duration.
+    distortion_sum += distortion * (current_time - previous_time);
+
+    if (current_time >= next_a_time) {
+      ++a_index;
+      a_time = next_a_time;
+    }
+    if (current_time >= next_b_time) {
+      ++b_index;
+      b_time = next_b_time;
+    }
+    previous_time = current_time;
+  } while (a_index < a.size() && b_index < b.size());
+  CHECK_OR_RETURN(a_index == a.size() && b_index == b.size(), quiet);
+  CHECK_OR_RETURN(a_time == b_time && a_time == a_duration_ms, quiet);
+  return distortion_sum / a_duration_ms;
 }
 
 StatusOr<bool> PixelEquality(const WP2::ArgbBuffer& a, const WP2::ArgbBuffer& b,
@@ -299,15 +341,37 @@ StatusOr<bool> PixelEquality(const WP2::ArgbBuffer& a, const WP2::ArgbBuffer& b,
 }
 
 StatusOr<bool> PixelEquality(const Image& a, const Image& b, bool quiet) {
-  CHECK_OR_RETURN(a.size() == b.size(), quiet);
-  for (size_t i = 0; i < a.size(); ++i) {
-    CHECK_OR_RETURN(a[i].duration_ms == b[i].duration_ms, quiet);
+  CHECK_OR_RETURN(!a.empty() && !b.empty(), quiet);
+  if (a.size() == 1 && b.size() == 1) {
+    return PixelEquality(a.front().pixels, b.front().pixels, quiet);
   }
-  for (size_t i = 0; i < a.size(); ++i) {
-    ASSIGN_OR_RETURN(const bool pixel_equality,
-                     PixelEquality(a[i].pixels, b[i].pixels, quiet));
+
+  const uint32_t a_duration_ms = GetDurationMs(a);
+  CHECK_OR_RETURN(a_duration_ms > 0, quiet);
+  CHECK_OR_RETURN(a_duration_ms == GetDurationMs(b), quiet);
+
+  size_t a_index = 0, b_index = 0;
+  uint32_t a_time = 0, b_time = 0;  // milliseconds
+  do {
+    ASSIGN_OR_RETURN(
+        const bool pixel_equality,
+        PixelEquality(a[a_index].pixels, b[b_index].pixels, quiet));
     if (!pixel_equality) return false;
-  }
+
+    const uint32_t next_a_time = a_time + a[a_index].duration_ms;
+    const uint32_t next_b_time = b_time + b[b_index].duration_ms;
+    const uint32_t current_time = std::min(next_a_time, next_b_time);
+    if (current_time >= next_a_time) {
+      ++a_index;
+      a_time = next_a_time;
+    }
+    if (current_time >= next_b_time) {
+      ++b_index;
+      b_time = next_b_time;
+    }
+  } while (a_index < a.size() && b_index < b.size());
+  CHECK_OR_RETURN(a_index == a.size() && b_index == b.size(), quiet);
+  CHECK_OR_RETURN(a_time == b_time && a_time == a_duration_ms, quiet);
   return true;
 }
 
