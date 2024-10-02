@@ -35,11 +35,11 @@ Example Unix command line:
 ```sh
 mkdir -p output/encoded
 build/ccgen \
-  --codec webp 9 \
-  --codec webp2 6 \
-  --codec jpegxl 7 \
-  --codec avif 6 \
-  --codec combination 5 \
+  --codec webp 444 9 \
+  --codec webp2 444 6 \
+  --codec jpegxl 444 7 \
+  --codec avif 444 6 \
+  --codec combination 444 5 \
   --lossless \
   --repeat 15 \
   --threads $(($(nproc) - 1)) \
