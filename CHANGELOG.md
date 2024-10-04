@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.3.1
+
+- Bump the version of libavif in deps.sh.
+- Bump the version of libjxl in deps.sh.
+
 ## v0.3.0
 
 - Add lossy animation support.
