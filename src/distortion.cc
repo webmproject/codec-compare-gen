@@ -257,6 +257,13 @@ StatusOr<float> GetDistortion(
     const std::string& image_path, const WP2::ArgbBuffer& image,
     const TaskInput& task, const std::string& metric_binary_folder_path,
     DistortionMetric metric, size_t thread_id, bool quiet) {
+  if (metric_binary_folder_path == "no_metric_binary_for_testing" &&
+      metric != DistortionMetric::kLibwebp2Psnr) {
+    // Return a placeholder value which does not need actual distortion binaries
+    // for testing.
+    return GetLibwebp2Distortion(reference, image, task, WP2::PSNR, quiet);
+  }
+
   switch (metric) {
     case DistortionMetric::kLibwebp2Psnr:
       return GetLibwebp2Distortion(reference, image, task, WP2::PSNR, quiet);

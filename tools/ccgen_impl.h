@@ -12,8 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Command line wrapper around framework.h.
+#ifndef THIRD_PARTY_CODEC_COMPARE_GEN_TOOLS_CCGEN_IMPL_H_
+#define THIRD_PARTY_CODEC_COMPARE_GEN_TOOLS_CCGEN_IMPL_H_
 
-#include "tools/ccgen_impl.h"
+namespace codec_compare_gen {
 
-int main(int argc, char* argv[]) { return codec_compare_gen::Main(argc, argv); }
+int Main(int argc, const char* const argv[]);
+
+}  // namespace codec_compare_gen
+
+#endif  // THIRD_PARTY_CODEC_COMPARE_GEN_TOOLS_CCGEN_IMPL_H_

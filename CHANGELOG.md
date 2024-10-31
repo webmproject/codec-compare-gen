@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.3.2
+
+- Fix ccgen --qualities min:max.
+
 ## v0.3.1
 
 - Bump the version of libavif in deps.sh.
