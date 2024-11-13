@@ -86,7 +86,11 @@ StatusOr<avif::ImagePtr> ArgbBufferToAvifImage(const WP2::ArgbBuffer& wp2_image,
   if (lossless) {
     image->colorPrimaries = AVIF_COLOR_PRIMARIES_UNSPECIFIED;
     image->transferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_UNSPECIFIED;
-    image->matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_IDENTITY;
+    // AVIF_MATRIX_COEFFICIENTS_YCGCO_RE
+    image->matrixCoefficients = (avifMatrixCoefficients)16;
+    CHECK_OR_RETURN(WP2Formatbpc(wp2_image.format()) == 8, quiet)
+        << "Unexpected format " << wp2_image.format();
+    image->depth = 10;
     CHECK_OR_RETURN(subsampling == Subsampling::kDefault ||
                         subsampling == Subsampling::k444,
                     quiet)
@@ -104,14 +108,17 @@ StatusOr<avif::ImagePtr> ArgbBufferToAvifImage(const WP2::ArgbBuffer& wp2_image,
   }
   avifRGBImage rgb_image;
   avifRGBImageSetDefaults(&rgb_image, image.get());
+  if (lossless) {
+    rgb_image.depth = 8;
+  }
   ASSIGN_OR_RETURN(rgb_image.format,
                    WP2SampleFormatToAvifRGBFormat(wp2_image.format()));
   rgb_image.alphaPremultiplied = WP2IsPremultiplied(wp2_image.format());
   rgb_image.pixels = const_cast<uint8_t*>(wp2_image.GetRow8(0));
   rgb_image.rowBytes = wp2_image.stride();
-  CHECK_OR_RETURN(avifImageRGBToYUV(image.get(), &rgb_image) == AVIF_RESULT_OK,
-                  quiet)
-      << "avifImageRGBToYUV() failed";
+  const avifResult result = avifImageRGBToYUV(image.get(), &rgb_image);
+  CHECK_OR_RETURN(result == AVIF_RESULT_OK, quiet)
+      << "avifImageRGBToYUV() failed: " << result;
   return image;
 }
 
@@ -123,6 +130,11 @@ StatusOr<WP2::ArgbBuffer> AvifImageToArgbBuffer(const avifImage& image,
 
   avifRGBImage rgb_image;
   avifRGBImageSetDefaults(&rgb_image, &image);
+  if (image.matrixCoefficients == (avifMatrixCoefficients)16) {
+    CHECK_OR_RETURN(image.depth == 10, quiet)
+        << "Unexpected depth " << image.depth;
+    rgb_image.depth = 8;
+  }
   ASSIGN_OR_RETURN(rgb_image.format,
                    WP2SampleFormatToAvifRGBFormat(wp2_image.format()));
   rgb_image.alphaPremultiplied = WP2IsPremultiplied(wp2_image.format());

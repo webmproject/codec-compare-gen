@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.3.3
+
+- Bump the version of libavif in deps.sh.
+- Use AVIF_ENABLE_EXPERIMENTAL_YCGCO_R=ON in deps.sh and use
+  AVIF_MATRIX_COEFFICIENTS_YCGCO_RE in codec_avif for lossless encoding.
+
 ## v0.3.2
 
 - Fix ccgen --qualities min:max.
