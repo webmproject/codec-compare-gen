@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.3.4
+
+- Add "HEIF low-overhead image file format" support for AVIF.
+
 ## v0.3.3
 
 - Bump the version of libavif in deps.sh.

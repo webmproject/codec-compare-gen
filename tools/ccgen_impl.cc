@@ -72,6 +72,7 @@ int Main(int argc, const char* const argv[]) {
                 << " [--codec webp2 {444|420} {effort}]" << std::endl
                 << " [--codec jpegxl 444 {effort}]" << std::endl
                 << " [--codec avif {444|420} {effort}]" << std::endl
+                << " [--codec slimavif {444|420} {effort}]" << std::endl
                 << " [--codec combination {444|420} {effort}]" << std::endl
                 << " [--codec jpegturbo {444|420}]" << std::endl
                 << " [--codec jpegli {444|420}]" << std::endl
@@ -116,6 +117,9 @@ int Main(int argc, const char* const argv[]) {
           codec_settings.push_back({Codec::kJpegXl, subsampling.value, effort});
         } else if (codec == "avif") {
           codec_settings.push_back({Codec::kAvif, subsampling.value, effort});
+        } else if (codec == "slimavif") {
+          codec_settings.push_back(
+              {Codec::kSlimAvif, subsampling.value, effort});
         } else if (codec == "combination") {
           codec_settings.push_back(
               {Codec::kCombination, subsampling.value, effort});

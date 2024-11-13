@@ -36,6 +36,8 @@ std::vector<int> AvifLossyQualities();
 #if defined(HAS_WEBP2)
 StatusOr<WP2::Data> EncodeAvif(const TaskInput& input,
                                const Image& original_image, bool quiet);
+StatusOr<WP2::Data> EncodeSlimAvif(const TaskInput& input,
+                                   const Image& original_image, bool quiet);
 // Returns the decoded image and the color conversion duration.
 StatusOr<std::pair<Image, double>> DecodeAvif(const TaskInput& input,
                                               const WP2::Data& encoded_image,
