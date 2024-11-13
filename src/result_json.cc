@@ -50,14 +50,6 @@ std::string GetImagePathCommonPrefix(const std::vector<TaskOutput>& tasks,
                                      bool get_encoded_path) {
   if (tasks.empty()) return "";
 
-  if (tasks.size() == 1) {
-    // Split at last "/".
-    const std::string& path = GetPath(tasks.front(), get_encoded_path);
-    return path.substr(
-        /*pos=*/0, /*n=*/path.size() -
-                       std::filesystem::path(path).filename().string().size());
-  }
-
   // Return longest common prefix, even if it contains a part of the file name.
   std::string prefix = GetPath(tasks.front(), get_encoded_path);
   for (size_t i = 1; i < tasks.size(); ++i) {
@@ -67,6 +59,15 @@ std::string GetImagePathCommonPrefix(const std::vector<TaskOutput>& tasks,
       if (prefix[c] != path[c]) prefix.resize(c);
     }
   }
+
+  if (prefix == GetPath(tasks.front(), get_encoded_path)) {
+    // Split at last "/" if the prefix includes everything.
+    const std::string& path = GetPath(tasks.front(), get_encoded_path);
+    prefix = path.substr(
+        /*pos=*/0, /*n=*/path.size() -
+                       std::filesystem::path(path).filename().string().size());
+  }
+
   return prefix;
 }
 
@@ -99,11 +100,23 @@ Status TasksToJson(const std::string& batch_name, CodecSettings settings,
 
   const std::string image_prefix =
       GetImagePathCommonPrefix(tasks, /*get_encoded_path=*/false);
-  const std::string encoding_cmd =
-      "codec_compare_gen ${original_path} --codec " +
-      CodecName(settings.codec) + " " +
-      SubsamplingToString(settings.chroma_subsampling) + " " +
-      std::to_string(settings.effort);
+  const std::string build_cmd =
+      "git clone -b v0.3.5 --depth 1"
+      " https://github.com/webmproject/codec-compare-gen.git &&"
+      " cd codec-compare-gen && ./deps.sh &&"
+      " cmake -S . -B build -DCMAKE_CXX_COMPILER=clang++ &&"
+      " cmake --build build && cd ..";
+  std::string encoding_cmd = "codec-compare-gen/build/ccgen --codec " +
+                             CodecName(settings.codec) + " " +
+                             SubsamplingToString(settings.chroma_subsampling) +
+                             " " + std::to_string(settings.effort);
+  if (settings.quality == kQualityLossless) {
+    encoding_cmd += " --lossless";
+  } else {
+    encoding_cmd += " --lossy --quality " + std::to_string(settings.quality);
+    encoding_cmd += " --metric_binary_folder codec-compare-gen/third_party/";
+  }
+  encoding_cmd += " -- ${original_path}";
   const std::string encoded_prefix =
       GetImagePathCommonPrefix(tasks, /*get_encoded_path=*/true);
 
@@ -114,6 +127,7 @@ Status TasksToJson(const std::string& batch_name, CodecSettings settings,
     {"version": "Version of the codec used to generate this data"},
     {"time": "Timestamp of when this data was generated"},
     {"original_path": "Path to the original image"},
+    {"build_command": "The command used to generate the codec binaries"},
     {"encoding_cmd": "The command used to encode the original image"})json";
   if (has_encoded_path) {
     file << R"json(,
@@ -136,6 +150,8 @@ Status TasksToJson(const std::string& batch_name, CodecSettings settings,
        << Escape(DateTime()) << R"json(,
     )json"
        << Escape(image_prefix + "${original_name}") << R"json(,
+    )json"
+       << Escape(build_cmd) << R"json(,
     )json"
        << Escape(encoding_cmd);
   if (has_encoded_path) {

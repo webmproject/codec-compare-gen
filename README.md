@@ -57,6 +57,18 @@ build/ccgen \
   all repetitions to smooth the timings.
 - `output/encoded` will contain the compressed image files.
 
+#### AVM build
+
+To be able to use `--codec slimav2f`, build codec-compare-gen this way:
+
+```sh
+./deps.sh
+mv third_party/libavif third_party/libavif_aom
+mv third_party/libavif_avm third_party/libavif
+cmake -S . -B build -DCMAKE_CXX_COMPILER=clang++
+cmake --build build
+```
+
 ## Tests
 
 The following instructions are used to make sure the unit tests pass.
@@ -65,7 +77,7 @@ The following instructions are used to make sure the unit tests pass.
 ```sh
 cmake -S . -B build -DBUILD_TESTING=ON -DCMAKE_CXX_COMPILER=clang++
 cmake --build build --parallel
-ctest --test-dir build --output-on-failure
+ctest --test-dir build --output-on-failure -j7
 ```
 
 ## C++ style
@@ -73,7 +85,7 @@ ctest --test-dir build --output-on-failure
 Use the following to format the code:
 
 ```sh
-clang-format -style=file -i src/*.cc src/*.h tests/*.cc tools/*.cc
+clang-format -style=file -i src/*.cc src/*.h tests/*.cc tools/*.cc tools/*.h
 ```
 
 ## License

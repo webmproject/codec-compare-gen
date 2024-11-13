@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.3.5
+
+- Add AVM support for AVIF.
+
 ## v0.3.4
 
 - Add "HEIF low-overhead image file format" support for AVIF.

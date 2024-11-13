@@ -73,13 +73,14 @@ int Main(int argc, const char* const argv[]) {
                 << " [--codec jpegxl 444 {effort}]" << std::endl
                 << " [--codec avif {444|420} {effort}]" << std::endl
                 << " [--codec slimavif {444|420} {effort}]" << std::endl
+                << " [--codec slimav2f {444|420} {effort}]" << std::endl
                 << " [--codec combination {444|420} {effort}]" << std::endl
                 << " [--codec jpegturbo {444|420}]" << std::endl
                 << " [--codec jpegli {444|420}]" << std::endl
                 << " [--codec jpegsimple {444|420} {effort}]" << std::endl
                 << " [--codec jpegmoz {444|420}]" << std::endl
                 << " --lossy|--lossless" << std::endl
-                << " [--qualities {unique|min:max}]"
+                << " [--quality {unique|min:max}]"
                 << " [--repeat {number of times to encode each image}]"
                 << std::endl
                 << " [--recompute_distortion]" << std::endl
@@ -120,6 +121,9 @@ int Main(int argc, const char* const argv[]) {
         } else if (codec == "slimavif") {
           codec_settings.push_back(
               {Codec::kSlimAvif, subsampling.value, effort});
+        } else if (codec == "slimav2f") {
+          codec_settings.push_back(
+              {Codec::kSlimAvifAvm, subsampling.value, effort});
         } else if (codec == "combination") {
           codec_settings.push_back(
               {Codec::kCombination, subsampling.value, effort});
@@ -144,7 +148,8 @@ int Main(int argc, const char* const argv[]) {
       lossy = true;
     } else if (arg == "--lossless") {
       lossless = true;
-    } else if (arg == "--qualities" && arg_index + 1 < argc) {
+    } else if ((arg == "--qualities" || arg == "--quality") &&
+               arg_index + 1 < argc) {
       const std::string str = argv[++arg_index];
       const auto range_delim = str.find(':');
       if (range_delim != std::string::npos) {

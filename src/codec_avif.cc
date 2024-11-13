@@ -154,7 +154,8 @@ class RwData : public avifRWData {
 
 StatusOr<WP2::Data> EncodeAvifImpl(const TaskInput& input,
                                    const Image& original_image,
-                                   bool minimized_image_box, bool quiet) {
+                                   bool minimized_image_box, bool avm,
+                                   bool quiet) {
   const bool lossless = input.codec_settings.quality == kQualityLossless;
 
   avif::EncoderPtr encoder(avifEncoderCreate());
@@ -163,6 +164,7 @@ StatusOr<WP2::Data> EncodeAvifImpl(const TaskInput& input,
   encoder->quality =
       lossless ? AVIF_QUALITY_LOSSLESS : input.codec_settings.quality;
   encoder->qualityAlpha = encoder->quality;
+  encoder->codecChoice = avm ? AVIF_CODEC_CHOICE_AVM : AVIF_CODEC_CHOICE_AUTO;
   encoder->headerFormat = minimized_image_box
                               ? (avifHeaderFormat)1  // AVIF_HEADER_REDUCED
                               : AVIF_HEADER_FULL;
@@ -201,29 +203,12 @@ StatusOr<WP2::Data> EncodeAvifImpl(const TaskInput& input,
   return encoded_image;
 }
 
-}  // namespace
-
-StatusOr<WP2::Data> EncodeAvif(const TaskInput& input,
-                               const Image& original_image, bool quiet) {
-  return EncodeAvifImpl(input, original_image, /*minimized_image_box=*/false,
-                        quiet);
-}
-
-StatusOr<WP2::Data> EncodeSlimAvif(const TaskInput& input,
-                                   const Image& original_image, bool quiet) {
-  // Experimental implementation of ISO/IEC DIS 23008-12/AWI Amd 2 Information
-  // technology — High efficiency coding and media delivery in heterogeneous
-  // environments — Part 12: Image File Format Amendment 2: Low-overhead image
-  // file format (https://www.iso.org/standard/90273.html).
-  return EncodeAvifImpl(input, original_image, /*minimized_image_box=*/true,
-                        quiet);
-}
-
-StatusOr<std::pair<Image, double>> DecodeAvif(const TaskInput& input,
-                                              const WP2::Data& encoded_image,
-                                              bool quiet) {
+StatusOr<std::pair<Image, double>> DecodeAvifImpl(
+    const TaskInput& input, const WP2::Data& encoded_image, bool avm,
+    bool quiet) {
   avif::DecoderPtr decoder(avifDecoderCreate());
   CHECK_OR_RETURN(decoder != nullptr, quiet);
+  decoder->codecChoice = avm ? AVIF_CODEC_CHOICE_AVM : AVIF_CODEC_CHOICE_AUTO;
 
   CHECK_OR_RETURN(avifDecoderSetIOMemory(decoder.get(), encoded_image.bytes,
                                          encoded_image.size) == AVIF_RESULT_OK,
@@ -252,12 +237,61 @@ StatusOr<std::pair<Image, double>> DecodeAvif(const TaskInput& input,
   return std::pair<Image, double>(std::move(image), color_conversion_duration);
 }
 
+}  // namespace
+
+StatusOr<WP2::Data> EncodeAvif(const TaskInput& input,
+                               const Image& original_image, bool quiet) {
+  // Requires libavif to be built with AVIF_ENABLE_EXPERIMENTAL_YCGCO_R for
+  // lossless.
+  return EncodeAvifImpl(input, original_image, /*minimized_image_box=*/false,
+                        /*avm=*/false, quiet);
+}
+
+StatusOr<WP2::Data> EncodeSlimAvif(const TaskInput& input,
+                                   const Image& original_image, bool quiet) {
+  // Requires libavif to be built with AVIF_ENABLE_EXPERIMENTAL_YCGCO_R for
+  // lossless and AVIF_ENABLE_EXPERIMENTAL_MINI.
+  return EncodeAvifImpl(input, original_image, /*minimized_image_box=*/true,
+                        /*avm=*/false, quiet);
+}
+
+StatusOr<WP2::Data> EncodeSlimAvifAvm(const TaskInput& input,
+                                      const Image& original_image, bool quiet) {
+  // Requires libavif to be built with AVIF_ENABLE_EXPERIMENTAL_YCGCO_R for
+  // lossless, AVIF_ENABLE_EXPERIMENTAL_MINI and AVIF_CODEC_AVM.
+  return EncodeAvifImpl(input, original_image, /*minimized_image_box=*/true,
+                        /*avm=*/true, quiet);
+}
+
+StatusOr<std::pair<Image, double>> DecodeAvif(const TaskInput& input,
+                                              const WP2::Data& encoded_image,
+                                              bool quiet) {
+  return DecodeAvifImpl(input, encoded_image, /*avm=*/false, quiet);
+}
+
+StatusOr<std::pair<Image, double>> DecodeAvifAvm(const TaskInput& input,
+                                                 const WP2::Data& encoded_image,
+                                                 bool quiet) {
+  return DecodeAvifImpl(input, encoded_image, /*avm=*/true, quiet);
+}
+
 #else
 StatusOr<WP2::Data> EncodeAvif(const TaskInput&, const Image&, bool quiet) {
   CHECK_OR_RETURN(false, quiet) << "Encoding images requires HAS_AVIF";
 }
+StatusOr<WP2::Data> EncodeSlimAvif(const TaskInput&, const Image&, bool quiet) {
+  CHECK_OR_RETURN(false, quiet) << "Encoding images requires HAS_AVIF";
+}
+StatusOr<WP2::Data> EncodeSlimAvifAvm(const TaskInput&, const Image&,
+                                      bool quiet) {
+  CHECK_OR_RETURN(false, quiet) << "Encoding images requires HAS_AVIF";
+}
 StatusOr<std::pair<Image, double>> DecodeAvif(const TaskInput&,
                                               const WP2::Data&, bool quiet) {
+  CHECK_OR_RETURN(false, quiet) << "Decoding images requires HAS_AVIF";
+}
+StatusOr<std::pair<Image, double>> DecodeAvifAvm(const TaskInput&,
+                                                 const WP2::Data&, bool quiet) {
   CHECK_OR_RETURN(false, quiet) << "Decoding images requires HAS_AVIF";
 }
 #endif  // HAS_AVIF
