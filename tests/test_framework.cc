@@ -69,7 +69,7 @@ TEST_F(FrameworkTest, AllCodecsWithAlphaAndAnimation) {
   settings.codec_settings.push_back(
       {Codec::kJpegXl, Subsampling::kDefault, /*effort=*/1, /*quality=*/50});
   settings.codec_settings.push_back(
-      {Codec::kAvif, Subsampling::kDefault, /*effort=*/9, /*quality=*/10});
+      {Codec::kAvif, Subsampling::kDefault, /*speed*/ 9, /*quality=*/10});
   settings.codec_settings.push_back({Codec::kCombination, Subsampling::kDefault,
                                      /*effort=*/0, /*quality=*/90});
   EXPECT_EQ(Compare({std::string(data_path) + "gradient32x32.png",
@@ -115,7 +115,7 @@ TEST_F(FrameworkTest, AllChromaSubsamplings) {
 TEST_F(FrameworkTest, ExperimentalCodecs) {
   ComparisonSettings settings;
   settings.codec_settings.push_back(
-      {Codec::kSlimAvif, Subsampling::kDefault, /*effort=*/9, /*quality=*/75});
+      {Codec::kSlimAvif, Subsampling::kDefault, /*speed*/ 9, /*quality=*/75});
   EXPECT_EQ(Compare({std::string(data_path) + "gradient32x32.png",
                      std::string(data_path) + "alpha1x17.png"},
                     settings, TempPath("completed_tasks.csv"), TempPath()),

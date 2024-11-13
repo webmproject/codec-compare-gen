@@ -42,6 +42,26 @@ pushd third_party
     cmake --build build --parallel
   popd
 
+  # AVM symbols conflict with AOM so another build of libavif is required.
+  # See https://gitlab.com/AOMediaCodec/avm/-/issues/150.
+  git clone https://github.com/AOMediaCodec/libavif.git libavif_avm
+  pushd libavif_avm
+    git checkout a9ac378e84daec87dc7f6c438bf0215c6165de39
+    cmake -S . -B build \
+      -DAVIF_BUILD_APPS=ON \
+      -DAVIF_BUILD_EXAMPLES=OFF \
+      -DAVIF_BUILD_TESTS=OFF \
+      -DAVIF_CODEC_AVM=LOCAL \
+      -DAVIF_LIBYUV=LOCAL \
+      -DAVIF_LIBSHARPYUV=LOCAL \
+      -DAVIF_ENABLE_EXPERIMENTAL_YCGCO_R=ON \
+      -DAVIF_ENABLE_EXPERIMENTAL_MINI=ON \
+      -DCMAKE_BUILD_TYPE=Release \
+      -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ \
+      -DBUILD_SHARED_LIBS=ON
+    cmake --build build --parallel
+  popd
+
   git clone https://chromium.googlesource.com/webm/libwebp
   pushd libwebp
     git checkout a443170fc0ebdfc3abbf89ac81f35e7eb656a3da # v1.4.0

@@ -33,6 +33,7 @@ enum class Codec {
   kJpegXl,
   kAvif,
   kSlimAvif,
+  kSlimAvifAvm,
   kCombination,
   kJpegturbo,
   kJpegli,

@@ -53,6 +53,7 @@ std::string CodecName(Codec codec) {
          : codec == Codec::kJpegXl      ? "jpegxl"
          : codec == Codec::kAvif        ? "avif"
          : codec == Codec::kSlimAvif    ? "slimavif"
+         : codec == Codec::kSlimAvifAvm ? "slimav2f"
          : codec == Codec::kCombination ? "combination"
          : codec == Codec::kJpegturbo   ? "jpegturbo"
          : codec == Codec::kJpegli      ? "jpegli"
@@ -71,6 +72,8 @@ std::string CodecVersion(Codec codec) {
     return AvifVersion();
   } else if (codec == Codec::kSlimAvif) {
     return AvifVersion() + "_mini";
+  } else if (codec == Codec::kSlimAvifAvm) {
+    return AvifVersion() + "_mini_avm";
   } else if (codec == Codec::kCombination) {
     return CodecCombinationVersion();
   } else if (codec == Codec::kJpegturbo) {
@@ -91,6 +94,7 @@ StatusOr<Codec> CodecFromName(const std::string& name, bool quiet) {
   if (name == "jpegxl") return Codec::kJpegXl;
   if (name == "avif") return Codec::kAvif;
   if (name == "slimavif") return Codec::kSlimAvif;
+  if (name == "slimav2f") return Codec::kSlimAvifAvm;
   if (name == "combination") return Codec::kCombination;
   if (name == "jpegturbo") return Codec::kJpegturbo;
   if (name == "jpegli") return Codec::kJpegli;
@@ -106,6 +110,7 @@ std::vector<int> CodecLossyQualities(Codec codec) {
   if (codec == Codec::kJpegXl) return JpegXLLossyQualities();
   if (codec == Codec::kAvif) return AvifLossyQualities();
   if (codec == Codec::kSlimAvif) return AvifLossyQualities();
+  if (codec == Codec::kSlimAvifAvm) return AvifLossyQualities();
   if (codec == Codec::kCombination) return CodecCombinationLossyQualities();
   if (codec == Codec::kJpegturbo) return JpegturboLossyQualities();
   if (codec == Codec::kJpegli) return JpegliLossyQualities();
@@ -120,6 +125,7 @@ std::string CodecExtension(Codec codec) {
          : codec == Codec::kJpegXl      ? "jxl"
          : codec == Codec::kAvif        ? "avif"
          : codec == Codec::kSlimAvif    ? "avif"
+         : codec == Codec::kSlimAvifAvm ? "avif"
          : codec == Codec::kCombination ? "comb"
          : codec == Codec::kJpegturbo   ? "turbo.jpg"
          : codec == Codec::kJpegli      ? "li.jpg"
@@ -146,7 +152,8 @@ WP2SampleFormat CodecToNeededFormat(Codec codec, bool has_transparency) {
   if (codec == Codec::kJpegXl) {
     return has_transparency ? WP2_RGBA_32 : WP2_RGB_24;
   }
-  if (codec == Codec::kAvif || codec == Codec::kSlimAvif) {
+  if (codec == Codec::kAvif || codec == Codec::kSlimAvif ||
+      codec == Codec::kSlimAvifAvm) {
     return has_transparency ? WP2_ARGB_32 : WP2_RGB_24;
   }
   if (codec == Codec::kJpegturbo || codec == Codec::kJpegli ||
@@ -185,11 +192,12 @@ StatusOr<TaskOutput> EncodeDecode(const TaskInput& input,
   }
 
   auto encode_func =
-      input.codec_settings.codec == Codec::kWebp       ? &EncodeWebp
-      : input.codec_settings.codec == Codec::kWebp2    ? &EncodeWebp2
-      : input.codec_settings.codec == Codec::kJpegXl   ? &EncodeJxl
-      : input.codec_settings.codec == Codec::kAvif     ? &EncodeAvif
-      : input.codec_settings.codec == Codec::kSlimAvif ? &EncodeSlimAvif
+      input.codec_settings.codec == Codec::kWebp          ? &EncodeWebp
+      : input.codec_settings.codec == Codec::kWebp2       ? &EncodeWebp2
+      : input.codec_settings.codec == Codec::kJpegXl      ? &EncodeJxl
+      : input.codec_settings.codec == Codec::kAvif        ? &EncodeAvif
+      : input.codec_settings.codec == Codec::kSlimAvif    ? &EncodeSlimAvif
+      : input.codec_settings.codec == Codec::kSlimAvifAvm ? &EncodeSlimAvifAvm
       : input.codec_settings.codec == Codec::kCombination
           ? &EncodeCodecCombination
       : input.codec_settings.codec == Codec::kJpegturbo  ? &EncodeJpegturbo
@@ -198,11 +206,12 @@ StatusOr<TaskOutput> EncodeDecode(const TaskInput& input,
       : input.codec_settings.codec == Codec::kJpegmoz    ? &EncodeJpegmoz
                                                          : nullptr;
   auto decode_func =
-      input.codec_settings.codec == Codec::kWebp       ? &DecodeWebp
-      : input.codec_settings.codec == Codec::kWebp2    ? &DecodeWebp2
-      : input.codec_settings.codec == Codec::kJpegXl   ? &DecodeJxl
-      : input.codec_settings.codec == Codec::kAvif     ? &DecodeAvif
-      : input.codec_settings.codec == Codec::kSlimAvif ? &DecodeAvif
+      input.codec_settings.codec == Codec::kWebp          ? &DecodeWebp
+      : input.codec_settings.codec == Codec::kWebp2       ? &DecodeWebp2
+      : input.codec_settings.codec == Codec::kJpegXl      ? &DecodeJxl
+      : input.codec_settings.codec == Codec::kAvif        ? &DecodeAvif
+      : input.codec_settings.codec == Codec::kSlimAvif    ? &DecodeAvif
+      : input.codec_settings.codec == Codec::kSlimAvifAvm ? &DecodeAvifAvm
       : input.codec_settings.codec == Codec::kCombination
           ? &DecodeCodecCombination
       : input.codec_settings.codec == Codec::kJpegturbo  ? &DecodeJpegturbo
