@@ -240,6 +240,20 @@ TEST(CodecTest, AvifAnimatedLossless) {
   EXPECT_EQ(EncodeDecodeTest(input), Status::kOk);
 }
 
+TEST(CodecTest, AvifSlim) {
+  TaskInput input;
+  input.codec_settings = {Codec::kSlimAvif, kDef, /*effort=*/9};  // max speed
+  input.image_path = std::string(data_path) + "gradient32x32.png";
+  EXPECT_EQ(EncodeDecodeTest(input), Status::kOk);
+}
+
+TEST(CodecTest, AvifSlimTranslucent) {
+  TaskInput input;
+  input.codec_settings = {Codec::kSlimAvif, kDef, /*effort=*/9};  // max speed
+  input.image_path = std::string(data_path) + "alpha1x17.png";
+  EXPECT_EQ(EncodeDecodeTest(input), Status::kOk);
+}
+
 //------------------------------------------------------------------------------
 
 TEST(CodecTest, CodecCombinationMinEffort) {

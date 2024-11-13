@@ -32,6 +32,7 @@ enum class Codec {
   kWebp2,
   kJpegXl,
   kAvif,
+  kSlimAvif,
   kCombination,
   kJpegturbo,
   kJpegli,

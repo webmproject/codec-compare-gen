@@ -152,10 +152,9 @@ class RwData : public avifRWData {
   ~RwData() { avifRWDataFree(this); }
 };
 
-}  // namespace
-
-StatusOr<WP2::Data> EncodeAvif(const TaskInput& input,
-                               const Image& original_image, bool quiet) {
+StatusOr<WP2::Data> EncodeAvifImpl(const TaskInput& input,
+                                   const Image& original_image,
+                                   bool minimized_image_box, bool quiet) {
   const bool lossless = input.codec_settings.quality == kQualityLossless;
 
   avif::EncoderPtr encoder(avifEncoderCreate());
@@ -164,6 +163,9 @@ StatusOr<WP2::Data> EncodeAvif(const TaskInput& input,
   encoder->quality =
       lossless ? AVIF_QUALITY_LOSSLESS : input.codec_settings.quality;
   encoder->qualityAlpha = encoder->quality;
+  encoder->headerFormat = minimized_image_box
+                              ? (avifHeaderFormat)1  // AVIF_HEADER_REDUCED
+                              : AVIF_HEADER_FULL;
 
   RwData encoded;
   if (original_image.size() == 1) {
@@ -197,6 +199,24 @@ StatusOr<WP2::Data> EncodeAvif(const TaskInput& input,
   std::swap(encoded_image.bytes, encoded.data);
   std::swap(encoded_image.size, encoded.size);
   return encoded_image;
+}
+
+}  // namespace
+
+StatusOr<WP2::Data> EncodeAvif(const TaskInput& input,
+                               const Image& original_image, bool quiet) {
+  return EncodeAvifImpl(input, original_image, /*minimized_image_box=*/false,
+                        quiet);
+}
+
+StatusOr<WP2::Data> EncodeSlimAvif(const TaskInput& input,
+                                   const Image& original_image, bool quiet) {
+  // Experimental implementation of ISO/IEC DIS 23008-12/AWI Amd 2 Information
+  // technology — High efficiency coding and media delivery in heterogeneous
+  // environments — Part 12: Image File Format Amendment 2: Low-overhead image
+  // file format (https://www.iso.org/standard/90273.html).
+  return EncodeAvifImpl(input, original_image, /*minimized_image_box=*/true,
+                        quiet);
 }
 
 StatusOr<std::pair<Image, double>> DecodeAvif(const TaskInput& input,
