@@ -59,6 +59,12 @@ pushd third_party
       -DCMAKE_BUILD_TYPE=Release \
       -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ \
       -DBUILD_SHARED_LIBS=ON
+
+    # Disable the thread-unsafe ccso feature.
+    # See https://gitlab.com/AOMediaCodec/avm/-/issues/520.
+    sed -i'' -e 's|  1,\(.*\)// enable_ccso|  0,\1// enable_ccso|' build/_deps/libaom-src/av1/av1_cx_iface.c
+    cmake --build build/_deps/avm-build --parallel
+
     cmake --build build --parallel
   popd
 

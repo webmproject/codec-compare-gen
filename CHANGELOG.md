@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.3.6
+
+- Disable thread-unsafe CCSO tool in AVM.
+
 ## v0.3.5
 
 - Add AVM support for AVIF.
