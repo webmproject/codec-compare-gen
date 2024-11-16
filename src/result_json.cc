@@ -101,7 +101,7 @@ Status TasksToJson(const std::string& batch_name, CodecSettings settings,
   const std::string image_prefix =
       GetImagePathCommonPrefix(tasks, /*get_encoded_path=*/false);
   const std::string build_cmd =
-      "git clone -b v0.3.5 --depth 1"
+      "git clone -b v0.3.6 --depth 1"
       " https://github.com/webmproject/codec-compare-gen.git &&"
       " cd codec-compare-gen && ./deps.sh &&"
       " cmake -S . -B build -DCMAKE_CXX_COMPILER=clang++ &&"
