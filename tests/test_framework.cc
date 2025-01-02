@@ -112,6 +112,16 @@ TEST_F(FrameworkTest, AllChromaSubsamplings) {
             Status::kOk);
 }
 
+TEST_F(FrameworkTest, AllCodecsSupporting16bits) {
+  ComparisonSettings settings;
+  settings.codec_settings.push_back(
+      {Codec::kJpegXl, Subsampling::kDefault, /*effort=*/1, /*quality=*/100});
+  EXPECT_EQ(Compare({std::string(data_path) + "alpha31x32_16bits.png",
+                     std::string(data_path) + "gradient32x32_16bits.png"},
+                    settings, TempPath("completed_tasks.csv"), TempPath()),
+            Status::kOk);
+}
+
 TEST_F(FrameworkTest, ExperimentalCodecs) {
   ComparisonSettings settings;
   settings.codec_settings.push_back(

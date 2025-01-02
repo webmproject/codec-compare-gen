@@ -101,7 +101,7 @@ Status TasksToJson(const std::string& batch_name, CodecSettings settings,
   const std::string image_prefix =
       GetImagePathCommonPrefix(tasks, /*get_encoded_path=*/false);
   const std::string build_cmd =
-      "git clone -b v0.3.6 --depth 1"
+      "git clone -b v0.4.0 --depth 1"
       " https://github.com/webmproject/codec-compare-gen.git &&"
       " cd codec-compare-gen && ./deps.sh &&"
       " cmake -S . -B build -DCMAKE_CXX_COMPILER=clang++ &&"
@@ -113,7 +113,7 @@ Status TasksToJson(const std::string& batch_name, CodecSettings settings,
   if (settings.quality == kQualityLossless) {
     encoding_cmd += " --lossless";
   } else {
-    encoding_cmd += " --lossy --quality " + std::to_string(settings.quality);
+    encoding_cmd += " --lossy --quality ${quality}";
     encoding_cmd += " --metric_binary_folder codec-compare-gen/third_party/";
   }
   encoding_cmd += " -- ${original_path}";

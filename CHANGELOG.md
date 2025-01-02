@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.4.0
+
+- Bump the version of libwebp2 in deps.sh.
+- Support reading 16-bit images.
+
 ## v0.3.6
 
 - Disable thread-unsafe CCSO tool in AVM.

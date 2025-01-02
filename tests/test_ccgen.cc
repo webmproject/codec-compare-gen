@@ -42,9 +42,10 @@ TEST(CodecCompareGenTest, Help) {
 }
 
 TEST(CodecCompareGenTest, Run) {
-  EXPECT_EQ(TestMain(data_path, "--lossless", "--codec", "webp", "444", "6"),
-            0);
-  EXPECT_EQ(TestMain(data_path, "--lossy", "--codec", "webp", "420", "4",
+  const std::string file_path = std::string(data_path) + "gradient32x32.png";
+  const char* const path = file_path.c_str();
+  EXPECT_EQ(TestMain(path, "--lossless", "--codec", "webp", "444", "6"), 0);
+  EXPECT_EQ(TestMain(path, "--lossy", "--codec", "webp", "420", "4",
                      "--metric_binary_folder", "no_metric_binary_for_testing"),
             0);
 }
@@ -66,7 +67,11 @@ void TestProgressFileLength(size_t expected_lines, Args... args) {
       ("progress" + std::to_string(expected_lines) + ".csv");
   (void)std::filesystem::remove(progress_file_path);
 
-  EXPECT_EQ(TestMain(data_path, "--codec", "webp", "420", "4",
+  std::vector<std::string> paths = {"alpha1x17.png", "anim80x80.gif",
+                                    "anim80x80.webp", "gradient32x32.png"};
+  for (std::string& path : paths) path = data_path + path;
+  EXPECT_EQ(TestMain(paths[0].c_str(), paths[1].c_str(), paths[2].c_str(),
+                     paths[3].c_str(), "--codec", "webp", "420", "4",
                      "--metric_binary_folder", "no_metric_binary_for_testing",
                      "--progress_file", progress_file_path.c_str(), args...),
             0);
