@@ -74,7 +74,14 @@ StatusOr<Image> ReadStillImageOrAnimation(const char* file_path,
     bool is_last;
     do {
       uint32_t duration_ms;
-      const WP2Status status = reader.ReadFrame(&is_last, &duration_ms);
+      WP2Status status = reader.ReadFrame(&is_last, &duration_ms);
+      if (status == WP2_STATUS_INVALID_PARAMETER && image.empty()) {
+        // Maybe it is a 16-bit file and the ImageReaderPNG refused to read it
+        // into an 8-bit buffer. Try again with a 16-bit buffer.
+        CHECK_OR_RETURN(buffer.SetFormat(WP2_ARGB_64) == WP2_STATUS_OK, quiet);
+        reader = WP2::ImageReader(file_path, &buffer);
+        status = reader.ReadFrame(&is_last, &duration_ms);
+      }
       CHECK_OR_RETURN(status == WP2_STATUS_OK, quiet)
           << "Got " << WP2GetStatusMessage(status) << " when reading frame "
           << image.size() << " of " << file_path;

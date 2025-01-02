@@ -338,9 +338,8 @@ StatusOr<bool> PixelEquality(const WP2::ArgbBuffer& a, const WP2::ArgbBuffer& b,
   CHECK_OR_RETURN(a.format() == b.format(), quiet);
   CHECK_OR_RETURN(a.width() == b.width() && a.height() == b.height(), quiet);
   for (uint32_t y = 0; y < a.height(); ++y) {
-    if (!std::equal(a.GetRow8(y),
-                    a.GetRow8(y) + a.width() * WP2FormatBpp(a.format()),
-                    b.GetRow8(y))) {
+    if (std::memcmp(a.GetRow(y), b.GetRow(y),
+                    a.width() * WP2FormatBpp(a.format())) != 0) {
       return false;
     }
   }
