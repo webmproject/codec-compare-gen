@@ -143,17 +143,8 @@ StatusOr<Image> ReadStillImageOrAnimation(const char* file_path,
 Status WriteStillImageOrAnimation(const Image& image, const char* file_path,
                                   bool quiet) {
   if (image.size() == 1) {
-    const WP2::ArgbBuffer& pixels = image.front().pixels;
-    WP2Status status = WP2::SaveImage(pixels, file_path, /*overwrite=*/true);
-    if (status == WP2_STATUS_UNSUPPORTED_FEATURE &&
-        pixels.format() != WP2_Argb_32 && pixels.format() != WP2_ARGB_32) {
-      // Try again with a format that is expected to be implemented.
-      WP2::ArgbBuffer pixels4(
-          WP2IsPremultiplied(pixels.format()) ? WP2_Argb_32 : WP2_ARGB_32);
-      CHECK_OR_RETURN(pixels4.ConvertFrom(pixels) == WP2_STATUS_OK, quiet);
-      status = WP2::SaveImage(pixels4, file_path, /*overwrite=*/true);
-    }
-
+    const WP2Status status =
+        WP2::SaveImage(image.front().pixels, file_path, /*overwrite=*/true);
     CHECK_OR_RETURN(status == WP2_STATUS_OK, quiet)
         << "WP2::SaveImage(" << file_path
         << ") failed: " << WP2GetStatusMessage(status);
@@ -165,6 +156,7 @@ Status WriteStillImageOrAnimation(const Image& image, const char* file_path,
         {Codec::kWebp, Subsampling::k444, /*effort=*/9, kQualityLossless},
         /*image_path=*/file_path,  // For better logs.
         encoded_path};
+    CHECK_OR_RETURN(WP2Formatbpc(image.front().pixels.format()) == 8, quiet);
     ASSIGN_OR_RETURN(const Image bgra,
                      image.front().pixels.format() == WP2_BGRA_32
                          ? MakeView(image, quiet)
