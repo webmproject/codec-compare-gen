@@ -49,6 +49,31 @@ StatusOr<Image> CloneAs(const Image& from, WP2SampleFormat format, bool quiet) {
     to.emplace_back(WP2::ArgbBuffer(format), frame.duration_ms);
     CHECK_OR_RETURN(to.back().pixels.ConvertFrom(frame.pixels) == WP2_STATUS_OK,
                     quiet);
+    // Check that there was no bit depth loss.
+    CHECK_OR_RETURN(WP2Formatbpc(to.back().pixels.format()) ==
+                        WP2Formatbpc(frame.pixels.format()),
+                    quiet);
+  }
+  return to;
+}
+
+StatusOr<Image> SpreadTo8bit(const Image& from, bool quiet) {
+  Image to;
+  to.reserve(from.size());
+  for (const Frame& frame : from) {
+    const WP2SampleFormat format = WP2FormatAtbpc(frame.pixels.format(), 8);
+    CHECK_OR_RETURN(format != WP2_FORMAT_NUM, quiet);
+    to.emplace_back(WP2::ArgbBuffer(format), frame.duration_ms);
+    CHECK_OR_RETURN(
+        to.back().pixels.Import(
+            format,
+            frame.pixels.width() *
+                (WP2FormatBpp(frame.pixels.format()) /
+                 WP2FormatNumChannels(frame.pixels.format())),
+            frame.pixels.height(),
+            reinterpret_cast<const uint8_t*>(frame.pixels.GetRow(0)),
+            frame.pixels.stride()) == WP2_STATUS_OK,
+        quiet);
   }
   return to;
 }
@@ -91,7 +116,8 @@ StatusOr<Image> ReadStillImageOrAnimation(const char* file_path,
                   << file_path << " was ignored" << std::endl;
         continue;
       }
-
+      format = WP2FormatAtbpc(format, WP2Formatbpc(buffer.format()));
+      CHECK_OR_RETURN(format != WP2_FORMAT_NUM, quiet);
       WP2::ArgbBuffer pixels(format);
       // All metadata is discarded during the conversion.
       CHECK_OR_RETURN(pixels.ConvertFrom(buffer) == WP2_STATUS_OK, quiet);

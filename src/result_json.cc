@@ -101,7 +101,7 @@ Status TasksToJson(const std::string& batch_name, CodecSettings settings,
   const std::string image_prefix =
       GetImagePathCommonPrefix(tasks, /*get_encoded_path=*/false);
   const std::string build_cmd =
-      "git clone -b v0.4.0 --depth 1"
+      "git clone -b v0.4.1 --depth 1"
       " https://github.com/webmproject/codec-compare-gen.git &&"
       " cd codec-compare-gen && ./deps.sh &&"
       " cmake -S . -B build -DCMAKE_CXX_COMPILER=clang++ &&"
@@ -170,9 +170,10 @@ Status TasksToJson(const std::string& batch_name, CodecSettings settings,
   file << R"json(
   "field_descriptions": [
     {"original_name": "Original image file name"},
-    {"width": "Pixel columns in the original image"},
-    {"height": "Pixel rows in the original image"},
-    {"frame_count": "Number of frames in the original image"},)json";
+    {"width": "Pixel columns in the image that was encoded"},
+    {"height": "Pixel rows in the image that was encoded"},
+    {"depth": "Bit depth of the image that was encoded"},
+    {"frame_count": "Number of frames in the image that was encoded"},)json";
   if (!lossless) {
     file << R"json(
     {"chroma_subsampling": "Compression chroma subsampling parameter"},)json";
@@ -216,6 +217,7 @@ Status TasksToJson(const std::string& batch_name, CodecSettings settings,
          << ",";
     file << task.image_width << ",";
     file << task.image_height << ",";
+    file << task.bit_depth << ",";
     file << task.num_frames << ",";
     if (!lossless) {
       file << SubsamplingToString(

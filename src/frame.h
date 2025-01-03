@@ -49,6 +49,7 @@ uint32_t GetDurationMs(const Image& image);
 // Makes a deep copy of the given frame sequence and converts the pixels to the
 // given format.
 StatusOr<Image> CloneAs(const Image& from, WP2SampleFormat format, bool quiet);
+StatusOr<Image> SpreadTo8bit(const Image& from, bool quiet);
 
 // Makes a shallow copy of the given frame sequence.
 StatusOr<Image> MakeView(const Image& from, bool quiet);

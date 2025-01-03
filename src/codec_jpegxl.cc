@@ -176,7 +176,9 @@ StatusOr<WP2::Data> EncodeJxl(const TaskInput& input,
                     quiet);
 
     CHECK_OR_RETURN(frame.pixels.format() == WP2_RGBA_32 ||
-                        frame.pixels.format() == WP2_RGB_24,
+                        frame.pixels.format() == WP2_RGB_24 ||
+                        frame.pixels.format() == WP2_RGBA_64 ||
+                        frame.pixels.format() == WP2_RGB_48,
                     quiet)
         << "libjxl requires RGB(A)";
     const JxlPixelFormat pixel_format =
@@ -252,7 +254,10 @@ StatusOr<std::pair<Image, double>> DecodeJxl(const TaskInput& input,
                         info.animation.tps_denominator == 1000,
                     quiet);
   }
-  const WP2SampleFormat format = info.alpha_bits > 0 ? WP2_RGBA_32 : WP2_RGB_24;
+  const WP2SampleFormat format =
+      info.bits_per_sample == 8
+          ? (info.alpha_bits > 0 ? WP2_RGBA_32 : WP2_RGB_24)
+          : (info.alpha_bits > 0 ? WP2_RGBA_64 : WP2_RGB_48);
 
   Image image;
   while ((status = JxlDecoderProcessInput(decoder.get())) ==

@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.4.1
+
+- Bump the version of libwebp2 in deps.sh.
+- Support encoding 16-bit images with JPEG XL. Encode 16-bit images as twice as
+  wide 8-bit images with other codecs.
+
 ## v0.4.0
 
 - Bump the version of libwebp2 in deps.sh.

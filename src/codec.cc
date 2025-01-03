@@ -144,7 +144,7 @@ bool CodecIsSupportedByBrowsers(Codec codec) {
 
 namespace {
 
-// Returns the format layout required by the API of the given codec.
+// Returns the 8-bit format layout required by the API of the given codec.
 WP2SampleFormat CodecToNeededFormat(Codec codec, bool has_transparency) {
   if (codec == Codec::kWebp) {
     return WebPPictureFormat();
@@ -159,7 +159,6 @@ WP2SampleFormat CodecToNeededFormat(Codec codec, bool has_transparency) {
   if (codec == Codec::kJpegturbo || codec == Codec::kJpegli ||
       codec == Codec::kJpegsimple || codec == Codec::kJpegmoz) {
     return WP2_RGB_24;
-    return WP2_ARGB_32;
   }
   // Other formats support this layout even for opaque images.
   return WP2_ARGB_32;
@@ -184,11 +183,22 @@ StatusOr<TaskOutput> EncodeDecode(const TaskInput& input,
   for (const Frame& frame : original_image) {
     has_transparency |= frame.pixels.HasTransparency();
   }
-  const WP2SampleFormat needed_format =
+  WP2SampleFormat needed_format =
       CodecToNeededFormat(input.codec_settings.codec, has_transparency);
   if (initial_format != needed_format) {
+    needed_format = WP2FormatAtbpc(
+        needed_format, WP2Formatbpc(original_image.front().pixels.format()));
+    CHECK_OR_RETURN(needed_format != WP2_FORMAT_NUM, quiet);
+    // Ditch alpha because the image is opaque.
     ASSIGN_OR_RETURN(original_image,
                      CloneAs(original_image, needed_format, quiet));
+  }
+  if (WP2Formatbpc(original_image.front().pixels.format()) == 16 &&
+      input.codec_settings.codec != Codec::kJpegXl &&
+      input.codec_settings.quality == kQualityLossless) {
+    // The codec does not support 16-bit images. Consider the frames to be 8-bit
+    // and twice as large. The compression rate is likely terrible.
+    ASSIGN_OR_RETURN(original_image, SpreadTo8bit(original_image, quiet));
   }
 
   auto encode_func =
@@ -238,6 +248,7 @@ StatusOr<TaskOutput> EncodeDecode(const TaskInput& input,
   task.encoding_duration = encoding_duration.seconds();
   task.image_width = original_image.front().pixels.width();
   task.image_height = original_image.front().pixels.height();
+  task.bit_depth = WP2Formatbpc(original_image.front().pixels.format());
   task.num_frames = static_cast<uint32_t>(original_image.size());
   task.encoded_size = encoded_image.size;
 

@@ -84,7 +84,7 @@ std::string TaskOutput::Serialize() const {
      << ", " << task_input.codec_settings.effort << ", "
      << task_input.codec_settings.quality << ", "
      << Escape(task_input.image_path) << ", " << image_width << ", "
-     << image_height << ", " << num_frames << ", "
+     << image_height << ", " << bit_depth << ", " << num_frames << ", "
      << Escape(task_input.encoded_path) << ", " << encoded_size << ", "
      << encoding_duration << ", " << decoding_duration << ", "
      << decoding_color_conversion_duration;
@@ -98,7 +98,7 @@ std::string TaskOutput::Serialize() const {
 
 namespace {
 
-constexpr size_t kNumNonDistortionTokens = 13;
+constexpr size_t kNumNonDistortionTokens = 14;
 
 StatusOr<TaskOutput> UnserializeNoDistortion(
     const std::string& serialized_task, const std::vector<std::string> tokens,
@@ -130,6 +130,7 @@ StatusOr<TaskOutput> UnserializeNoDistortion(
   ASSIGN_OR_RETURN(task.task_input.image_path, Unescape(tokens[t++], quiet));
   task.image_width = std::stoul(tokens[t++]);
   task.image_height = std::stoul(tokens[t++]);
+  task.bit_depth = std::stoul(tokens[t++]);
   task.num_frames = std::stoul(tokens[t++]);
 
   ASSIGN_OR_RETURN(task.task_input.encoded_path, Unescape(tokens[t++], quiet));
@@ -140,9 +141,9 @@ StatusOr<TaskOutput> UnserializeNoDistortion(
 
   CHECK_OR_RETURN(t == kNumNonDistortionTokens, quiet);
 
-  CHECK_OR_RETURN(
-      task.image_width > 0 && task.image_height > 0 && task.num_frames > 0,
-      quiet)
+  CHECK_OR_RETURN(task.image_width > 0 && task.image_height > 0 &&
+                      task.bit_depth > 0 && task.num_frames > 0,
+                  quiet)
       << "Bad image dimensions in \"" << serialized_task << "\"";
   CHECK_OR_RETURN(task.encoded_size > 0, quiet)
       << "Bad encoded size in \"" << serialized_task << "\"";
@@ -235,6 +236,7 @@ bool TaskOutputsAreRepetitions(const TaskOutput& a, const TaskOutput& b) {
   if (!(a.task_input == b.task_input)) return false;
   if (a.image_width != b.image_width) return false;
   if (a.image_height != b.image_height) return false;
+  if (a.bit_depth != b.bit_depth) return false;
   if (a.num_frames != b.num_frames) return false;
   if (a.encoded_size != b.encoded_size) return false;
   for (size_t metric = 0; metric < kNumDistortionMetrics; ++metric) {
