@@ -39,6 +39,7 @@ struct TaskOutput {
 
   uint32_t image_width;   // in pixels
   uint32_t image_height;  // in pixels
+  uint32_t bit_depth;     // per sample
   uint32_t num_frames;
   size_t encoded_size;       // in bytes
   double encoding_duration;  // in seconds

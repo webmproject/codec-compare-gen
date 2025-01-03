@@ -115,7 +115,21 @@ TEST_F(FrameworkTest, AllChromaSubsamplings) {
 TEST_F(FrameworkTest, AllCodecsSupporting16bits) {
   ComparisonSettings settings;
   settings.codec_settings.push_back(
-      {Codec::kJpegXl, Subsampling::kDefault, /*effort=*/1, /*quality=*/100});
+      {Codec::kJpegXl, Subsampling::kDefault, /*effort=*/1, kQualityLossless});
+  EXPECT_EQ(Compare({std::string(data_path) + "alpha31x32_16bits.png",
+                     std::string(data_path) + "gradient32x32_16bits.png"},
+                    settings, TempPath("completed_tasks.csv"), TempPath()),
+            Status::kOk);
+}
+
+TEST_F(FrameworkTest, AllCodecsCompressing16bitsAsTwiceAsWide8bits) {
+  ComparisonSettings settings;
+  settings.codec_settings.push_back(
+      {Codec::kWebp, Subsampling::kDefault, /*effort=*/0, kQualityLossless});
+  settings.codec_settings.push_back(
+      {Codec::kWebp2, Subsampling::kDefault, /*effort=*/0, kQualityLossless});
+  settings.codec_settings.push_back(
+      {Codec::kAvif, Subsampling::kDefault, /*speed*/ 9, kQualityLossless});
   EXPECT_EQ(Compare({std::string(data_path) + "alpha31x32_16bits.png",
                      std::string(data_path) + "gradient32x32_16bits.png"},
                     settings, TempPath("completed_tasks.csv"), TempPath()),

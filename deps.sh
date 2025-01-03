@@ -85,7 +85,7 @@ pushd third_party
 
   git clone https://chromium.googlesource.com/codecs/libwebp2
   pushd libwebp2
-    git checkout b03ac3800bf6a4cfd45e1302770f385eb08b39c7
+    git checkout 169f4159a465b7b4241c0d60ae7f37b15a9b2d65
     cmake -S . -B build \
       -DCMAKE_PREFIX_PATH="../libwebp/src/;../libwebp/build/" \
       -DWP2_BUILD_TESTS=OFF \
