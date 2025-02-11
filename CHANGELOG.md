@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.4.2
+
+- Keep only parent folder instead of full absolute image paths in JSON output.
+
 ## v0.4.1
 
 - Bump the version of libwebp2 in deps.sh.
