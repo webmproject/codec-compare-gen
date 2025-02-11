@@ -14,6 +14,8 @@
 
 #include "src/result_json.h"
 
+#include <algorithm>
+#include <cassert>
 #include <ctime>
 #include <filesystem>
 #include <fstream>
@@ -41,34 +43,55 @@ std::string DateTime() {
       .str();
 }
 
-const std::string& GetPath(const TaskOutput& task, bool get_encoded_path) {
-  return get_encoded_path ? task.task_input.encoded_path
-                          : task.task_input.image_path;
-}
-
-std::string GetImagePathCommonPrefix(const std::vector<TaskOutput>& tasks,
-                                     bool get_encoded_path) {
-  if (tasks.empty()) return "";
-
-  // Return longest common prefix, even if it contains a part of the file name.
-  std::string prefix = GetPath(tasks.front(), get_encoded_path);
-  for (size_t i = 1; i < tasks.size(); ++i) {
-    const std::string& path = GetPath(tasks[i], get_encoded_path);
-    if (path.size() < prefix.size()) prefix.resize(path.size());
-    for (size_t c = 0; c < prefix.size(); ++c) {
-      if (prefix[c] != path[c]) prefix.resize(c);
+// Returns the path of the deepest folder containing all assets.
+std::filesystem::path GetCommonParent(const std::vector<TaskOutput>& tasks,
+                                      bool get_encoded_path) {
+  std::filesystem::path prefix;
+  for (size_t i = 0; i < tasks.size(); ++i) {
+    const std::filesystem::path parent =
+        std::filesystem::path(get_encoded_path
+                                  ? tasks[i].task_input.encoded_path
+                                  : tasks[i].task_input.image_path)
+            .parent_path();
+    if (i == 0) {
+      prefix = parent;
+    } else {
+      const auto mismatch = std::mismatch(parent.begin(), parent.end(),
+                                          prefix.begin(), prefix.end())
+                                .second;
+      if (mismatch != prefix.end()) {
+        // parent does not begin as prefix.
+        std::filesystem::path common_prefix;
+        for (auto it = prefix.begin(); it != mismatch; ++it) {
+          common_prefix.append(it->string());
+        }
+        prefix = common_prefix;
+      }
     }
   }
-
-  if (prefix == GetPath(tasks.front(), get_encoded_path)) {
-    // Split at last "/" if the prefix includes everything.
-    const std::string& path = GetPath(tasks.front(), get_encoded_path);
-    prefix = path.substr(
-        /*pos=*/0, /*n=*/path.size() -
-                       std::filesystem::path(path).filename().string().size());
-  }
-
   return prefix;
+}
+
+std::filesystem::path RemovePrefix(const std::filesystem::path& prefix,
+                                   const std::filesystem::path& path) {
+  std::filesystem::path stripped_path;
+  auto prefix_it = prefix.begin();
+  for (auto path_element : path) {
+    if (prefix_it != prefix.end()) {
+      assert(path_element.string() == prefix_it->string());
+      ++prefix_it;
+    } else {
+      stripped_path.append(path_element.string());
+    }
+  }
+  return stripped_path;
+}
+
+std::string AppendDirectorySeparator(const std::filesystem::path& path) {
+  const std::filesystem::path fake_file("fake_file");
+  const std::string path_with_fake_file = (path / fake_file).string();
+  return path_with_fake_file.substr(
+      0, path_with_fake_file.size() - fake_file.string().size());
 }
 
 }  // namespace
@@ -98,10 +121,21 @@ Status TasksToJson(const std::string& batch_name, CodecSettings settings,
   CHECK_OR_RETURN(file.is_open(), quiet) << "Failed to open results file at "
                                          << results_file_path << " for writing";
 
-  const std::string image_prefix =
-      GetImagePathCommonPrefix(tasks, /*get_encoded_path=*/false);
+  // Keep only the file name as original_name, eventually with any leading
+  // differentiating parent folders. Find out what to strip.
+  const std::filesystem::path image_common_parent =
+      GetCommonParent(tasks, /*get_encoded_path=*/false);
+  const std::filesystem::path encoded_common_parent =
+      GetCommonParent(tasks, /*get_encoded_path=*/true);
+  // Only keep the relative parent folder as original_path root. The full
+  // absolute path is less likely to be useful.
+  const std::string image_parent = AppendDirectorySeparator(RemovePrefix(
+      /*prefix=*/image_common_parent.parent_path(), image_common_parent));
+  const std::string encoded_parent = AppendDirectorySeparator(RemovePrefix(
+      /*prefix=*/encoded_common_parent.parent_path(), encoded_common_parent));
+
   const std::string build_cmd =
-      "git clone -b v0.4.1 --depth 1"
+      "git clone -b v0.4.2 --depth 1"
       " https://github.com/webmproject/codec-compare-gen.git &&"
       " cd codec-compare-gen && ./deps.sh &&"
       " cmake -S . -B build -DCMAKE_CXX_COMPILER=clang++ &&"
@@ -117,8 +151,6 @@ Status TasksToJson(const std::string& batch_name, CodecSettings settings,
     encoding_cmd += " --metric_binary_folder codec-compare-gen/third_party/";
   }
   encoding_cmd += " -- ${original_path}";
-  const std::string encoded_prefix =
-      GetImagePathCommonPrefix(tasks, /*get_encoded_path=*/true);
 
   file << R"json({
   "constant_descriptions": [
@@ -149,7 +181,7 @@ Status TasksToJson(const std::string& batch_name, CodecSettings settings,
     )json"
        << Escape(DateTime()) << R"json(,
     )json"
-       << Escape(image_prefix + "${original_name}") << R"json(,
+       << Escape(image_parent + "${original_name}") << R"json(,
     )json"
        << Escape(build_cmd) << R"json(,
     )json"
@@ -157,12 +189,12 @@ Status TasksToJson(const std::string& batch_name, CodecSettings settings,
   if (has_encoded_path) {
     file << R"json(,
     )json"
-         << Escape(encoded_prefix + "${encoded_name}");
+         << Escape(encoded_parent + "${encoded_name}");
   }
   if (has_decoded_path) {
     file << R"json(,
     )json"
-         << Escape(encoded_prefix + "${encoded_name}.png");
+         << Escape(encoded_parent + "${encoded_name}.png");
   }
   file << R"json(
   ],)json";
@@ -213,7 +245,10 @@ Status TasksToJson(const std::string& batch_name, CodecSettings settings,
   for (size_t i = 0; i < tasks.size(); ++i) {
     const TaskOutput& task = tasks[i];
     file << "    [";
-    file << Escape(task.task_input.image_path.substr(image_prefix.size()))
+    file << Escape(
+                RemovePrefix(/*prefix=*/image_common_parent,
+                             std::filesystem::path(task.task_input.image_path))
+                    .string())
          << ",";
     file << task.image_width << ",";
     file << task.image_height << ",";
@@ -229,7 +264,10 @@ Status TasksToJson(const std::string& batch_name, CodecSettings settings,
       file << task.task_input.codec_settings.quality << ",";
     }
     if (has_encoded_path) {
-      file << Escape(task.task_input.encoded_path.substr(encoded_prefix.size()))
+      file << Escape(RemovePrefix(
+                         /*prefix=*/encoded_common_parent,
+                         std::filesystem::path(task.task_input.encoded_path))
+                         .string())
            << ",";
     }
     file << task.encoded_size << ",";
