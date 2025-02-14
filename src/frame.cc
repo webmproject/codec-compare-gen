@@ -64,16 +64,27 @@ StatusOr<Image> SpreadTo8bit(const Image& from, bool quiet) {
     const WP2SampleFormat format = WP2FormatAtbpc(frame.pixels.format(), 8);
     CHECK_OR_RETURN(format != WP2_FORMAT_NUM, quiet);
     to.emplace_back(WP2::ArgbBuffer(format), frame.duration_ms);
-    CHECK_OR_RETURN(
-        to.back().pixels.Import(
-            format,
-            frame.pixels.width() *
-                (WP2FormatBpp(frame.pixels.format()) /
-                 WP2FormatNumChannels(frame.pixels.format())),
-            frame.pixels.height(),
-            reinterpret_cast<const uint8_t*>(frame.pixels.GetRow(0)),
-            frame.pixels.stride()) == WP2_STATUS_OK,
-        quiet);
+    CHECK_OR_RETURN(to.back().pixels.Resize(
+                        frame.pixels.width() *
+                            (WP2FormatBpp(frame.pixels.format()) /
+                             WP2FormatNumChannels(frame.pixels.format())),
+                        frame.pixels.height()) == WP2_STATUS_OK,
+                    quiet);
+    const uint32_t num_samples_per_row =
+        WP2FormatNumChannels(frame.pixels.format()) * frame.pixels.width();
+    for (uint32_t y = 0; y < frame.pixels.height(); ++y) {
+      const uint16_t* src = frame.pixels.GetRow16(y);
+      uint8_t* dst = to.back().pixels.GetRow8(y);
+      for (uint32_t i = 0; i < num_samples_per_row; ++i) {
+        dst[i] = src[i] >> 8;
+        dst[i + num_samples_per_row] = src[i] & 0xFF;
+      }
+    }
+    // Note: It would be simpler to use to.back().pixels.Import(format,
+    //       frame.pixels) and consider 16-bit samples as twice as many 8-bit
+    //       samples per row, but the resulting image of alternating low and
+    //       high significant parts of the 16-bit samples is terribly hard and
+    //       slow to compress.
   }
   return to;
 }

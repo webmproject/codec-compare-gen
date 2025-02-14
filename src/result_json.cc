@@ -135,7 +135,7 @@ Status TasksToJson(const std::string& batch_name, CodecSettings settings,
       /*prefix=*/encoded_common_parent.parent_path(), encoded_common_parent));
 
   const std::string build_cmd =
-      "git clone -b v0.4.2 --depth 1"
+      "git clone -b v0.4.3 --depth 1"
       " https://github.com/webmproject/codec-compare-gen.git &&"
       " cd codec-compare-gen && ./deps.sh &&"
       " cmake -S . -B build -DCMAKE_CXX_COMPILER=clang++ &&"
