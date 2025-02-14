@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.4.3
+
+- For the codecs that do not support 16-bit samples natively, encode 16-bit
+  images as twice as large assets with high significant bits on the left side
+  and low significant bits on the right side of the encoded 8-bit image, instead
+  of alternating high and low significant bits as 8-bit samples per row.
+
 ## v0.4.2
 
 - Keep only parent folder instead of full absolute image paths in JSON output.
