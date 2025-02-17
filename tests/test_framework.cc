@@ -139,7 +139,7 @@ TEST_F(FrameworkTest, AllCodecsCompressing16bitsAsTwiceAsWide8bits) {
 TEST_F(FrameworkTest, ExperimentalCodecs) {
   ComparisonSettings settings;
   settings.codec_settings.push_back(
-      {Codec::kSlimAvif, Subsampling::kDefault, /*speed*/ 9, /*quality=*/75});
+      {Codec::kAvifExp, Subsampling::kDefault, /*speed*/ 9, /*quality=*/75});
   EXPECT_EQ(Compare({std::string(data_path) + "gradient32x32.png",
                      std::string(data_path) + "alpha1x17.png"},
                     settings, TempPath("completed_tasks.csv"), TempPath()),

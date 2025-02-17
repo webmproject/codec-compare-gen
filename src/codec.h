@@ -25,6 +25,8 @@
 namespace codec_compare_gen {
 
 std::string CodecName(Codec codec);
+std::string CodecPrettyName(Codec codec, bool lossless, Subsampling subsampling,
+                            int effort);
 std::string CodecVersion(Codec codec);
 StatusOr<Codec> CodecFromName(const std::string& name, bool quiet);
 std::vector<int> CodecLossyQualities(Codec codec);

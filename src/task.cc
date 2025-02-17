@@ -77,14 +77,19 @@ bool operator==(const TaskInput& a, const TaskInput& b) {
 //------------------------------------------------------------------------------
 // Task serialization
 
+std::string TaskInput::Serialize() const {
+  std::stringstream ss;
+  ss << Escape(CodecName(codec_settings.codec)) << ", "
+     << SubsamplingToString(codec_settings.chroma_subsampling) << ", "
+     << codec_settings.effort << ", " << codec_settings.quality << ", "
+     << Escape(image_path);
+  return ss.str();
+}
+
 std::string TaskOutput::Serialize() const {
   std::stringstream ss;
-  ss << Escape(CodecName(task_input.codec_settings.codec)) << ", "
-     << SubsamplingToString(task_input.codec_settings.chroma_subsampling)
-     << ", " << task_input.codec_settings.effort << ", "
-     << task_input.codec_settings.quality << ", "
-     << Escape(task_input.image_path) << ", " << image_width << ", "
-     << image_height << ", " << bit_depth << ", " << num_frames << ", "
+  ss << task_input.Serialize() << ", " << image_width << ", " << image_height
+     << ", " << bit_depth << ", " << num_frames << ", "
      << Escape(task_input.encoded_path) << ", " << encoded_size << ", "
      << encoding_duration << ", " << decoding_duration << ", "
      << decoding_color_conversion_duration;

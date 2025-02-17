@@ -25,7 +25,7 @@ pushd third_party
 
   git clone https://github.com/AOMediaCodec/libavif.git
   pushd libavif
-    git checkout a9ac378e84daec87dc7f6c438bf0215c6165de39
+    git checkout 3d0f0cfe988f19b455517a66a3eea83d4addf293 # almost v1.2.0
     cmake -S . -B build \
       -DAVIF_BUILD_APPS=ON \
       -DAVIF_BUILD_EXAMPLES=OFF \
@@ -34,7 +34,6 @@ pushd third_party
       -DAVIF_CODEC_DAV1D=LOCAL \
       -DAVIF_LIBYUV=LOCAL \
       -DAVIF_LIBSHARPYUV=LOCAL \
-      -DAVIF_ENABLE_EXPERIMENTAL_YCGCO_R=ON \
       -DAVIF_ENABLE_EXPERIMENTAL_MINI=ON \
       -DCMAKE_BUILD_TYPE=Release \
       -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ \
@@ -46,7 +45,7 @@ pushd third_party
   # See https://gitlab.com/AOMediaCodec/avm/-/issues/150.
   git clone https://github.com/AOMediaCodec/libavif.git libavif_avm
   pushd libavif_avm
-    git checkout a9ac378e84daec87dc7f6c438bf0215c6165de39
+    git checkout 3d0f0cfe988f19b455517a66a3eea83d4addf293 # almost v1.2.0
     cmake -S . -B build \
       -DAVIF_BUILD_APPS=ON \
       -DAVIF_BUILD_EXAMPLES=OFF \
@@ -54,23 +53,16 @@ pushd third_party
       -DAVIF_CODEC_AVM=LOCAL \
       -DAVIF_LIBYUV=LOCAL \
       -DAVIF_LIBSHARPYUV=LOCAL \
-      -DAVIF_ENABLE_EXPERIMENTAL_YCGCO_R=ON \
       -DAVIF_ENABLE_EXPERIMENTAL_MINI=ON \
       -DCMAKE_BUILD_TYPE=Release \
       -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ \
       -DBUILD_SHARED_LIBS=ON
-
-    # Disable the thread-unsafe ccso feature.
-    # See https://gitlab.com/AOMediaCodec/avm/-/issues/520.
-    sed -i'' -e 's|  1,\(.*\)// enable_ccso|  0,\1// enable_ccso|' build/_deps/libaom-src/av1/av1_cx_iface.c
-    cmake --build build/_deps/avm-build --parallel
-
     cmake --build build --parallel
   popd
 
   git clone https://chromium.googlesource.com/webm/libwebp
   pushd libwebp
-    git checkout a443170fc0ebdfc3abbf89ac81f35e7eb656a3da # v1.4.0
+    git checkout a4d7a715337ded4451fec90ff8ce79728e04126c # v1.5.0
     cmake -S . -B build \
       -DWEBP_BUILD_CWEBP=ON \
       -DWEBP_BUILD_DWEBP=ON \
@@ -85,7 +77,7 @@ pushd third_party
 
   git clone https://chromium.googlesource.com/codecs/libwebp2
   pushd libwebp2
-    git checkout 169f4159a465b7b4241c0d60ae7f37b15a9b2d65
+    git checkout c56285ac9b8d1039261096d69215c293f9f8405d
     cmake -S . -B build \
       -DCMAKE_PREFIX_PATH="../libwebp/src/;../libwebp/build/" \
       -DWP2_BUILD_TESTS=OFF \
@@ -96,14 +88,11 @@ pushd third_party
     cmake --build build --parallel
   popd
 
-  # DEVTOOLS=ON for Butteraugli and SSIMULACRA2 metrics binaries. See
-  # https://github.com/cloudinary/ssimulacra2/blob/d2be72505ddc5c92aeb30f4a7f3ab53db45b314b/build_ssimulacra_from_libjxl_repo
   git clone https://github.com/libjxl/libjxl.git
   pushd libjxl
-    # https://github.com/libjxl/libjxl/releases/tag/v0.11.0
-    git checkout 4df1e9eccdf86b8df4c0c7c08f529263906f9c4f
+    git checkout 794a5dcf0d54f9f0b20d288a12e87afb91d20dfc # v0.11.1
     ./deps.sh
-    # DEVTOOLS=ON for metric binaries. See
+    # DEVTOOLS=ON for Butteraugli and SSIMULACRA2 metric binaries. See
     # https://github.com/cloudinary/ssimulacra2/blob/d2be72505ddc5c92aeb30f4a7f3ab53db45b314b/build_ssimulacra_from_libjxl_repo
     cmake -S . -B build \
       -DBUILD_TESTING=OFF \
@@ -121,8 +110,7 @@ pushd third_party
 
   git clone https://github.com/kornelski/dssim.git
   pushd dssim
-    # https://github.com/kornelski/dssim/releases/tag/3.2.3
-    git checkout 14995bc19a6ac75abf6e171cdfb17f26ad980879
+    git checkout 14995bc19a6ac75abf6e171cdfb17f26ad980879 # 3.2.3
     cargo build --release
   popd
 
