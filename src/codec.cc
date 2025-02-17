@@ -38,6 +38,7 @@
 #include "src/distortion.h"
 #include "src/frame.h"
 #include "src/framework.h"
+#include "src/serialization.h"
 #include "src/task.h"
 #include "src/timer.h"
 
@@ -52,13 +53,51 @@ std::string CodecName(Codec codec) {
          : codec == Codec::kWebp2       ? "webp2"
          : codec == Codec::kJpegXl      ? "jpegxl"
          : codec == Codec::kAvif        ? "avif"
-         : codec == Codec::kSlimAvif    ? "slimavif"
-         : codec == Codec::kSlimAvifAvm ? "slimav2f"
+         : codec == Codec::kAvifExp     ? "avifexp"
+         : codec == Codec::kAvifAvm     ? "avifavm"
          : codec == Codec::kCombination ? "combination"
          : codec == Codec::kJpegturbo   ? "jpegturbo"
          : codec == Codec::kJpegli      ? "jpegli"
          : codec == Codec::kJpegsimple  ? "jpegsimple"
                                         : "jpegmoz";
+}
+
+std::string CodecPrettyName(Codec codec, bool lossless, Subsampling subsampling,
+                            int effort) {
+  const std::string subsampling_str =
+      (lossless && (subsampling == Subsampling::kDefault ||
+                    subsampling == Subsampling::k444))
+          ? ""
+          : (" " + SubsamplingToString(subsampling));
+  switch (codec) {
+    case Codec::kWebp:
+      return (lossless ? "WebP z" : "WebP m") + std::to_string(effort) +
+             subsampling_str;
+    case Codec::kWebp2:
+      return "WebP2 e" + std::to_string(effort) + subsampling_str;
+    case Codec::kJpegXl:
+      return "JPEG XL e" + std::to_string(effort);  // Only 4:4:4.
+    case Codec::kAvif:
+      return "AVIF s" + std::to_string(effort) + subsampling_str;
+    case Codec::kAvifExp:
+      return "AVIFmini" + std::string(lossless ? "YCgCo" : "") +
+             (" s" + std::to_string(effort)) + subsampling_str;
+    case Codec::kAvifAvm:
+      // YCgCo-Re is also used with AVM but save column width by omitting it.
+      return "AVIFminiAVM s" + std::to_string(effort) + subsampling_str;
+    case Codec::kCombination:
+      return "combination e" + std::to_string(effort) + subsampling_str;
+    case Codec::kJpegturbo:
+      return "TurboJPEG" + subsampling_str;  // No effort setting.
+    case Codec::kJpegli:
+      return "Jpegli" + subsampling_str;  // No effort setting.
+    case Codec::kJpegsimple:
+      return "SimpleJPEG m" + std::to_string(effort) + subsampling_str;
+    case Codec::kJpegmoz:
+      return "MozJPEG" + subsampling_str;  // No effort setting.
+    default:
+      return "unknown" + subsampling_str;
+  }
 }
 
 std::string CodecVersion(Codec codec) {
@@ -70,10 +109,10 @@ std::string CodecVersion(Codec codec) {
     return JpegXLVersion();
   } else if (codec == Codec::kAvif) {
     return AvifVersion();
-  } else if (codec == Codec::kSlimAvif) {
-    return AvifVersion() + "_mini";
-  } else if (codec == Codec::kSlimAvifAvm) {
-    return AvifVersion() + "_mini_avm";
+  } else if (codec == Codec::kAvifExp) {
+    return AvifVersion() + "_exp";
+  } else if (codec == Codec::kAvifAvm) {
+    return AvifVersion() + "_avm";
   } else if (codec == Codec::kCombination) {
     return CodecCombinationVersion();
   } else if (codec == Codec::kJpegturbo) {
@@ -93,8 +132,8 @@ StatusOr<Codec> CodecFromName(const std::string& name, bool quiet) {
   if (name == "webp2") return Codec::kWebp2;
   if (name == "jpegxl") return Codec::kJpegXl;
   if (name == "avif") return Codec::kAvif;
-  if (name == "slimavif") return Codec::kSlimAvif;
-  if (name == "slimav2f") return Codec::kSlimAvifAvm;
+  if (name == "avifexp") return Codec::kAvifExp;
+  if (name == "avifavm") return Codec::kAvifAvm;
   if (name == "combination") return Codec::kCombination;
   if (name == "jpegturbo") return Codec::kJpegturbo;
   if (name == "jpegli") return Codec::kJpegli;
@@ -109,8 +148,8 @@ std::vector<int> CodecLossyQualities(Codec codec) {
   if (codec == Codec::kWebp2) return Webp2LossyQualities();
   if (codec == Codec::kJpegXl) return JpegXLLossyQualities();
   if (codec == Codec::kAvif) return AvifLossyQualities();
-  if (codec == Codec::kSlimAvif) return AvifLossyQualities();
-  if (codec == Codec::kSlimAvifAvm) return AvifLossyQualities();
+  if (codec == Codec::kAvifExp) return AvifLossyQualities();
+  if (codec == Codec::kAvifAvm) return AvifLossyQualities();
   if (codec == Codec::kCombination) return CodecCombinationLossyQualities();
   if (codec == Codec::kJpegturbo) return JpegturboLossyQualities();
   if (codec == Codec::kJpegli) return JpegliLossyQualities();
@@ -124,8 +163,8 @@ std::string CodecExtension(Codec codec) {
          : codec == Codec::kWebp2       ? "wp2"
          : codec == Codec::kJpegXl      ? "jxl"
          : codec == Codec::kAvif        ? "avif"
-         : codec == Codec::kSlimAvif    ? "avif"
-         : codec == Codec::kSlimAvifAvm ? "avif"
+         : codec == Codec::kAvifExp     ? "avif"
+         : codec == Codec::kAvifAvm     ? "avif"
          : codec == Codec::kCombination ? "comb"
          : codec == Codec::kJpegturbo   ? "turbo.jpg"
          : codec == Codec::kJpegli      ? "li.jpg"
@@ -152,8 +191,8 @@ WP2SampleFormat CodecToNeededFormat(Codec codec, bool has_transparency) {
   if (codec == Codec::kJpegXl) {
     return has_transparency ? WP2_RGBA_32 : WP2_RGB_24;
   }
-  if (codec == Codec::kAvif || codec == Codec::kSlimAvif ||
-      codec == Codec::kSlimAvifAvm) {
+  if (codec == Codec::kAvif || codec == Codec::kAvifExp ||
+      codec == Codec::kAvifAvm) {
     return has_transparency ? WP2_ARGB_32 : WP2_RGB_24;
   }
   if (codec == Codec::kJpegturbo || codec == Codec::kJpegli ||
@@ -162,6 +201,32 @@ WP2SampleFormat CodecToNeededFormat(Codec codec, bool has_transparency) {
   }
   // Other formats support this layout even for opaque images.
   return WP2_ARGB_32;
+}
+
+// Variants of AVIF.
+StatusOr<WP2::Data> EncodeAvifRegular(const TaskInput& input,
+                                      const Image& original_image, bool quiet) {
+  return EncodeAvif(input, original_image, /*minimized_image_box=*/false,
+                    /*ycgco_re=*/false, /*avm=*/false, quiet);
+}
+StatusOr<std::pair<Image, double>> DecodeAvifRegularOrExp(
+    const TaskInput& input, const WP2::Data& encoded_image, bool quiet) {
+  return DecodeAvif(input, encoded_image, /*avm=*/false, quiet);
+}
+StatusOr<WP2::Data> EncodeAvifExp(const TaskInput& input,
+                                  const Image& original_image, bool quiet) {
+  return EncodeAvif(input, original_image, /*minimized_image_box=*/true,
+                    /*ycgco_re=*/true, /*avm=*/false, quiet);
+}
+StatusOr<WP2::Data> EncodeAvifAvm(const TaskInput& input,
+                                  const Image& original_image, bool quiet) {
+  return EncodeAvif(input, original_image, /*minimized_image_box=*/true,
+                    /*ycgco_re=*/true, /*avm=*/true, quiet);
+}
+StatusOr<std::pair<Image, double>> DecodeAvifAvm(const TaskInput& input,
+                                                 const WP2::Data& encoded_image,
+                                                 bool quiet) {
+  return DecodeAvif(input, encoded_image, /*avm=*/true, quiet);
 }
 
 }  // namespace
@@ -202,12 +267,12 @@ StatusOr<TaskOutput> EncodeDecode(const TaskInput& input,
   }
 
   auto encode_func =
-      input.codec_settings.codec == Codec::kWebp          ? &EncodeWebp
-      : input.codec_settings.codec == Codec::kWebp2       ? &EncodeWebp2
-      : input.codec_settings.codec == Codec::kJpegXl      ? &EncodeJxl
-      : input.codec_settings.codec == Codec::kAvif        ? &EncodeAvif
-      : input.codec_settings.codec == Codec::kSlimAvif    ? &EncodeSlimAvif
-      : input.codec_settings.codec == Codec::kSlimAvifAvm ? &EncodeSlimAvifAvm
+      input.codec_settings.codec == Codec::kWebp      ? &EncodeWebp
+      : input.codec_settings.codec == Codec::kWebp2   ? &EncodeWebp2
+      : input.codec_settings.codec == Codec::kJpegXl  ? &EncodeJxl
+      : input.codec_settings.codec == Codec::kAvif    ? &EncodeAvifRegular
+      : input.codec_settings.codec == Codec::kAvifExp ? &EncodeAvifExp
+      : input.codec_settings.codec == Codec::kAvifAvm ? &EncodeAvifAvm
       : input.codec_settings.codec == Codec::kCombination
           ? &EncodeCodecCombination
       : input.codec_settings.codec == Codec::kJpegturbo  ? &EncodeJpegturbo
@@ -216,12 +281,12 @@ StatusOr<TaskOutput> EncodeDecode(const TaskInput& input,
       : input.codec_settings.codec == Codec::kJpegmoz    ? &EncodeJpegmoz
                                                          : nullptr;
   auto decode_func =
-      input.codec_settings.codec == Codec::kWebp          ? &DecodeWebp
-      : input.codec_settings.codec == Codec::kWebp2       ? &DecodeWebp2
-      : input.codec_settings.codec == Codec::kJpegXl      ? &DecodeJxl
-      : input.codec_settings.codec == Codec::kAvif        ? &DecodeAvif
-      : input.codec_settings.codec == Codec::kSlimAvif    ? &DecodeAvif
-      : input.codec_settings.codec == Codec::kSlimAvifAvm ? &DecodeAvifAvm
+      input.codec_settings.codec == Codec::kWebp      ? &DecodeWebp
+      : input.codec_settings.codec == Codec::kWebp2   ? &DecodeWebp2
+      : input.codec_settings.codec == Codec::kJpegXl  ? &DecodeJxl
+      : input.codec_settings.codec == Codec::kAvif    ? &DecodeAvifRegularOrExp
+      : input.codec_settings.codec == Codec::kAvifExp ? &DecodeAvifRegularOrExp
+      : input.codec_settings.codec == Codec::kAvifAvm ? &DecodeAvifAvm
       : input.codec_settings.codec == Codec::kCombination
           ? &DecodeCodecCombination
       : input.codec_settings.codec == Codec::kJpegturbo  ? &DecodeJpegturbo

@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.5.0
+
+- Update libavif, libwebp, libwebp2, and libjxl in deps.sh.
+- Simplify AVIF variants to:
+  - AVIF-AV1 regular ('meta', lossy YUV, lossless 8-bit RGB)
+  - AVIF-AV1 experimental ('mini', lossy YUV, lossless 10-bit YCgCo-Re)
+  - AVIF-AVM experimental ('mini', lossy YUV, lossless 10-bit YCgCo-Re)
+
 ## v0.4.3
 
 - For the codecs that do not support 16-bit samples natively, encode 16-bit

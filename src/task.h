@@ -30,6 +30,8 @@ struct TaskInput {
   std::string image_path;    // Original image file path.
   std::string encoded_path;  // Encoded image file path.
                              // Can be empty to avoid saving to disk.
+
+  std::string Serialize() const;
 };
 
 bool operator==(const TaskInput& a, const TaskInput& b);

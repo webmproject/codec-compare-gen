@@ -96,7 +96,7 @@ std::string AppendDirectorySeparator(const std::filesystem::path& path) {
 
 }  // namespace
 
-Status TasksToJson(const std::string& batch_name, CodecSettings settings,
+Status TasksToJson(const std::string& batch_pretty_name, CodecSettings settings,
                    const std::vector<TaskOutput>& tasks, bool quiet,
                    const std::string& results_file_path) {
   bool lossless = true;
@@ -135,11 +135,11 @@ Status TasksToJson(const std::string& batch_name, CodecSettings settings,
       /*prefix=*/encoded_common_parent.parent_path(), encoded_common_parent));
 
   const std::string build_cmd =
-      "git clone -b v0.4.3 --depth 1"
+      "git clone -b v0.5.0 --depth 1"
       " https://github.com/webmproject/codec-compare-gen.git &&"
       " cd codec-compare-gen && ./deps.sh &&"
       " cmake -S . -B build -DCMAKE_CXX_COMPILER=clang++ &&"
-      " cmake --build build && cd ..";
+      " cmake --build build --parallel && cd ..";
   std::string encoding_cmd = "codec-compare-gen/build/ccgen --codec " +
                              CodecName(settings.codec) + " " +
                              SubsamplingToString(settings.chroma_subsampling) +
@@ -150,7 +150,7 @@ Status TasksToJson(const std::string& batch_name, CodecSettings settings,
     encoding_cmd += " --lossy --quality ${quality}";
     encoding_cmd += " --metric_binary_folder codec-compare-gen/third_party/";
   }
-  encoding_cmd += " -- ${original_path}";
+  encoding_cmd += " -- ${original_name}";
 
   file << R"json({
   "constant_descriptions": [
@@ -173,7 +173,7 @@ Status TasksToJson(const std::string& batch_name, CodecSettings settings,
   ],
   "constant_values": [
     )json"
-       << Escape(batch_name) << R"json(,
+       << Escape(batch_pretty_name) << R"json(,
     )json"
        << Escape(CodecName(settings.codec)) << R"json(,
     )json"

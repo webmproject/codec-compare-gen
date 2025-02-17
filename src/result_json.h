@@ -24,7 +24,7 @@
 
 namespace codec_compare_gen {
 
-Status TasksToJson(const std::string& batch_name, CodecSettings settings,
+Status TasksToJson(const std::string& batch_pretty_name, CodecSettings settings,
                    const std::vector<TaskOutput>& tasks, bool quiet,
                    const std::string& results_file_path);
 

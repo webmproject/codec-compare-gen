@@ -116,6 +116,9 @@ class TaskWorker : public Worker<WorkerContext, TaskWorker> {
       if (context.num_failures > kMaxNumFailures) {
         // Drain remaining tasks to exit quickly.
         context.remaining_tasks.clear();
+      } else {
+        std::cerr << "Failure: " << current_task_input_.Serialize()
+                  << std::endl;
       }
     }
     serialized_current_task_output_.clear();
@@ -384,13 +387,23 @@ Status Compare(const std::vector<std::string>& image_paths,
     for (const std::vector<TaskOutput>& tasks : results) {
       const CodecSettings& codec_settings =
           tasks.front().task_input.codec_settings;
-      const std::string batch_name =
+      // Add a heading 0 when effort goes to 10 for better JSON file sorting.
+      const std::string effort_str = ((codec_settings.codec == Codec::kJpegXl &&
+                                       codec_settings.effort < 10)
+                                          ? "0"
+                                          : "") +
+                                     std::to_string(codec_settings.effort);
+      const std::string batch_file_name =
           CodecName(codec_settings.codec) + "_" +
           SubsamplingToString(codec_settings.chroma_subsampling) + "_" +
-          std::to_string(codec_settings.effort);
-      OK_OR_RETURN(TasksToJson(
-          batch_name, codec_settings, tasks, settings.quiet,
-          std::filesystem::path(results_folder_path) / (batch_name + ".json")));
+          effort_str;
+      const std::string batch_pretty_name = CodecPrettyName(
+          codec_settings.codec, codec_settings.quality == kQualityLossless,
+          codec_settings.chroma_subsampling, codec_settings.effort);
+      OK_OR_RETURN(TasksToJson(batch_pretty_name, codec_settings, tasks,
+                               settings.quiet,
+                               std::filesystem::path(results_folder_path) /
+                                   (batch_file_name + ".json")));
     }
   } else if (!single_result) {
     std::cout << "Warning: no JSON results folder path specified" << std::endl;
