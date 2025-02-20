@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.5.1
+
+- Fix libavif-AVM dependency build commands.
+
 ## v0.5.0
 
 - Update libavif, libwebp, libwebp2, and libjxl in deps.sh.
