@@ -46,6 +46,9 @@ pushd third_party
   git clone https://github.com/AOMediaCodec/libavif.git libavif_avm
   pushd libavif_avm
     git checkout 3d0f0cfe988f19b455517a66a3eea83d4addf293 # almost v1.2.0
+    # From https://github.com/AOMediaCodec/libavif/pull/2624.
+    sed -i'' -e 's|set(CONFIG_ML_PART_SPLIT 0 CACHE INTERNAL "")|include_directories(${CMAKE_CURRENT_BINARY_DIR}/flatbuffers/include/)|' "cmake/Modules/LocalAom.cmake"
+    sed -i'' -e 's|set_property(TARGET aom PROPERTY AVIF_LOCAL ON)|if(AVIF_CODEC_AVM)\ntarget_link_libraries(aom PRIVATE tensorflow-lite)\nendif()\nset_property(TARGET aom PROPERTY AVIF_LOCAL ON)|' "cmake/Modules/LocalAom.cmake"
     cmake -S . -B build \
       -DAVIF_BUILD_APPS=ON \
       -DAVIF_BUILD_EXAMPLES=OFF \

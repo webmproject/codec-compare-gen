@@ -25,7 +25,7 @@ Clone the codec-compare-gen repository. Then run from its root folder:
 ```sh
 ./deps.sh
 cmake -S . -B build -DCMAKE_CXX_COMPILER=clang++
-cmake --build build
+cmake --build build --parallel
 ```
 
 ### Generate JSON data
@@ -39,7 +39,6 @@ build/ccgen \
   --codec webp2 444 6 \
   --codec jpegxl 444 7 \
   --codec avif 444 6 \
-  --codec combination 444 5 \
   --lossless \
   --repeat 15 \
   --threads $(($(nproc) - 1)) \
@@ -59,14 +58,14 @@ build/ccgen \
 
 #### AVM build
 
-To be able to use `--codec slimav2f`, build codec-compare-gen this way:
+To be able to use `--codec avifavm`, build codec-compare-gen this way:
 
 ```sh
 ./deps.sh
 mv third_party/libavif third_party/libavif_aom
 mv third_party/libavif_avm third_party/libavif
 cmake -S . -B build -DCMAKE_CXX_COMPILER=clang++
-cmake --build build
+cmake --build build --parallel
 ```
 
 ## Tests
