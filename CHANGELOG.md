@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.5.2
+
+- Bump the version of libwebp2 in deps.sh.
+- Bump the version of libavif in deps.sh.
+
 ## v0.5.1
 
 - Fix libavif-AVM dependency build commands.
