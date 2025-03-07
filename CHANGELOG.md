@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.5.3
+
+- Fix jpegturbo, jpegli, and jpegmoz reproducing command lines in output JSON.
+- Add subsampling to the codec version field values in output JSON.
+
 ## v0.5.2
 
 - Bump the version of libwebp2 in deps.sh.

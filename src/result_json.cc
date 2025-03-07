@@ -140,16 +140,23 @@ Status TasksToJson(const std::string& batch_pretty_name, CodecSettings settings,
             " && mv third_party/libavif_avm third_party/libavif"
           : "";
   const std::string build_cmd =
-      "git clone -b v0.5.2 --depth 1"
+      "git clone -b v0.5.3 --depth 1"
       " https://github.com/webmproject/codec-compare-gen.git"
       " && cd codec-compare-gen && ./deps.sh" +
       deps_extra_step +
       " && cmake -S . -B build -DCMAKE_CXX_COMPILER=clang++"
       " && cmake --build build --parallel && cd ..";
-  std::string encoding_cmd = "codec-compare-gen/build/ccgen --codec " +
-                             CodecName(settings.codec) + " " +
-                             SubsamplingToString(settings.chroma_subsampling) +
-                             " " + std::to_string(settings.effort);
+  const std::string effort_str =
+      (settings.codec == Codec::kWebp || settings.codec == Codec::kWebp2 ||
+       settings.codec == Codec::kJpegXl || settings.codec == Codec::kAvif ||
+       settings.codec == Codec::kAvifExp || settings.codec == Codec::kAvifAvm ||
+       settings.codec == Codec::kCombination ||
+       settings.codec == Codec::kJpegsimple)
+          ? " " + std::to_string(settings.effort)
+          : "";  // kJpegturbo, kJpegli, and kJpegmoz have no effort setting.
+  std::string encoding_cmd =
+      "codec-compare-gen/build/ccgen --codec " + CodecName(settings.codec) +
+      " " + SubsamplingToString(settings.chroma_subsampling) + effort_str;
   if (settings.quality == kQualityLossless) {
     encoding_cmd += " --lossless";
   } else {
@@ -183,7 +190,9 @@ Status TasksToJson(const std::string& batch_pretty_name, CodecSettings settings,
     )json"
        << Escape(CodecName(settings.codec)) << R"json(,
     )json"
-       << Escape(CodecVersion(settings.codec)) << R"json(,
+       << Escape(CodecVersion(settings.codec) + "_" +
+                 SubsamplingToString(settings.chroma_subsampling))
+       << R"json(,
     )json"
        << Escape(DateTime()) << R"json(,
     )json"
