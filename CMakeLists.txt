@@ -137,6 +137,16 @@ add_executable(ccgen tools/ccgen_impl.cc tools/ccgen.cc)
 target_include_directories(ccgen PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(ccgen libccgen)
 
+add_executable(are_images_equivalent tools/are_images_equivalent.cc)
+target_include_directories(are_images_equivalent PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(are_images_equivalent libccgen)
+target_compile_definitions(are_images_equivalent PRIVATE HAS_WEBP2)
+
+add_executable(strip_metadata tools/strip_metadata.cc)
+target_include_directories(strip_metadata PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(strip_metadata libccgen)
+target_compile_definitions(strip_metadata PRIVATE HAS_WEBP2)
+
 # Tests
 
 option(BUILD_TESTING "Build the tests (requires GoogleTest)" OFF)
