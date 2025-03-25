@@ -46,6 +46,8 @@ uint32_t GetDurationMs(const Image& image);
 
 #if defined(HAS_WEBP2)
 
+inline constexpr WP2SampleFormat kARGB32 = WP2_ARGB_32;
+
 // Makes a deep copy of the given frame sequence and converts the pixels to the
 // given format.
 StatusOr<Image> CloneAs(const Image& from, WP2SampleFormat format, bool quiet);

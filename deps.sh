@@ -20,6 +20,8 @@
 
 set -e
 
+NPROC=$(nproc)
+
 mkdir third_party
 pushd third_party
 
@@ -38,7 +40,7 @@ pushd third_party
       -DCMAKE_BUILD_TYPE=Release \
       -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ \
       -DBUILD_SHARED_LIBS=ON
-    cmake --build build --parallel
+    cmake --build build -j${NPROC}
   popd
 
   # AVM symbols conflict with AOM so another build of libavif is required.
@@ -60,7 +62,7 @@ pushd third_party
       -DCMAKE_BUILD_TYPE=Release \
       -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ \
       -DBUILD_SHARED_LIBS=ON
-    cmake --build build --parallel
+    cmake --build build -j${NPROC}
   popd
 
   git clone https://chromium.googlesource.com/webm/libwebp
@@ -72,7 +74,7 @@ pushd third_party
       -DCMAKE_BUILD_TYPE=Release \
       -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ \
       -DBUILD_SHARED_LIBS=ON
-    cmake --build build --parallel
+    cmake --build build -j${NPROC}
 
     # This file creates errors when referenced by CMAKE_PREFIX_PATH below.
     mv build/WebPConfig.cmake build/WebPConfig.cmake.bck
@@ -88,7 +90,7 @@ pushd third_party
       -DCMAKE_BUILD_TYPE=Release \
       -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ \
       -DBUILD_SHARED_LIBS=ON
-    cmake --build build --parallel
+    cmake --build build -j${NPROC}
   popd
 
   git clone https://github.com/libjxl/libjxl.git
@@ -108,7 +110,7 @@ pushd third_party
       -DCMAKE_BUILD_TYPE=Release \
       -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ \
       -DBUILD_SHARED_LIBS=ON
-    cmake --build build --parallel
+    cmake --build build -j${NPROC}
   popd
 
   git clone https://github.com/kornelski/dssim.git
@@ -121,7 +123,7 @@ pushd third_party
   pushd libjpeg_turbo
     git checkout e287a35762cba20e2253efb3260007289a2f2186
     cmake -S . -B build
-    cmake --build build --parallel
+    cmake --build build -j${NPROC}
   popd
 
   git clone https://github.com/webmproject/sjpeg.git
@@ -130,14 +132,14 @@ pushd third_party
     cmake -S . -B build \
       -DSJPEG_BUILD_EXAMPLES=OFF \
       -DBUILD_SHARED_LIBS=ON
-    cmake --build build --parallel
+    cmake --build build -j${NPROC}
   popd
 
   git clone https://github.com/mozilla/mozjpeg.git
   pushd mozjpeg
     git checkout 6c9f0897afa1c2738d7222a0a9ab49e8b536a267
     cmake -S . -B build -DWITH_TURBOJPEG=OFF
-    cmake --build build --parallel
+    cmake --build build -j${NPROC}
   popd
 
 popd
