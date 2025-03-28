@@ -386,6 +386,38 @@ TEST(CodecTest, JpegsimpleMaxQualityMaxEffort) {
 
 //------------------------------------------------------------------------------
 
+TEST(CodecTest, J2kMinQuality444) {
+  TaskInput input;
+  input.codec_settings = {Codec::kJ2k, kDef, /*effort=*/0, /*quality=*/0};
+  input.codec_settings.chroma_subsampling = Subsampling::k444;
+  input.image_path = std::string(data_path) + "gradient32x32.png";
+  EXPECT_EQ(EncodeDecodeTest(input), Status::kOk);
+}
+
+TEST(CodecTest, J2kMinQuality444Alpha) {
+  TaskInput input;
+  input.codec_settings = {Codec::kJ2k, kDef, /*effort=*/0, /*quality=*/0};
+  input.codec_settings.chroma_subsampling = Subsampling::k444;
+  input.image_path = std::string(data_path) + "alpha1x17.png";
+  EXPECT_EQ(EncodeDecodeTest(input), Status::kOk);
+}
+
+TEST(CodecTest, J2kLossless) {
+  TaskInput input;
+  input.codec_settings = {Codec::kJ2k, kDef, /*effort=*/0, kQualityLossless};
+  input.image_path = std::string(data_path) + "gradient32x32.png";
+  EXPECT_EQ(EncodeDecodeTest(input), Status::kOk);
+}
+
+TEST(CodecTest, J2kLosslessAlpha) {
+  TaskInput input;
+  input.codec_settings = {Codec::kJ2k, kDef, /*effort=*/0, kQualityLossless};
+  input.image_path = std::string(data_path) + "alpha1x17.png";
+  EXPECT_EQ(EncodeDecodeTest(input), Status::kOk);
+}
+
+//------------------------------------------------------------------------------
+
 TEST(CodecTest, EncodeToDiskAndLoadFromDisk) {
   TaskInput input;
   input.codec_settings = {Codec::kWebp, kDef, /*effort=*/2, /*quality=*/95};

@@ -88,6 +88,8 @@ TEST_F(FrameworkTest, AllTraditionalCodecs) {
   settings.codec_settings.push_back(
       {Codec::kJpegli, Subsampling::k420, /*effort=*/0, /*quality=*/80});
   settings.codec_settings.push_back(
+      {Codec::kJ2k, Subsampling::k420, /*effort=*/0, /*quality=*/60});
+  settings.codec_settings.push_back(
       {Codec::kJpegsimple, Subsampling::k420, /*effort=*/8, /*quality=*/70});
   // copybara:insert_begin(no mozjpeg in google3)
   // settings.codec_settings.push_back(

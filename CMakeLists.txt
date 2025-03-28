@@ -16,7 +16,7 @@ cmake_minimum_required(VERSION 3.20)
 project(
   codec-compare-gen
   LANGUAGES CXX
-  VERSION 0.5.3)
+  VERSION 0.5.4)
 set(CMAKE_CXX_STANDARD 17)
 
 option(BUILD_SHARED_LIBS "Build the shared codec-compare-gen library" ON)
@@ -49,6 +49,8 @@ add_library(
   src/codec_jpegturbo.cc
   src/codec_jpegxl.h
   src/codec_jpegxl.cc
+  src/codec_openjpeg.h
+  src/codec_openjpeg.cc
   src/codec_webp.h
   src/codec_webp.cc
   src/codec_webp2.h
@@ -95,6 +97,17 @@ target_link_libraries(
 # libccgen also uses WebP encoding and decoding through libwebp2.
 target_compile_definitions(libccgen PRIVATE WP2_HAVE_WEBP)
 
+target_compile_definitions(libccgen PRIVATE HAS_OPENJPEG)
+# For openjpeg.h.
+target_include_directories(libccgen
+                           PRIVATE ${CCGEN_TD}/openjpeg/src/lib/openjp2)
+# For opj_config.h included by openjpeg.h.
+target_include_directories(libccgen
+                           PRIVATE ${CCGEN_TD}/openjpeg/build/src/lib/openjp2)
+target_link_directories(libccgen PRIVATE ${CCGEN_TD}/openjpeg/build/bin)
+target_link_libraries(
+  libccgen ${CCGEN_TD}/openjpeg/build/bin/${CCGEN_PREFIX}openjp2${CCGEN_SUFFIX})
+
 target_compile_definitions(libccgen PRIVATE HAS_JPEGXL)
 target_include_directories(libccgen
                            PRIVATE ${CCGEN_TD}/libjxl/build/lib/include)
@@ -138,7 +151,8 @@ target_include_directories(ccgen PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(ccgen libccgen)
 
 add_executable(are_images_equivalent tools/are_images_equivalent.cc)
-target_include_directories(are_images_equivalent PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_include_directories(are_images_equivalent
+                           PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(are_images_equivalent libccgen)
 target_compile_definitions(are_images_equivalent PRIVATE HAS_WEBP2)
 
