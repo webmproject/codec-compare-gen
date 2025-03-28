@@ -38,7 +38,8 @@ enum class Codec {
   kJpegturbo,
   kJpegli,
   kJpegsimple,
-  kJpegmoz
+  kJpegmoz,
+  kJp2
 };
 
 static constexpr int kQualityLossless = -1;  // Input setting.

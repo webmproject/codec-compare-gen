@@ -33,6 +33,7 @@
 #include "src/codec_jpegsimple.h"
 #include "src/codec_jpegturbo.h"
 #include "src/codec_jpegxl.h"
+#include "src/codec_openjpeg.h"
 #include "src/codec_webp.h"
 #include "src/codec_webp2.h"
 #include "src/distortion.h"
@@ -59,7 +60,8 @@ std::string CodecName(Codec codec) {
          : codec == Codec::kJpegturbo   ? "jpegturbo"
          : codec == Codec::kJpegli      ? "jpegli"
          : codec == Codec::kJpegsimple  ? "jpegsimple"
-                                        : "jpegmoz";
+         : codec == Codec::kJpegmoz     ? "jpegmoz"
+                                        : "jp2";
 }
 
 std::string CodecPrettyName(Codec codec, bool lossless, Subsampling subsampling,
@@ -95,6 +97,8 @@ std::string CodecPrettyName(Codec codec, bool lossless, Subsampling subsampling,
       return "SimpleJPEG m" + std::to_string(effort) + subsampling_str;
     case Codec::kJpegmoz:
       return "MozJPEG" + subsampling_str;  // No effort setting.
+    case Codec::kJp2:
+      return "JPEG2000" + subsampling_str;  // No effort setting.
     default:
       return "unknown" + subsampling_str;
   }
@@ -121,9 +125,11 @@ std::string CodecVersion(Codec codec) {
     return JpegliVersion();
   } else if (codec == Codec::kJpegsimple) {
     return JpegsimpleVersion();
-  } else {
-    assert(codec == Codec::kJpegmoz);
+  } else if (codec == Codec::kJpegmoz) {
     return JpegmozVersion();
+  } else {
+    assert(codec == Codec::kJp2);
+    return OpenjpegVersion();
   }
 }
 
@@ -138,9 +144,9 @@ StatusOr<Codec> CodecFromName(const std::string& name, bool quiet) {
   if (name == "jpegturbo") return Codec::kJpegturbo;
   if (name == "jpegli") return Codec::kJpegli;
   if (name == "jpegsimple") return Codec::kJpegsimple;
-  CHECK_OR_RETURN(name == "jpegmoz", quiet)
-      << "Unknown codec \"" << name << "\"";
-  return Codec::kJpegmoz;
+  if (name == "jpegmoz") return Codec::kJpegmoz;
+  CHECK_OR_RETURN(name == "jp2", quiet) << "Unknown codec \"" << name << "\"";
+  return Codec::kJp2;
 }
 
 std::vector<int> CodecLossyQualities(Codec codec) {
@@ -154,23 +160,29 @@ std::vector<int> CodecLossyQualities(Codec codec) {
   if (codec == Codec::kJpegturbo) return JpegturboLossyQualities();
   if (codec == Codec::kJpegli) return JpegliLossyQualities();
   if (codec == Codec::kJpegsimple) return JpegsimpleLossyQualities();
-  assert(codec == Codec::kJpegmoz);
-  return JpegmozLossyQualities();
+  if (codec == Codec::kJpegmoz) return JpegmozLossyQualities();
+  assert(codec == Codec::kJp2);
+  return OpenjpegLossyQualities();
 }
 
 std::string CodecExtension(Codec codec) {
-  return codec == Codec::kWebp          ? "webp"
-         : codec == Codec::kWebp2       ? "wp2"
-         : codec == Codec::kJpegXl      ? "jxl"
-         : codec == Codec::kAvif        ? "avif"
-         : codec == Codec::kAvifExp     ? "avif"
-         : codec == Codec::kAvifAvm     ? "avif"
+  return codec == Codec::kWebp     ? "webp"
+         : codec == Codec::kWebp2  ? "wp2"
+         : codec == Codec::kJpegXl ? "jxl"
+         : codec == Codec::kAvif   ? "avif"
+         // See "MIME type registration" Annex in
+         // "ISO/IEC 23008-12 3rd edition DAM 2 Low-overhead image file format"
+         // https://www.mpeg.org/wp-content/uploads/mpeg_meetings/149_Geneva/w24745.zip
+         : codec == Codec::kAvifExp     ? "hmg"
+         : codec == Codec::kAvifAvm     ? "avmf"
          : codec == Codec::kCombination ? "comb"
          : codec == Codec::kJpegturbo   ? "turbo.jpg"
          : codec == Codec::kJpegli      ? "li.jpg"
          : codec == Codec::kJpegsimple  ? "s.jpg"
          : codec == Codec::kJpegmoz     ? "moz.jpg"
-                                        : "unknown";
+         // Matches OPJ_CODEC_JP2 used in codec_openjpeg.cc.
+         : codec == Codec::kJp2 ? "jp2"
+                                : "unknown";
 }
 
 bool CodecIsSupportedByBrowsers(Codec codec) {
@@ -182,6 +194,22 @@ bool CodecIsSupportedByBrowsers(Codec codec) {
 #if defined(HAS_WEBP2)
 
 namespace {
+
+bool CodecSupportsBitDepth(Codec codec, uint32_t d) {
+  return codec == Codec::kWebp          ? d == 8
+         : codec == Codec::kWebp2       ? d == 8 || d == 10  // 10 useless here.
+         : codec == Codec::kJpegXl      ? d == 8 || d == 16
+         : codec == Codec::kAvif        ? d == 8 || d == 10 || d == 12
+         : codec == Codec::kAvifExp     ? d == 8 || d == 10 || d == 12
+         : codec == Codec::kAvifAvm     ? d == 8 || d == 10 || d == 12
+         : codec == Codec::kCombination ? d == 8
+         : codec == Codec::kJpegturbo   ? d == 8
+         : codec == Codec::kJpegli      ? d == 8
+         : codec == Codec::kJpegsimple  ? d == 8
+         : codec == Codec::kJpegmoz     ? d == 8
+         : codec == Codec::kJp2         ? d == 8 || d == 16
+                                        : false;
+}
 
 // Returns the 8-bit format layout required by the API of the given codec.
 WP2SampleFormat CodecToNeededFormat(Codec codec, bool has_transparency) {
@@ -198,6 +226,9 @@ WP2SampleFormat CodecToNeededFormat(Codec codec, bool has_transparency) {
   if (codec == Codec::kJpegturbo || codec == Codec::kJpegli ||
       codec == Codec::kJpegsimple || codec == Codec::kJpegmoz) {
     return WP2_RGB_24;
+  }
+  if (codec == Codec::kJp2) {
+    return has_transparency ? WP2_RGBA_32 : WP2_RGB_24;
   }
   // Other formats support this layout even for opaque images.
   return WP2_ARGB_32;
@@ -259,12 +290,16 @@ StatusOr<TaskOutput> EncodeDecode(const TaskInput& input,
                      CloneAs(original_image, needed_format, quiet));
   }
   if (WP2Formatbpc(original_image.front().pixels.format()) == 16 &&
-      input.codec_settings.codec != Codec::kJpegXl &&
+      !CodecSupportsBitDepth(input.codec_settings.codec, 16) &&
       input.codec_settings.quality == kQualityLossless) {
     // The codec does not support 16-bit images. Consider the frames to be 8-bit
     // and twice as large. The compression rate is likely terrible.
     ASSIGN_OR_RETURN(original_image, SpreadTo8bit(original_image, quiet));
   }
+  CHECK_OR_RETURN(CodecSupportsBitDepth(
+                      input.codec_settings.codec,
+                      WP2Formatbpc(original_image.front().pixels.format())),
+                  quiet);
 
   auto encode_func =
       input.codec_settings.codec == Codec::kWebp      ? &EncodeWebp
@@ -279,6 +314,7 @@ StatusOr<TaskOutput> EncodeDecode(const TaskInput& input,
       : input.codec_settings.codec == Codec::kJpegli     ? &EncodeJpegli
       : input.codec_settings.codec == Codec::kJpegsimple ? &EncodeJpegsimple
       : input.codec_settings.codec == Codec::kJpegmoz    ? &EncodeJpegmoz
+      : input.codec_settings.codec == Codec::kJp2        ? &EncodeOpenjpeg
                                                          : nullptr;
   auto decode_func =
       input.codec_settings.codec == Codec::kWebp      ? &DecodeWebp
@@ -293,6 +329,7 @@ StatusOr<TaskOutput> EncodeDecode(const TaskInput& input,
       : input.codec_settings.codec == Codec::kJpegli     ? &DecodeJpegli
       : input.codec_settings.codec == Codec::kJpegsimple ? &DecodeJpegsimple
       : input.codec_settings.codec == Codec::kJpegmoz    ? &DecodeJpegmoz
+      : input.codec_settings.codec == Codec::kJp2        ? &DecodeOpenjpeg
                                                          : nullptr;
 
   const Timer encoding_duration;
