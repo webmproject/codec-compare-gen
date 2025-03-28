@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.5.4
+
+- Add JPEG 2000 support through OpenJPEG (4:4:4 only).
+
 ## v0.5.3
 
 - Fix jpegturbo, jpegli, and jpegmoz reproducing command lines in output JSON.
