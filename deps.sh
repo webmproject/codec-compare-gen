@@ -113,6 +113,17 @@ pushd third_party
     cmake --build build -j${NPROC}
   popd
 
+  git clone -b v2.5.3 --depth 1 https://github.com/uclouvain/openjpeg.git
+  pushd openjpeg
+    git checkout 210a8a5690d0da66f02d49420d7176a21ef409dc # v2.5.3
+    cmake -S . -B build \
+      -DBUILD_TESTING=OFF \
+      -DCMAKE_BUILD_TYPE=Release \
+      -DCMAKE_C_COMPILER=clang \
+      -DBUILD_SHARED_LIBS=ON -DBUILD_STATIC_LIBS=OFF
+    cmake --build build -j${NPROC}
+  popd
+
   git clone https://github.com/kornelski/dssim.git
   pushd dssim
     git checkout 14995bc19a6ac75abf6e171cdfb17f26ad980879 # 3.2.3

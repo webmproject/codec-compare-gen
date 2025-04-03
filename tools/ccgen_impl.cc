@@ -81,6 +81,7 @@ int Main(int argc, const char* const argv[]) {
                 << " [--codec jpegli {444|420}]" << std::endl
                 << " [--codec jpegsimple {444|420} {effort}]" << std::endl
                 << " [--codec jpegmoz {444|420}]" << std::endl
+                << " [--codec jpeg2000 444]" << std::endl
                 << " --lossy|--lossless" << std::endl
                 << " [--quality {unique|min:max}]"
                 << " [--repeat {number of times to encode each image}]"
@@ -110,6 +111,8 @@ int Main(int argc, const char* const argv[]) {
         codec_settings.push_back({Codec::kJpegli, subsampling.value});
       } else if (codec == "jpegmoz" || codec == "mozjpeg") {
         codec_settings.push_back({Codec::kJpegmoz, subsampling.value});
+      } else if (codec == "jpeg2000" || codec == "jp2" || codec == "openjpeg") {
+        codec_settings.push_back({Codec::kJp2, subsampling.value});
       } else if (arg_index < argc) {
         const int effort = std::stoi(argv[++arg_index]);
         if (codec == "webp") {
@@ -210,8 +213,7 @@ int Main(int argc, const char* const argv[]) {
   }
 
   if (lossy) {
-    std::vector<std::vector<int>> qualities(static_cast<int>(Codec::kJpegmoz) +
-                                            1);
+    std::vector<std::vector<int>> qualities(static_cast<int>(Codec::kJp2) + 1);
     for (size_t i = 0; i < qualities.size(); ++i) {
       qualities[i] = CodecLossyQualities(static_cast<Codec>(i));
     }
