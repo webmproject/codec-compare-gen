@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.5.5
+
+- Add JPEG 2000 4:2:0 support through OpenJPEG.
+
 ## v0.5.4
 
 - Add JPEG 2000 support through OpenJPEG (4:4:4 only).

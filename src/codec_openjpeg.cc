@@ -79,19 +79,19 @@ StatusOr<WP2::Data> EncodeOpenjpeg(const TaskInput& input,
   // Match the default settings of opj_compress.
   parameters.tcp_numlayers = 1;
   parameters.cp_disto_alloc = 1;
-  parameters.tcp_mct = 1;  // RGB->YCC. TODO(yguyon): Try keeping it to 0.
+  parameters.tcp_mct = 1;    // RGB->YCC. TODO(yguyon): Try keeping it to 0.
+  uint32_t subsampling = 1;  // 1 for 4:4:4, 2 for 4:2:0.
   if (input.codec_settings.quality == kQualityLossless) {
     CHECK_OR_RETURN(
         input.codec_settings.chroma_subsampling == Subsampling::k444 ||
             input.codec_settings.chroma_subsampling == Subsampling::kDefault,
         quiet);
-    parameters.subsampling_dx = parameters.subsampling_dy = 1;
     parameters.tcp_rates[0] = 0.f;  // Equivalent to 1.f (lossless).
   } else {
-    if (input.codec_settings.chroma_subsampling == Subsampling::k444) {
-      parameters.subsampling_dx = parameters.subsampling_dy = 1;
-    } else {
-      parameters.subsampling_dx = parameters.subsampling_dy = 2;
+    if (input.codec_settings.chroma_subsampling == Subsampling::k420 ||
+        input.codec_settings.chroma_subsampling == Subsampling::kDefault) {
+      // Note that opj_cparameters::subsampling_dx/y are ignored by opj_encode.
+      subsampling = 2;
     }
     parameters.tcp_rates[0] = 101.f - input.codec_settings.quality;
     // parameters.irreversible = 1;  // TODO(yguyon): Try this.
@@ -116,8 +116,8 @@ StatusOr<WP2::Data> EncodeOpenjpeg(const TaskInput& input,
                              ? WP2Formatbpalpha(pixels.format())
                              : WP2Formatbpc(pixels.format());
     compparams[i].sgnd = 0;
-    compparams[i].dx = 1;
-    compparams[i].dy = 1;
+    compparams[i].dx = subsampling;
+    compparams[i].dy = subsampling;
     compparams[i].w = pixels.width();
     compparams[i].h = pixels.height();
   }
@@ -131,8 +131,10 @@ StatusOr<WP2::Data> EncodeOpenjpeg(const TaskInput& input,
 
   opj_image->x0 = 0;
   opj_image->y0 = 0;
-  opj_image->x1 = pixels.width();   // compparams[0].dx * compparams[0].w;
-  opj_image->y1 = pixels.height();  // compparams[0].dy * compparams[0].h;
+  // Taken from
+  // https://github.com/uclouvain/openjpeg/blob/e7453e398b110891778d8da19209792c69ca7169/src/bin/jp2/convert.c#L1890-L1893
+  opj_image->x1 = (compparams[0].w - 1) * compparams[0].dx + 1;
+  opj_image->y1 = (compparams[0].h - 1) * compparams[0].dy + 1;
   for (uint32_t i = 0; i < num_channels; ++i) {
     opj_image->comps[i].alpha = i == alpha_channel_index ? 1 : 0;
     for (uint32_t y = 0; y < pixels.height(); ++y) {
@@ -365,11 +367,10 @@ StatusOr<std::pair<Image, double>> DecodeOpenjpeg(
   Image image;
   image.reserve(1);
   image.emplace_back(WP2::ArgbBuffer(format), /*duration_ms=*/0);
-  CHECK_OR_RETURN(image.back().pixels.Resize(
-                      static_cast<uint32_t>(opj_image->x1 - opj_image->x0),
-                      static_cast<uint32_t>(opj_image->y1 - opj_image->y0)) ==
-                      WP2_STATUS_OK,
-                  quiet);
+  CHECK_OR_RETURN(
+      image.back().pixels.Resize(opj_image->comps[0].w,
+                                 opj_image->comps[0].h) == WP2_STATUS_OK,
+      quiet);
 
   WP2::ArgbBuffer& pixels = image.front().pixels;
   for (uint32_t c = 0; c < opj_image->numcomps; ++c) {
