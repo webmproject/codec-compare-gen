@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.5.6
+
+- Add lossless 4:4:4 FFV1 support for still images.
+
 ## v0.5.5
 
 - Add JPEG 2000 4:2:0 support through OpenJPEG.

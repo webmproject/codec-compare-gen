@@ -28,6 +28,7 @@
 #include "src/base.h"
 #include "src/codec_avif.h"
 #include "src/codec_combination.h"
+#include "src/codec_ffv1.h"
 #include "src/codec_jpegli.h"
 #include "src/codec_jpegmoz.h"
 #include "src/codec_jpegsimple.h"
@@ -50,18 +51,38 @@
 namespace codec_compare_gen {
 
 std::string CodecName(Codec codec) {
-  return codec == Codec::kWebp          ? "webp"
-         : codec == Codec::kWebp2       ? "webp2"
-         : codec == Codec::kJpegXl      ? "jpegxl"
-         : codec == Codec::kAvif        ? "avif"
-         : codec == Codec::kAvifExp     ? "avifexp"
-         : codec == Codec::kAvifAvm     ? "avifavm"
-         : codec == Codec::kCombination ? "combination"
-         : codec == Codec::kJpegturbo   ? "jpegturbo"
-         : codec == Codec::kJpegli      ? "jpegli"
-         : codec == Codec::kJpegsimple  ? "jpegsimple"
-         : codec == Codec::kJpegmoz     ? "jpegmoz"
-                                        : "jp2";
+  switch (codec) {
+    case Codec::kWebp:
+      return "webp";
+    case Codec::kWebp2:
+      return "webp2";
+    case Codec::kJpegXl:
+      return "jpegxl";
+    case Codec::kAvif:
+      return "avif";
+    case Codec::kAvifExp:
+      return "avifexp";
+    case Codec::kAvifAvm:
+      return "avifavm";
+    case Codec::kCombination:
+      return "combination";
+    case Codec::kJpegturbo:
+      return "jpegturbo";
+    case Codec::kJpegli:
+      return "jpegli";
+    case Codec::kJpegsimple:
+      return "jpegsimple";
+    case Codec::kJpegmoz:
+      return "jpegmoz";
+    case Codec::kJp2:
+      return "jp2";
+    case Codec::kFfv1:
+      return "ffv1";
+    case Codec::kNumCodecs:
+      break;
+  }
+  assert(false);
+  return "unknown";
 }
 
 std::string CodecPrettyName(Codec codec, bool lossless, Subsampling subsampling,
@@ -70,7 +91,7 @@ std::string CodecPrettyName(Codec codec, bool lossless, Subsampling subsampling,
       (lossless && (subsampling == Subsampling::kDefault ||
                     subsampling == Subsampling::k444))
           ? ""
-          : (" " + SubsamplingToString(subsampling));
+          : (subsampling == Subsampling::k444 ? " 4:4:4" : " 4:2:0");
   switch (codec) {
     case Codec::kWebp:
       return (lossless ? "WebP z" : "WebP m") + std::to_string(effort) +
@@ -99,38 +120,48 @@ std::string CodecPrettyName(Codec codec, bool lossless, Subsampling subsampling,
       return "MozJPEG" + subsampling_str;  // No effort setting.
     case Codec::kJp2:
       return "JPEG2000" + subsampling_str;  // No effort setting.
-    default:
-      return "unknown" + subsampling_str;
+    case Codec::kFfv1:
+      return "FFV1" + subsampling_str;  // No effort setting.
+    case Codec::kNumCodecs:
+      break;
   }
+  assert(false);
+  return "unknown" + subsampling_str;
 }
 
 std::string CodecVersion(Codec codec) {
-  if (codec == Codec::kWebp) {
-    return WebpVersion();
-  } else if (codec == Codec::kWebp2) {
-    return Webp2Version();
-  } else if (codec == Codec::kJpegXl) {
-    return JpegXLVersion();
-  } else if (codec == Codec::kAvif) {
-    return AvifVersion();
-  } else if (codec == Codec::kAvifExp) {
-    return AvifVersion() + "_exp";
-  } else if (codec == Codec::kAvifAvm) {
-    return AvifVersion() + "_avm";
-  } else if (codec == Codec::kCombination) {
-    return CodecCombinationVersion();
-  } else if (codec == Codec::kJpegturbo) {
-    return JpegturboVersion();
-  } else if (codec == Codec::kJpegli) {
-    return JpegliVersion();
-  } else if (codec == Codec::kJpegsimple) {
-    return JpegsimpleVersion();
-  } else if (codec == Codec::kJpegmoz) {
-    return JpegmozVersion();
-  } else {
-    assert(codec == Codec::kJp2);
-    return OpenjpegVersion();
+  switch (codec) {
+    case Codec::kWebp:
+      return WebpVersion();
+    case Codec::kWebp2:
+      return Webp2Version();
+    case Codec::kJpegXl:
+      return JpegXLVersion();
+    case Codec::kAvif:
+      return AvifVersion();
+    case Codec::kAvifExp:
+      return AvifVersion() + "_exp";
+    case Codec::kAvifAvm:
+      return AvifVersion() + "_avm";
+    case Codec::kCombination:
+      return CodecCombinationVersion();
+    case Codec::kJpegturbo:
+      return JpegturboVersion();
+    case Codec::kJpegli:
+      return JpegliVersion();
+    case Codec::kJpegsimple:
+      return JpegsimpleVersion();
+    case Codec::kJpegmoz:
+      return JpegmozVersion();
+    case Codec::kJp2:
+      return OpenjpegVersion();
+    case Codec::kFfv1:
+      return Ffv1Version();
+    case Codec::kNumCodecs:
+      break;
   }
+  assert(false);
+  return "unknown";
 }
 
 StatusOr<Codec> CodecFromName(const std::string& name, bool quiet) {
@@ -145,50 +176,104 @@ StatusOr<Codec> CodecFromName(const std::string& name, bool quiet) {
   if (name == "jpegli") return Codec::kJpegli;
   if (name == "jpegsimple") return Codec::kJpegsimple;
   if (name == "jpegmoz") return Codec::kJpegmoz;
-  CHECK_OR_RETURN(name == "jp2", quiet) << "Unknown codec \"" << name << "\"";
-  return Codec::kJp2;
+  if (name == "jp2") return Codec::kJp2;
+  CHECK_OR_RETURN(name == "ffv1", quiet) << "Unknown codec \"" << name << "\"";
+  return Codec::kFfv1;
 }
 
 std::vector<int> CodecLossyQualities(Codec codec) {
-  if (codec == Codec::kWebp) return WebpLossyQualities();
-  if (codec == Codec::kWebp2) return Webp2LossyQualities();
-  if (codec == Codec::kJpegXl) return JpegXLLossyQualities();
-  if (codec == Codec::kAvif) return AvifLossyQualities();
-  if (codec == Codec::kAvifExp) return AvifLossyQualities();
-  if (codec == Codec::kAvifAvm) return AvifLossyQualities();
-  if (codec == Codec::kCombination) return CodecCombinationLossyQualities();
-  if (codec == Codec::kJpegturbo) return JpegturboLossyQualities();
-  if (codec == Codec::kJpegli) return JpegliLossyQualities();
-  if (codec == Codec::kJpegsimple) return JpegsimpleLossyQualities();
-  if (codec == Codec::kJpegmoz) return JpegmozLossyQualities();
-  assert(codec == Codec::kJp2);
-  return OpenjpegLossyQualities();
+  switch (codec) {
+    case Codec::kWebp:
+      return WebpLossyQualities();
+    case Codec::kWebp2:
+      return Webp2LossyQualities();
+    case Codec::kJpegXl:
+      return JpegXLLossyQualities();
+    case Codec::kAvif:
+    case Codec::kAvifExp:
+    case Codec::kAvifAvm:
+      return AvifLossyQualities();
+    case Codec::kCombination:
+      return CodecCombinationLossyQualities();
+    case Codec::kJpegturbo:
+      return JpegturboLossyQualities();
+    case Codec::kJpegli:
+      return JpegliLossyQualities();
+    case Codec::kJpegsimple:
+      return JpegsimpleLossyQualities();
+    case Codec::kJpegmoz:
+      return JpegmozLossyQualities();
+    case Codec::kJp2:
+      return OpenjpegLossyQualities();
+    case Codec::kFfv1:
+      return {};
+    case Codec::kNumCodecs:
+      break;
+  }
+  assert(false);
+  return {};
 }
 
 std::string CodecExtension(Codec codec) {
-  return codec == Codec::kWebp     ? "webp"
-         : codec == Codec::kWebp2  ? "wp2"
-         : codec == Codec::kJpegXl ? "jxl"
-         : codec == Codec::kAvif   ? "avif"
-         // See "MIME type registration" Annex in
-         // "ISO/IEC 23008-12 3rd edition DAM 2 Low-overhead image file format"
-         // https://www.mpeg.org/wp-content/uploads/mpeg_meetings/149_Geneva/w24745.zip
-         : codec == Codec::kAvifExp     ? "hmg"
-         : codec == Codec::kAvifAvm     ? "avmf"
-         : codec == Codec::kCombination ? "comb"
-         : codec == Codec::kJpegturbo   ? "turbo.jpg"
-         : codec == Codec::kJpegli      ? "li.jpg"
-         : codec == Codec::kJpegsimple  ? "s.jpg"
-         : codec == Codec::kJpegmoz     ? "moz.jpg"
-         // Matches OPJ_CODEC_JP2 used in codec_openjpeg.cc.
-         : codec == Codec::kJp2 ? "jp2"
-                                : "unknown";
+  switch (codec) {
+    case Codec::kWebp:
+      return "webp";
+    case Codec::kWebp2:
+      return "wp2";
+    case Codec::kJpegXl:
+      return "jxl";
+    case Codec::kAvif:
+      return "avif";
+    case Codec::kAvifExp:
+      // See "MIME type registration" Annex in
+      // "ISO/IEC 23008-12 3rd edition DAM 2 Low-overhead image file format"
+      // https://www.mpeg.org/wp-content/uploads/mpeg_meetings/149_Geneva/w24745.zip
+      return "hmg";
+    case Codec::kAvifAvm:
+      return "avmf";
+    case Codec::kCombination:
+      return "comb";
+    case Codec::kJpegturbo:
+      return "turbo.jpg";
+    case Codec::kJpegli:
+      return "li.jpg";
+    case Codec::kJpegsimple:
+      return "s.jpg";
+    case Codec::kJpegmoz:
+      return "moz.jpg";
+    case Codec::kJp2:
+      return "jp2";  // Matches OPJ_CODEC_JP2 used in codec_openjpeg.cc.
+    case Codec::kFfv1:
+      return "ffv1";
+    case Codec::kNumCodecs:
+      break;
+  }
+  assert(false);
+  return "unknown";
 }
 
 bool CodecIsSupportedByBrowsers(Codec codec) {
-  return codec == Codec::kWebp || codec == Codec::kAvif ||
-         codec == Codec::kJpegturbo || codec == Codec::kJpegli ||
-         codec == Codec::kJpegsimple || codec == Codec::kJpegmoz;
+  switch (codec) {
+    case Codec::kWebp:
+    case Codec::kAvif:
+    case Codec::kJpegturbo:
+    case Codec::kJpegli:
+    case Codec::kJpegsimple:
+    case Codec::kJpegmoz:
+      return true;
+    case Codec::kWebp2:
+    case Codec::kJpegXl:
+    case Codec::kAvifExp:
+    case Codec::kAvifAvm:
+    case Codec::kCombination:
+    case Codec::kJp2:
+    case Codec::kFfv1:
+      return false;
+    case Codec::kNumCodecs:
+      break;
+  }
+  assert(false);
+  return false;
 }
 
 #if defined(HAS_WEBP2)
@@ -196,42 +281,64 @@ bool CodecIsSupportedByBrowsers(Codec codec) {
 namespace {
 
 bool CodecSupportsBitDepth(Codec codec, uint32_t d) {
-  return codec == Codec::kWebp          ? d == 8
-         : codec == Codec::kWebp2       ? d == 8 || d == 10  // 10 useless here.
-         : codec == Codec::kJpegXl      ? d == 8 || d == 16
-         : codec == Codec::kAvif        ? d == 8 || d == 10 || d == 12
-         : codec == Codec::kAvifExp     ? d == 8 || d == 10 || d == 12
-         : codec == Codec::kAvifAvm     ? d == 8 || d == 10 || d == 12
-         : codec == Codec::kCombination ? d == 8
-         : codec == Codec::kJpegturbo   ? d == 8
-         : codec == Codec::kJpegli      ? d == 8
-         : codec == Codec::kJpegsimple  ? d == 8
-         : codec == Codec::kJpegmoz     ? d == 8
-         : codec == Codec::kJp2         ? d == 8 || d == 16
-                                        : false;
+  switch (codec) {
+    case Codec::kWebp:
+      return d == 8;
+    case Codec::kWebp2:
+      return d == 8 || d == 10;  // 10 useless here.
+    case Codec::kJpegXl:
+      return d == 8 || d == 16;
+    case Codec::kAvif:
+    case Codec::kAvifExp:
+    case Codec::kAvifAvm:
+      return d == 8 || d == 10 || d == 12;  // 10/12 useless here.
+    case Codec::kCombination:
+      return d == 8;
+    case Codec::kJpegturbo:
+    case Codec::kJpegli:
+    case Codec::kJpegsimple:
+    case Codec::kJpegmoz:
+      return d == 8;
+    case Codec::kJp2:
+      return d == 8 || d == 16;
+    case Codec::kFfv1:
+      return d == 8;
+    case Codec::kNumCodecs:
+      break;
+  }
+  assert(false);
+  return false;
 }
 
 // Returns the 8-bit format layout required by the API of the given codec.
 WP2SampleFormat CodecToNeededFormat(Codec codec, bool has_transparency) {
-  if (codec == Codec::kWebp) {
-    return WebPPictureFormat();
+  switch (codec) {
+    case Codec::kWebp:
+      return WebPPictureFormat();
+    case Codec::kWebp2:
+      return WP2_ARGB_32;  // Even for opaque images.
+    case Codec::kJpegXl:
+      return has_transparency ? WP2_RGBA_32 : WP2_RGB_24;
+    case Codec::kAvif:
+    case Codec::kAvifExp:
+    case Codec::kAvifAvm:
+      return has_transparency ? WP2_ARGB_32 : WP2_RGB_24;
+    case Codec::kCombination:
+      return WP2_ARGB_32;  // Even for opaque images.
+    case Codec::kJpegturbo:
+    case Codec::kJpegli:
+    case Codec::kJpegsimple:
+    case Codec::kJpegmoz:
+      return WP2_RGB_24;
+    case Codec::kJp2:
+      return has_transparency ? WP2_RGBA_32 : WP2_RGB_24;
+    case Codec::kFfv1:
+      return WP2_BGRA_32;
+    case Codec::kNumCodecs:
+      break;
   }
-  if (codec == Codec::kJpegXl) {
-    return has_transparency ? WP2_RGBA_32 : WP2_RGB_24;
-  }
-  if (codec == Codec::kAvif || codec == Codec::kAvifExp ||
-      codec == Codec::kAvifAvm) {
-    return has_transparency ? WP2_ARGB_32 : WP2_RGB_24;
-  }
-  if (codec == Codec::kJpegturbo || codec == Codec::kJpegli ||
-      codec == Codec::kJpegsimple || codec == Codec::kJpegmoz) {
-    return WP2_RGB_24;
-  }
-  if (codec == Codec::kJp2) {
-    return has_transparency ? WP2_RGBA_32 : WP2_RGB_24;
-  }
-  // Other formats support this layout even for opaque images.
-  return WP2_ARGB_32;
+  assert(false);
+  return WP2_FORMAT_NUM;
 }
 
 // Variants of AVIF.
@@ -285,7 +392,7 @@ StatusOr<TaskOutput> EncodeDecode(const TaskInput& input,
     needed_format = WP2FormatAtbpc(
         needed_format, WP2Formatbpc(original_image.front().pixels.format()));
     CHECK_OR_RETURN(needed_format != WP2_FORMAT_NUM, quiet);
-    // Ditch alpha because the image is opaque.
+    // Ditch alpha if the image is opaque.
     ASSIGN_OR_RETURN(original_image,
                      CloneAs(original_image, needed_format, quiet));
   }
@@ -315,6 +422,7 @@ StatusOr<TaskOutput> EncodeDecode(const TaskInput& input,
       : input.codec_settings.codec == Codec::kJpegsimple ? &EncodeJpegsimple
       : input.codec_settings.codec == Codec::kJpegmoz    ? &EncodeJpegmoz
       : input.codec_settings.codec == Codec::kJp2        ? &EncodeOpenjpeg
+      : input.codec_settings.codec == Codec::kFfv1       ? &EncodeFfv1
                                                          : nullptr;
   auto decode_func =
       input.codec_settings.codec == Codec::kWebp      ? &DecodeWebp
@@ -330,6 +438,7 @@ StatusOr<TaskOutput> EncodeDecode(const TaskInput& input,
       : input.codec_settings.codec == Codec::kJpegsimple ? &DecodeJpegsimple
       : input.codec_settings.codec == Codec::kJpegmoz    ? &DecodeJpegmoz
       : input.codec_settings.codec == Codec::kJp2        ? &DecodeOpenjpeg
+      : input.codec_settings.codec == Codec::kFfv1       ? &DecodeFfv1
                                                          : nullptr;
 
   const Timer encoding_duration;

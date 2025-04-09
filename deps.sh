@@ -124,6 +124,14 @@ pushd third_party
     cmake --build build -j${NPROC}
   popd
 
+  git clone -b n7.1.1 --depth 1 https://github.com/FFmpeg/FFmpeg.git
+  pushd FFmpeg
+    git checkout db69d06eeeab4f46da15030a80d539efb4503ca8 # n7.1.1
+    ./configure --prefix=build --enable-shared --disable-static
+    make libavcodec -j${NPROC}
+    make install libavcodec -j${NPROC}
+  popd
+
   git clone https://github.com/kornelski/dssim.git
   pushd dssim
     git checkout 14995bc19a6ac75abf6e171cdfb17f26ad980879 # 3.2.3

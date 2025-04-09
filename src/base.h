@@ -39,7 +39,9 @@ enum class Codec {
   kJpegli,
   kJpegsimple,
   kJpegmoz,
-  kJp2
+  kJp2,
+  kFfv1,
+  kNumCodecs
 };
 
 static constexpr int kQualityLossless = -1;  // Input setting.

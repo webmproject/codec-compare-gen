@@ -16,7 +16,7 @@ cmake_minimum_required(VERSION 3.20)
 project(
   codec-compare-gen
   LANGUAGES CXX
-  VERSION 0.5.5)
+  VERSION 0.5.6)
 set(CMAKE_CXX_STANDARD 17)
 
 option(BUILD_SHARED_LIBS "Build the shared codec-compare-gen library" ON)
@@ -39,6 +39,8 @@ add_library(
   src/codec_avif.cc
   src/codec_combination.h
   src/codec_combination.cc
+  src/codec_ffv1.h
+  src/codec_ffv1.cc
   src/codec_jpegli.h
   src/codec_jpegli.cc
   src/codec_jpegmoz.h
@@ -107,6 +109,15 @@ target_include_directories(libccgen
 target_link_directories(libccgen PRIVATE ${CCGEN_TD}/openjpeg/build/bin)
 target_link_libraries(
   libccgen ${CCGEN_TD}/openjpeg/build/bin/${CCGEN_PREFIX}openjp2${CCGEN_SUFFIX})
+
+target_compile_definitions(libccgen PRIVATE HAS_FFV1)
+# For avcodec.h.
+target_include_directories(libccgen
+                           PRIVATE ${CCGEN_TD}/FFmpeg/build/include)
+target_link_directories(libccgen PRIVATE ${CCGEN_TD}/FFmpeg/build/lib)
+target_link_libraries(
+  libccgen ${CCGEN_TD}/FFmpeg/build/lib/${CCGEN_PREFIX}avcodec${CCGEN_SUFFIX}
+  ${CCGEN_TD}/FFmpeg/build/lib/${CCGEN_PREFIX}avutil${CCGEN_SUFFIX})
 
 target_compile_definitions(libccgen PRIVATE HAS_JPEGXL)
 target_include_directories(libccgen
