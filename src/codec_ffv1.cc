@@ -213,11 +213,12 @@ StatusOr<std::pair<Image, double>> DecodeFfv1(const TaskInput& input,
   ffv1.context->thread_count = 1;
 
   // From AVCodecContext::extradata documentation:
-  //   Must be allocated with the av_malloc() family of functions.
+  //   The allocated memory should be AV_INPUT_BUFFER_PADDING_SIZE bytes larger
+  //   than extradata_size. Must be allocated with av_malloc().
   //   - decoding: Set/allocated/freed by user.
   // This is freed by Ffv1 destructor and maybe replaced by libavcodec.
-  ffv1.context->extradata =
-      reinterpret_cast<uint8_t*>(av_malloc(header.extradata_size));
+  ffv1.context->extradata = reinterpret_cast<uint8_t*>(
+      av_malloc(header.extradata_size + AV_INPUT_BUFFER_PADDING_SIZE));
   CHECK_OR_RETURN(ffv1.context->extradata != nullptr, quiet);
   std::memcpy(ffv1.context->extradata, extradata, header.extradata_size);
   ffv1.context->extradata_size = static_cast<int>(header.extradata_size);
@@ -228,7 +229,8 @@ StatusOr<std::pair<Image, double>> DecodeFfv1(const TaskInput& input,
 
   // Undocumented but the same as for AVCodecContext::extradata is assumed for
   // AVPacket::data.
-  ffv1.packet->data = reinterpret_cast<uint8_t*>(av_malloc(encoded_frame_size));
+  ffv1.packet->data = reinterpret_cast<uint8_t*>(
+      av_malloc(encoded_frame_size + AV_INPUT_BUFFER_PADDING_SIZE));
   CHECK_OR_RETURN(ffv1.packet->data != nullptr, quiet);
   std::memcpy(ffv1.packet->data, encoded_frame, encoded_frame_size);
   ffv1.packet->size = static_cast<int>(encoded_frame_size);
