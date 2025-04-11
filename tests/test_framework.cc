@@ -109,14 +109,14 @@ TEST_F(FrameworkTest, AllTraditionalCodecs) {
   settings.codec_settings.push_back(
       {Codec::kJpegli, Subsampling::k420, /*effort=*/0, /*quality=*/80});
   settings.codec_settings.push_back(
-      {Codec::kJp2, Subsampling::k444, /*effort=*/0, /*quality=*/60});
-  settings.codec_settings.push_back(
       {Codec::kJpegsimple, Subsampling::k420, /*effort=*/8, /*quality=*/70});
   // copybara:insert_begin(no mozjpeg in google3)
   // settings.codec_settings.push_back(
   //     {Codec::kJpegmoz, Subsampling::k420, /*effort=*/0, /*quality=*/60});
   // }
   // copybara:insert_end
+  settings.codec_settings.push_back(
+      {Codec::kJp2, Subsampling::k420, /*effort=*/0, /*quality=*/60});
   EXPECT_EQ(
       CompareAndVerify({std::string(data_path) + "gradient32x32.png"}, settings,
                        TempPath("completed_tasks.csv"), TempPath()),
@@ -169,6 +169,17 @@ TEST_F(FrameworkTest, ExperimentalCodecs) {
   ComparisonSettings settings;
   settings.codec_settings.push_back(
       {Codec::kAvifExp, Subsampling::kDefault, /*speed*/ 9, /*quality=*/75});
+  EXPECT_EQ(
+      CompareAndVerify({std::string(data_path) + "gradient32x32.png",
+                        std::string(data_path) + "alpha1x17.png"},
+                       settings, TempPath("completed_tasks.csv"), TempPath()),
+      Status::kOk);
+}
+
+TEST_F(FrameworkTest, LosslessOnlyCodecs) {
+  ComparisonSettings settings;
+  settings.codec_settings.push_back(
+      {Codec::kFfv1, Subsampling::kDefault, /*effort=*/0, kQualityLossless});
   EXPECT_EQ(
       CompareAndVerify({std::string(data_path) + "gradient32x32.png",
                         std::string(data_path) + "alpha1x17.png"},

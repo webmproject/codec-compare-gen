@@ -418,6 +418,22 @@ TEST(CodecTest, Jp2LosslessAlpha) {
 
 //------------------------------------------------------------------------------
 
+TEST(CodecTest, Ffv1Lossless) {
+  TaskInput input;
+  input.codec_settings = {Codec::kFfv1, kDef, /*effort=*/0, kQualityLossless};
+  input.image_path = std::string(data_path) + "gradient32x32.png";
+  EXPECT_EQ(EncodeDecodeTest(input), Status::kOk);
+}
+
+TEST(CodecTest, Ffv1LosslessAlpha) {
+  TaskInput input;
+  input.codec_settings = {Codec::kFfv1, kDef, /*effort=*/0, kQualityLossless};
+  input.image_path = std::string(data_path) + "alpha1x17.png";
+  EXPECT_EQ(EncodeDecodeTest(input), Status::kOk);
+}
+
+//------------------------------------------------------------------------------
+
 TEST(CodecTest, EncodeToDiskAndLoadFromDisk) {
   TaskInput input;
   input.codec_settings = {Codec::kWebp, kDef, /*effort=*/2, /*quality=*/95};
