@@ -15,7 +15,7 @@
 #include "tools/ccgen_impl.h"
 
 #include <cstddef>
-#include <filesystem>  // NOLINT
+#include <filesystem>
 #include <iostream>
 #include <string>
 #include <unordered_set>

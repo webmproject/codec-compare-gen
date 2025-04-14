@@ -366,23 +366,19 @@ TEST(CodecTest, JpegsimpleMaxQualityMaxEffort) {
 
 //------------------------------------------------------------------------------
 
-// copybara:insert_begin(no mozjpeg in google3)
-// TEST(CodecTest, JpegmozMinQuality) {
-//   TaskInput input;
-//   input.codec_settings = {Codec::kJpegmoz, kDef, /*effort=*/0,
-//                           /*quality=*/0};
-//   input.image_path = std::string(data_path) + "gradient32x32.png";
-//   EXPECT_EQ(EncodeDecodeTest(input), Status::kOk);
-// }
+TEST(CodecTest, JpegmozMinQuality) {
+  TaskInput input;
+  input.codec_settings = {Codec::kJpegmoz, kDef, 0, /*quality=*/0};
+  input.image_path = std::string(data_path) + "gradient32x32.png";
+  EXPECT_EQ(EncodeDecodeTest(input), Status::kOk);
+}
 
-// TEST(CodecTest, JpegmozMaxQuality) {
-//   TaskInput input;
-//   input.codec_settings = {Codec::kJpegmoz, kDef, /*effort=*/0,
-//                           /*quality=*/100};
-//   input.image_path = std::string(data_path) + "gradient32x32.png";
-//   EXPECT_EQ(EncodeDecodeTest(input), Status::kOk);
-// }
-// copybara:insert_end
+TEST(CodecTest, JpegmozMaxQuality) {
+  TaskInput input;
+  input.codec_settings = {Codec::kJpegmoz, kDef, 0, /*quality=*/100};
+  input.image_path = std::string(data_path) + "gradient32x32.png";
+  EXPECT_EQ(EncodeDecodeTest(input), Status::kOk);
+}
 
 //------------------------------------------------------------------------------
 
@@ -420,14 +416,14 @@ TEST(CodecTest, Jp2LosslessAlpha) {
 
 TEST(CodecTest, Ffv1Lossless) {
   TaskInput input;
-  input.codec_settings = {Codec::kFfv1, kDef, /*effort=*/0, kQualityLossless};
+  input.codec_settings = {Codec::kFfv1, kDef, 0, kQualityLossless};
   input.image_path = std::string(data_path) + "gradient32x32.png";
   EXPECT_EQ(EncodeDecodeTest(input), Status::kOk);
 }
 
 TEST(CodecTest, Ffv1LosslessAlpha) {
   TaskInput input;
-  input.codec_settings = {Codec::kFfv1, kDef, /*effort=*/0, kQualityLossless};
+  input.codec_settings = {Codec::kFfv1, kDef, 0, kQualityLossless};
   input.image_path = std::string(data_path) + "alpha1x17.png";
   EXPECT_EQ(EncodeDecodeTest(input), Status::kOk);
 }
