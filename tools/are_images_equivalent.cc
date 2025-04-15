@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include <cstring>
-#include <filesystem>  // NOLINT
+#include <filesystem>
 #include <iostream>
 
 #include "src/base.h"
