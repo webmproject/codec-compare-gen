@@ -122,7 +122,10 @@ StatusOr<TaskOutput> UnserializeNoDistortion(
                    SubsamplingFromString(tokens[t++], quiet));
 
   task.task_input.codec_settings.effort = std::stoul(tokens[t++]);
-  CHECK_OR_RETURN(task.task_input.codec_settings.effort <= 10, quiet)
+  CHECK_OR_RETURN(task.task_input.codec_settings.effort <= 10 ||
+                      (task.task_input.codec_settings.codec == Codec::kJpegXl &&
+                       task.task_input.codec_settings.effort <= 11),
+                  quiet)
       << "Unknown effort in \"" << serialized_task << "\"";
 
   task.task_input.codec_settings.quality = std::stoi(tokens[t++]);

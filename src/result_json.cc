@@ -140,7 +140,7 @@ Status TasksToJson(const std::string& batch_pretty_name, CodecSettings settings,
             " && mv third_party/libavif_avm third_party/libavif"
           : "";
   const std::string build_cmd =
-      "git clone -b v0.5.6 --depth 1"
+      "git clone -b v0.5.7 --depth 1"
       " https://github.com/webmproject/codec-compare-gen.git"
       " && cd codec-compare-gen && ./deps.sh" +
       deps_extra_step +

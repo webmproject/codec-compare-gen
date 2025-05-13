@@ -62,12 +62,15 @@ int Main(int argc, const char* const argv[]) {
 
   settings.random_order = true;
   settings.quiet = false;
+  const ComparisonSettings kDefSet = settings;  // Default settings.
 
   int arg_index = 1;
   for (; arg_index < argc; ++arg_index) {
     const std::string arg = argv[arg_index];
     if (arg == "-h" || arg == "--help") {
-      std::cout << "Usage: " << argv[0] << std::endl
+      std::cout << "Usage ([option] {value}): " << std::endl
+                << std::filesystem::path(argv[0]).filename().string()
+                << std::endl
                 << " [--codec webp {444|420} {effort}]" << std::endl
                 << " [--codec webp2 {444|420} {effort}]" << std::endl
                 << " [--codec jpegxl 444 {effort}]" << std::endl
@@ -84,13 +87,16 @@ int Main(int argc, const char* const argv[]) {
                 << " [--codec jpeg2000 444]" << std::endl
                 << " [--codec ffv1 444]" << std::endl
                 << " --lossy|--lossless" << std::endl
-                << " [--quality {unique|min:max}]"
+                << " [--quality {unique|min:max}]" << std::endl
                 << " [--repeat {number of times to encode each image}]"
-                << std::endl
+                << " - default: " << kDefSet.num_repetitions << std::endl
                 << " [--recompute_distortion]" << std::endl
                 << " [--threads {extra threads on top of main thread}]"
-                << std::endl
+                << " - default: " << kDefSet.num_extra_threads << std::endl
                 << " [--deterministic]" << std::endl
+                << " [--abort_above_fail_ratio {0..1}] - default: "
+                << (kDefSet.abort_above_fail_ratio * 100) << "%" << std::endl
+                << " [--skip_all_remaining]" << std::endl
                 << " [--quiet]" << std::endl
                 << " [--metric_binary_folder {path to third_party created by "
                    "deps.sh}]"
@@ -98,8 +104,7 @@ int Main(int argc, const char* const argv[]) {
                 << " [--encoded_folder {path}]" << std::endl
                 << " --progress_file {path}" << std::endl
                 << " --results_folder {path}" << std::endl
-                << " --" << std::endl
-                << " {image file path}..." << std::endl;
+                << " -- {image file path}..." << std::endl;
       return 0;
     } else if (arg == "--codec" && arg_index + 2 < argc) {
       const std::string codec = argv[++arg_index];
@@ -174,6 +179,10 @@ int Main(int argc, const char* const argv[]) {
       settings.num_extra_threads = std::stoul(argv[++arg_index]);
     } else if (arg == "--deterministic") {
       settings.random_order = false;
+    } else if (arg == "--abort_above_fail_ratio" && arg_index + 1 < argc) {
+      settings.abort_above_fail_ratio = std::stod(argv[++arg_index]);
+    } else if (arg == "--skip_all_remaining") {
+      settings.skip_all_remaining = true;
     } else if (arg == "--quiet") {
       settings.quiet = true;
     } else if (arg == "--metric_binary_folder" && arg_index + 1 < argc) {

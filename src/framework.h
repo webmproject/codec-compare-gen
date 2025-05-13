@@ -40,6 +40,8 @@ struct ComparisonSettings {
                                    // 1 and above means multi-threaded.
   bool random_order = false;  // If true, input paths are randomly permuted.
   bool discard_distortion_values = false;  // If true, recompute distortions.
+  double abort_above_fail_ratio = 0.1;  // Stop all once that % of tasks failed.
+  bool skip_all_remaining = false;  // Just generate already computed results.
   bool quiet = true;  // If true, avoids logging to stdout and stderr.
 };
 

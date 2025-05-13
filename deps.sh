@@ -27,7 +27,7 @@ pushd third_party
 
   git clone https://github.com/AOMediaCodec/libavif.git
   pushd libavif
-    git checkout a28899ac7df6b211dae7199cb723d8ce2cecff1b # v1.2.0
+    git checkout 1aadfad932c98c069a1204261b1856f81f3bc199 # v1.3.0
     cmake -S . -B build \
       -DAVIF_BUILD_APPS=ON \
       -DAVIF_BUILD_EXAMPLES=OFF \
@@ -47,7 +47,7 @@ pushd third_party
   # See https://gitlab.com/AOMediaCodec/avm/-/issues/150.
   git clone https://github.com/AOMediaCodec/libavif.git libavif_avm
   pushd libavif_avm
-    git checkout ccfc16016ed264be3223a4649f61cd5f02807fe3 # just after v1.2.0
+    git checkout 1aadfad932c98c069a1204261b1856f81f3bc199 # v1.3.0
     # From https://github.com/AOMediaCodec/libavif/pull/2624.
     sed -i'' -e 's|set(CONFIG_ML_PART_SPLIT 0 CACHE INTERNAL "")|include_directories(${CMAKE_CURRENT_BINARY_DIR}/flatbuffers/include/)|' "cmake/Modules/LocalAom.cmake"
     sed -i'' -e 's|set_property(TARGET aom PROPERTY AVIF_LOCAL ON)|if(AVIF_CODEC_AVM)\ntarget_link_libraries(aom PRIVATE tensorflow-lite)\nendif()\nset_property(TARGET aom PROPERTY AVIF_LOCAL ON)|' "cmake/Modules/LocalAom.cmake"
@@ -82,7 +82,7 @@ pushd third_party
 
   git clone https://chromium.googlesource.com/codecs/libwebp2
   pushd libwebp2
-    git checkout 664da0e1806085223e9c0b3deb920ca6fb504667
+    git checkout 3fea37400d962eeffef797d179b6e4b3c0f26c75
     cmake -S . -B build \
       -DCMAKE_PREFIX_PATH="../libwebp/src/;../libwebp/build/" \
       -DWP2_BUILD_TESTS=OFF \

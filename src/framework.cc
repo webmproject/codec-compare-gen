@@ -17,6 +17,7 @@
 #include <algorithm>
 #include <cassert>
 #include <chrono>
+#include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
@@ -59,6 +60,7 @@ struct WorkerContext {
   size_t num_tasks = 0;
   size_t num_failures = 0;
 
+  size_t max_num_failures = 0;
   bool quiet = true;
   size_t num_completed_tasks_since_start = 0;
   chrono::time_point start_time = chrono::now();
@@ -87,6 +89,7 @@ class TaskWorker : public Worker<WorkerContext, TaskWorker> {
               : EncodeMode::kEncode;
     }
     context.remaining_tasks.pop_back();
+    max_num_failures_ = context.max_num_failures;
     quiet_ = context.quiet;
     return true;
   }
@@ -113,7 +116,7 @@ class TaskWorker : public Worker<WorkerContext, TaskWorker> {
       }
       --context.num_tasks;
       ++context.num_failures;
-      if (context.num_failures > kMaxNumFailures) {
+      if (context.num_failures > max_num_failures_) {
         // Drain remaining tasks to exit quickly.
         context.remaining_tasks.clear();
       } else {
@@ -151,6 +154,7 @@ class TaskWorker : public Worker<WorkerContext, TaskWorker> {
   EncodeMode encode_mode_ = EncodeMode::kEncode;
   StatusOr<TaskOutput> current_task_output_ = Status::kUnknownError;
   std::string serialized_current_task_output_;
+  size_t max_num_failures_;
   bool quiet_;
 };
 
@@ -210,6 +214,8 @@ Status ComputeDistortionInCompletedTasks(
   context.quiet = settings.quiet;
   context.num_tasks = context.remaining_tasks.size();
   context.metric_binary_folder_path = settings.metric_binary_folder_path;
+  context.max_num_failures = static_cast<size_t>(
+      std::lround(context.num_tasks * settings.abort_above_fail_ratio));
 
   WorkerPool<WorkerContext, TaskWorker> pool(1 + settings.num_extra_threads);
   pool.Run(context);
@@ -352,6 +358,16 @@ Status Compare(const std::vector<std::string>& image_paths,
   context.quiet = settings.quiet;
   context.num_tasks =
       context.completed_tasks.size() + context.remaining_tasks.size();
+  context.max_num_failures = static_cast<size_t>(
+      std::lround(context.num_tasks * settings.abort_above_fail_ratio));
+
+  if (settings.skip_all_remaining) {
+    if (!settings.quiet) {
+      std::cout << "Skipping " << context.remaining_tasks.size() << " tasks"
+                << std::endl;
+    }
+    context.remaining_tasks.clear();
+  }
 
   context.completed_tasks_file_path = completed_tasks_file_path;
   if (!completed_tasks_file_path.empty()) {
@@ -361,7 +377,7 @@ Status Compare(const std::vector<std::string>& image_paths,
   }
   context.metric_binary_folder_path = settings.metric_binary_folder_path;
 
-  if (!settings.quiet) {
+  if (!settings.quiet && !settings.skip_all_remaining) {
     std::cout << "Starting " << context.remaining_tasks.size() << " tasks"
               << std::endl;
   }
@@ -373,7 +389,7 @@ Status Compare(const std::vector<std::string>& image_paths,
   if (!completed_tasks_file_path.empty()) {
     context.completed_tasks_file.close();
   }
-  if (context.num_failures > kMaxNumFailures ||
+  if (context.num_failures > context.max_num_failures ||
       context.num_completed_tasks_since_start == 0) {
     OK_OR_RETURN(context.status);
   }
