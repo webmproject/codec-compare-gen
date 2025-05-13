@@ -71,10 +71,6 @@ static_assert(sizeof(kDistortionMetricToStr) /
               kNumDistortionMetrics);
 static constexpr float kNoDistortion = 99.f;  // Measured dB (for PSNR).
 
-// Lenient threshold to avoid aborting the whole data generation just because of
-// a few faulty data points.
-static constexpr size_t kMaxNumFailures = 32;
-
 //------------------------------------------------------------------------------
 // Status management
 

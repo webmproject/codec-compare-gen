@@ -135,6 +135,9 @@ StatusOr<WP2::Data> EncodeJxl(const TaskInput& input,
       << JxlEncoderGetError(encoder.get()) << " when encoding "
       << input.image_path;
 
+  if (input.codec_settings.effort >= 11) {
+    JxlEncoderAllowExpertOptions(encoder.get());
+  }
   JxlEncoderFrameSettings* frame_settings =
       JxlEncoderFrameSettingsCreate(encoder.get(), nullptr);
   CHECK_OR_RETURN(frame_settings != nullptr, quiet)

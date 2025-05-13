@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.5.7
+
+- Bump the version of libavif and libwebp2 in deps.sh.
+- Support libjxl effort 11.
+
 ## v0.5.6
 
 - Add lossless 4:4:4 FFV1 support for still images.
@@ -73,6 +78,7 @@
 - Bump the version of libavif in deps.sh.
 - Use AVIF_ENABLE_EXPERIMENTAL_YCGCO_R=ON in deps.sh and use
   AVIF_MATRIX_COEFFICIENTS_YCGCO_RE in codec_avif for lossless encoding.
+- Add --abort_above_fail_ratio and --skip_all_remaining options.
 
 ## v0.3.2
 
