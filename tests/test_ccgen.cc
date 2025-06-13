@@ -71,9 +71,9 @@ void TestProgressFileLength(size_t expected_lines, Args... args) {
                                     "anim80x80.webp", "gradient32x32.png"};
   for (std::string& path : paths) path = data_path + path;
   EXPECT_EQ(TestMain(paths[0].c_str(), paths[1].c_str(), paths[2].c_str(),
-                     paths[3].c_str(), "--codec", "webp", "420", "4",
-                     "--metric_binary_folder", "no_metric_binary_for_testing",
-                     "--progress_file", progress_file_path.c_str(), args...),
+                     paths[3].c_str(), "--metric_binary_folder",
+                     "no_metric_binary_for_testing", "--progress_file",
+                     progress_file_path.c_str(), args...),
             0);
 
   std::ifstream file(progress_file_path);
@@ -84,11 +84,26 @@ void TestProgressFileLength(size_t expected_lines, Args... args) {
 
 TEST(CodecCompareGenTest, Qualities) {
   constexpr size_t num_img = 4;
-  TestProgressFileLength(/*expected_lines=*/num_img * 1, "--qualities", "10");
-  TestProgressFileLength(/*expected_lines=*/num_img * 2, "--qualities", "10",
-                         "--qualities", "52");
-  TestProgressFileLength(/*expected_lines=*/num_img * 10, "--qualities",
-                         "10:19");
+  TestProgressFileLength(num_img * 1, "--codec", "webp", "420", "4",
+                         "--qualities", "10");
+  TestProgressFileLength(num_img * 2, "--codec", "webp", "420", "4",
+                         "--qualities", "10", "--qualities", "52");
+  TestProgressFileLength(num_img * 10, "--codec", "webp", "420", "4",
+                         "--qualities", "10:19");
+}
+
+TEST(CodecCompareGenTest, Efforts) {
+  constexpr size_t num_img = 4;
+  TestProgressFileLength(num_img * 1, "--codec", "webp", "420", "4",
+                         "--qualities", "10");
+  TestProgressFileLength(num_img * 1, "--codec", "webp", "420", "4..4",
+                         "--qualities", "10");
+  TestProgressFileLength(num_img * 2, "--codec", "webp", "420", "4", "--codec",
+                         "webp", "420", "5", "--qualities", "10");
+  TestProgressFileLength(num_img * 4, "--codec", "webp", "420", "1..4",
+                         "--qualities", "10");
+  TestProgressFileLength(num_img * 4, "--codec", "webp", "420", "4..1",
+                         "--qualities", "10");
 }
 
 //------------------------------------------------------------------------------

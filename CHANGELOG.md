@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.5.8
+
+- Add ellipsis support to effort argument of --codec flag in ccgen binary tool.
+- Bump the version of libwebp2 in deps.sh.
+- Bump the version of dssim in deps.sh.
+- Bump the version of libjpeg-turbo in deps.sh.
+- Bump the version of sjpeg in deps.sh.
+
 ## v0.5.7
 
 - Bump the version of libavif and libwebp2 in deps.sh.

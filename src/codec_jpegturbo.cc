@@ -31,7 +31,7 @@
 
 #if defined(HAS_JPEGTURBO)
 #include "jconfigint.h"
-#include "turbojpeg.h"
+#include "src/turbojpeg.h"
 #endif
 
 namespace codec_compare_gen {
