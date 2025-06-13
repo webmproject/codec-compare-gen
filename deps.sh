@@ -82,7 +82,7 @@ pushd third_party
 
   git clone https://chromium.googlesource.com/codecs/libwebp2
   pushd libwebp2
-    git checkout 3fea37400d962eeffef797d179b6e4b3c0f26c75
+    git checkout 75878e84787870b62786e3de1f02da7ba0e40b5c
     cmake -S . -B build \
       -DCMAKE_PREFIX_PATH="../libwebp/src/;../libwebp/build/" \
       -DWP2_BUILD_TESTS=OFF \
@@ -134,20 +134,20 @@ pushd third_party
 
   git clone https://github.com/kornelski/dssim.git
   pushd dssim
-    git checkout 14995bc19a6ac75abf6e171cdfb17f26ad980879 # 3.2.3
+    git checkout c86745c423478993a12edf59ec76047ff52b3da4 # 3.4.0
     cargo build --release
   popd
 
   git clone https://github.com/libjpeg-turbo/libjpeg-turbo.git libjpeg_turbo
   pushd libjpeg_turbo
-    git checkout e287a35762cba20e2253efb3260007289a2f2186
+    git checkout 7723f50f3f66b9da74376e6d8badb6162464212c # 3.1.1
     cmake -S . -B build
     cmake --build build -j${NPROC}
   popd
 
   git clone https://github.com/webmproject/sjpeg.git
   pushd sjpeg
-    git checkout 4578abf18ed8b81290c6fe5c23eb7a58c8f38212
+    git checkout 46da5aec5fce05faabf1facf0066e36e6b1c4dff
     cmake -S . -B build \
       -DSJPEG_BUILD_EXAMPLES=OFF \
       -DBUILD_SHARED_LIBS=ON
@@ -156,7 +156,7 @@ pushd third_party
 
   git clone https://github.com/mozilla/mozjpeg.git
   pushd mozjpeg
-    git checkout 6c9f0897afa1c2738d7222a0a9ab49e8b536a267
+    git checkout 9b8d11f05e3ae4541ce5251f0e5c20c4cb8733b7
     cmake -S . -B build -DWITH_TURBOJPEG=OFF
     cmake --build build -j${NPROC}
   popd

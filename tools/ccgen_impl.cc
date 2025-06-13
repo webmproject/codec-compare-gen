@@ -122,31 +122,45 @@ int Main(int argc, const char* const argv[]) {
       } else if (codec == "ffv1") {
         codec_settings.push_back({Codec::kFfv1, subsampling.value});
       } else if (arg_index < argc) {
-        const int effort = std::stoi(argv[++arg_index]);
-        if (codec == "webp") {
-          codec_settings.push_back({Codec::kWebp, subsampling.value, effort});
-        } else if (codec == "wp2" || codec == "webp2") {
-          codec_settings.push_back({Codec::kWebp2, subsampling.value, effort});
-        } else if (codec == "jxl" || codec == "jpegxl") {
-          codec_settings.push_back({Codec::kJpegXl, subsampling.value, effort});
-        } else if (codec == "avif") {
-          codec_settings.push_back({Codec::kAvif, subsampling.value, effort});
-        } else if (codec == "avifexp") {
-          codec_settings.push_back(
-              {Codec::kAvifExp, subsampling.value, effort});
-        } else if (codec == "avifavm") {
-          codec_settings.push_back(
-              {Codec::kAvifAvm, subsampling.value, effort});
-        } else if (codec == "combination") {
-          codec_settings.push_back(
-              {Codec::kCombination, subsampling.value, effort});
-        } else if (codec == "jpegsimple" || codec == "simplejpeg" ||
-                   codec == "sjpeg") {
-          codec_settings.push_back(
-              {Codec::kJpegsimple, subsampling.value, effort});
+        const std::string effort_str = argv[++arg_index];
+        const auto range_delimiter = effort_str.find("..");
+        int low, high;
+        if (range_delimiter == std::string::npos) {
+          low = high = std::stoi(effort_str);
         } else {
-          std::cerr << "Error: Unknown codec \"" << codec << "\"" << std::endl;
-          return 1;
+          low = std::stoi(effort_str.substr(0, range_delimiter));
+          high = std::stoi(effort_str.substr(range_delimiter + 2));
+        }
+        for (int effort = low; low < high ? effort <= high : effort >= high;
+             effort += (low < high ? 1 : -1)) {
+          if (codec == "webp") {
+            codec_settings.push_back({Codec::kWebp, subsampling.value, effort});
+          } else if (codec == "wp2" || codec == "webp2") {
+            codec_settings.push_back(
+                {Codec::kWebp2, subsampling.value, effort});
+          } else if (codec == "jxl" || codec == "jpegxl") {
+            codec_settings.push_back(
+                {Codec::kJpegXl, subsampling.value, effort});
+          } else if (codec == "avif") {
+            codec_settings.push_back({Codec::kAvif, subsampling.value, effort});
+          } else if (codec == "avifexp") {
+            codec_settings.push_back(
+                {Codec::kAvifExp, subsampling.value, effort});
+          } else if (codec == "avifavm") {
+            codec_settings.push_back(
+                {Codec::kAvifAvm, subsampling.value, effort});
+          } else if (codec == "combination") {
+            codec_settings.push_back(
+                {Codec::kCombination, subsampling.value, effort});
+          } else if (codec == "jpegsimple" || codec == "simplejpeg" ||
+                     codec == "sjpeg") {
+            codec_settings.push_back(
+                {Codec::kJpegsimple, subsampling.value, effort});
+          } else {
+            std::cerr << "Error: Unknown codec \"" << codec << "\""
+                      << std::endl;
+            return 1;
+          }
         }
       } else {
         std::cerr << "Error: Missing {effort} for codec \"" << codec << "\""

@@ -367,6 +367,8 @@ Status Compare(const std::vector<std::string>& image_paths,
                 << std::endl;
     }
     context.remaining_tasks.clear();
+    CHECK_OR_RETURN(!context.completed_tasks.empty(), settings.quiet)
+        << "No task loaded, remove --skip_all_remaining";
   }
 
   context.completed_tasks_file_path = completed_tasks_file_path;
