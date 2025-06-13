@@ -156,7 +156,7 @@ pushd third_party
 
   git clone https://github.com/mozilla/mozjpeg.git
   pushd mozjpeg
-    git checkout 9b8d11f05e3ae4541ce5251f0e5c20c4cb8733b7
+    git checkout 6c9f0897afa1c2738d7222a0a9ab49e8b536a267 # 4.1.5
     cmake -S . -B build -DWITH_TURBOJPEG=OFF
     cmake --build build -j${NPROC}
   popd

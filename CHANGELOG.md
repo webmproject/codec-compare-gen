@@ -7,7 +7,6 @@
 - Bump the version of dssim in deps.sh.
 - Bump the version of libjpeg-turbo in deps.sh.
 - Bump the version of sjpeg in deps.sh.
-- Bump the version of mozjpeg in deps.sh.
 
 ## v0.5.7
 

@@ -35,7 +35,7 @@
 #endif
 
 #if defined(HAS_JPEGTURBO)
-#include "third_party/libjpeg_turbo/jpeglib.h"
+#include "third_party/libjpeg_turbo/src/jpeglib.h"
 #endif
 
 #if defined(HAS_JPEGXL)
