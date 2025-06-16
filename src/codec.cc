@@ -27,6 +27,7 @@
 
 #include "src/base.h"
 #include "src/codec_avif.h"
+#include "src/codec_basis.h"
 #include "src/codec_combination.h"
 #include "src/codec_ffv1.h"
 #include "src/codec_jpegli.h"
@@ -78,6 +79,8 @@ std::string CodecName(Codec codec) {
       return "jp2";
     case Codec::kFfv1:
       return "ffv1";
+    case Codec::kBasis:
+      return "basis";
     case Codec::kNumCodecs:
       break;
   }
@@ -122,6 +125,8 @@ std::string CodecPrettyName(Codec codec, bool lossless, Subsampling subsampling,
       return "JPEG2000" + subsampling_str;  // No effort setting.
     case Codec::kFfv1:
       return "FFV1" + subsampling_str;  // No effort setting.
+    case Codec::kBasis:
+      return "FFV1";  // No effort setting, only 4:4:4.
     case Codec::kNumCodecs:
       break;
   }
@@ -157,6 +162,8 @@ std::string CodecVersion(Codec codec) {
       return OpenjpegVersion();
     case Codec::kFfv1:
       return Ffv1Version();
+    case Codec::kBasis:
+      return BasisVersion();
     case Codec::kNumCodecs:
       break;
   }
@@ -177,8 +184,9 @@ StatusOr<Codec> CodecFromName(const std::string& name, bool quiet) {
   if (name == "jpegsimple") return Codec::kJpegsimple;
   if (name == "jpegmoz") return Codec::kJpegmoz;
   if (name == "jp2") return Codec::kJp2;
-  CHECK_OR_RETURN(name == "ffv1", quiet) << "Unknown codec \"" << name << "\"";
-  return Codec::kFfv1;
+  if (name == "ffv1") return Codec::kFfv1;
+  CHECK_OR_RETURN(name == "basis", quiet) << "Unknown codec \"" << name << "\"";
+  return Codec::kBasis;
 }
 
 std::vector<int> CodecLossyQualities(Codec codec) {
@@ -207,6 +215,8 @@ std::vector<int> CodecLossyQualities(Codec codec) {
       return OpenjpegLossyQualities();
     case Codec::kFfv1:
       return {};
+    case Codec::kBasis:
+      return BasisLossyQualities();
     case Codec::kNumCodecs:
       break;
   }
@@ -245,6 +255,8 @@ std::string CodecExtension(Codec codec) {
       return "jp2";  // Matches OPJ_CODEC_JP2 used in codec_openjpeg.cc.
     case Codec::kFfv1:
       return "ffv1";
+    case Codec::kBasis:
+      return "basis";
     case Codec::kNumCodecs:
       break;
   }
@@ -268,6 +280,7 @@ bool CodecIsSupportedByBrowsers(Codec codec) {
     case Codec::kCombination:
     case Codec::kJp2:
     case Codec::kFfv1:
+    case Codec::kBasis:
       return false;
     case Codec::kNumCodecs:
       break;
@@ -303,6 +316,8 @@ bool CodecSupportsBitDepth(Codec codec, uint32_t d) {
       return d == 8 || d == 16;
     case Codec::kFfv1:
       return d == 8;
+    case Codec::kBasis:
+      return d == 8;
     case Codec::kNumCodecs:
       break;
   }
@@ -334,6 +349,8 @@ WP2SampleFormat CodecToNeededFormat(Codec codec, bool has_transparency) {
       return has_transparency ? WP2_RGBA_32 : WP2_RGB_24;
     case Codec::kFfv1:
       return WP2_BGRA_32;
+    case Codec::kBasis:
+      return has_transparency ? WP2_RGBA_32 : WP2_RGB_24;
     case Codec::kNumCodecs:
       break;
   }
@@ -423,6 +440,7 @@ StatusOr<TaskOutput> EncodeDecode(const TaskInput& input,
       : input.codec_settings.codec == Codec::kJpegmoz    ? &EncodeJpegmoz
       : input.codec_settings.codec == Codec::kJp2        ? &EncodeOpenjpeg
       : input.codec_settings.codec == Codec::kFfv1       ? &EncodeFfv1
+      : input.codec_settings.codec == Codec::kBasis      ? &EncodeBasis
                                                          : nullptr;
   auto decode_func =
       input.codec_settings.codec == Codec::kWebp      ? &DecodeWebp
@@ -439,6 +457,7 @@ StatusOr<TaskOutput> EncodeDecode(const TaskInput& input,
       : input.codec_settings.codec == Codec::kJpegmoz    ? &DecodeJpegmoz
       : input.codec_settings.codec == Codec::kJp2        ? &DecodeOpenjpeg
       : input.codec_settings.codec == Codec::kFfv1       ? &DecodeFfv1
+      : input.codec_settings.codec == Codec::kBasis      ? &DecodeBasis
                                                          : nullptr;
 
   const Timer encoding_duration;

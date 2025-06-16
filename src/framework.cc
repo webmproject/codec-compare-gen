@@ -35,6 +35,7 @@
 
 #include "src/base.h"
 #include "src/codec.h"
+#include "src/codec_basis.h"
 #include "src/result_json.h"
 #include "src/serialization.h"
 #include "src/task.h"
@@ -325,12 +326,20 @@ Status ShuffleRemainingTasks(const ComparisonSettings& settings,
   return Status::kOk;
 }
 
+bool UsesBasis(const ComparisonSettings& settings) {
+  for (const CodecSettings& codec_settings : settings.codec_settings) {
+    if (codec_settings.codec == Codec::kBasis) return true;
+  }
+  return false;
+}
+
 }  // namespace
 
 Status Compare(const std::vector<std::string>& image_paths,
                const ComparisonSettings& settings,
                const std::string& completed_tasks_file_path,
                const std::string& results_folder_path) {
+  BasisContext basis_context(/*enabled=*/UsesBasis(settings));
   WorkerContext context;
   ASSIGN_OR_RETURN(context.remaining_tasks, PlanTasks(image_paths, settings));
   ASSIGN_OR_RETURN(context.completed_tasks,

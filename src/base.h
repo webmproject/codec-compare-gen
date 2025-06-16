@@ -41,6 +41,7 @@ enum class Codec {
   kJpegmoz,
   kJp2,
   kFfv1,
+  kBasis,
   kNumCodecs
 };
 

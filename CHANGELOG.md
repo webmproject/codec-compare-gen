@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.5.9
+
+- Add support for Basis Universal format.
+
 ## v0.5.8
 
 - Add ellipsis support to effort argument of --codec flag in ccgen binary tool.

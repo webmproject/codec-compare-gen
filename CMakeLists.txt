@@ -16,7 +16,7 @@ cmake_minimum_required(VERSION 3.20)
 project(
   codec-compare-gen
   LANGUAGES CXX
-  VERSION 0.5.8)
+  VERSION 0.5.9)
 set(CMAKE_CXX_STANDARD 17)
 
 option(BUILD_SHARED_LIBS "Build the shared codec-compare-gen library" ON)
@@ -37,6 +37,8 @@ add_library(
   src/codec.cc
   src/codec_avif.h
   src/codec_avif.cc
+  src/codec_basis.h
+  src/codec_basis.cc
   src/codec_combination.h
   src/codec_combination.cc
   src/codec_ffv1.h
@@ -112,8 +114,7 @@ target_link_libraries(
 
 target_compile_definitions(libccgen PRIVATE HAS_FFV1)
 # For avcodec.h.
-target_include_directories(libccgen
-                           PRIVATE ${CCGEN_TD}/FFmpeg/build/include)
+target_include_directories(libccgen PRIVATE ${CCGEN_TD}/FFmpeg/build/include)
 target_link_directories(libccgen PRIVATE ${CCGEN_TD}/FFmpeg/build/lib)
 target_link_libraries(
   libccgen ${CCGEN_TD}/FFmpeg/build/lib/${CCGEN_PREFIX}avcodec${CCGEN_SUFFIX}
@@ -154,6 +155,15 @@ target_link_directories(libccgen PRIVATE ${CCGEN_TD}/libjpeg_turbo/build)
 target_link_libraries(
   libccgen
   ${CCGEN_TD}/libjpeg_turbo/build/${CCGEN_PREFIX}turbojpeg${CCGEN_SUFFIX})
+
+target_compile_definitions(libccgen PRIVATE HAS_BASIS)
+target_include_directories(libccgen PRIVATE ${CCGEN_TD}/basis_universal)
+target_link_directories(libccgen PRIVATE ${CCGEN_TD}/basis_universal/build)
+# The provided CMakeLists.txt only generates a static library.
+target_link_libraries(
+  libccgen
+  ${CCGEN_TD}/basis_universal/build/${CCGEN_PREFIX}basisu_encoder${CMAKE_STATIC_LIBRARY_SUFFIX}
+)
 
 # Tools
 

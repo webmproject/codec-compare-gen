@@ -124,12 +124,25 @@ pushd third_party
     cmake --build build -j${NPROC}
   popd
 
+  # FFV1 is part of FFmpeg.
   git clone -b n7.1.1 --depth 1 https://github.com/FFmpeg/FFmpeg.git
   pushd FFmpeg
     git checkout db69d06eeeab4f46da15030a80d539efb4503ca8 # n7.1.1
     ./configure --prefix=build --enable-shared --disable-static
     make libavcodec -j${NPROC}
     make install libavcodec -j${NPROC}
+  popd
+
+  git clone -b v1_60 --depth 1 https://github.com/BinomialLLC/basis_universal.git
+  pushd basis_universal
+    git checkout 323239a6a5ffa57d6570cfc403be99156e33a8b0 # v1.60
+    # Remove errors about ambiguous calls.
+    sed -i'' -e 's|safe_shift_left(uint32_t|safe_shift_left_u32(uint32_t|' "transcoder/basisu_containers.h"
+    cmake -S . -B build \
+      -DCMAKE_BUILD_TYPE=Release -DSSE=TRUE \
+      -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ \
+      -DBUILD_SHARED_LIBS=ON -DSTATIC=OFF
+    cmake --build build -j${NPROC}
   popd
 
   git clone https://github.com/kornelski/dssim.git
