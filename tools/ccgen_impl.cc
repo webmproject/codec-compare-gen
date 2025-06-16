@@ -86,6 +86,7 @@ int Main(int argc, const char* const argv[]) {
                 << " [--codec jpegmoz {444|420}]" << std::endl
                 << " [--codec jpeg2000 444]" << std::endl
                 << " [--codec ffv1 444]" << std::endl
+                << " [--codec basis 444]" << std::endl
                 << " --lossy|--lossless" << std::endl
                 << " [--quality {unique|min:max}]" << std::endl
                 << " [--repeat {number of times to encode each image}]"
@@ -121,6 +122,8 @@ int Main(int argc, const char* const argv[]) {
         codec_settings.push_back({Codec::kJp2, subsampling.value});
       } else if (codec == "ffv1") {
         codec_settings.push_back({Codec::kFfv1, subsampling.value});
+      } else if (codec == "basis") {
+        codec_settings.push_back({Codec::kBasis, subsampling.value});
       } else if (arg_index < argc) {
         const std::string effort_str = argv[++arg_index];
         const auto range_delimiter = effort_str.find("..");

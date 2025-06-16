@@ -173,6 +173,30 @@ TEST_F(FrameworkTest, ExperimentalCodecs) {
       Status::kOk);
 }
 
+TEST_F(FrameworkTest, BasisOpaque) {
+  ComparisonSettings settings;
+  settings.quiet = false;
+  settings.codec_settings.push_back(
+      {Codec::kBasis, Subsampling::kDefault, /*effort=*/0, /*quality=*/1});
+  settings.codec_settings.push_back(
+      {Codec::kBasis, Subsampling::kDefault, /*effort=*/0, /*quality=*/255});
+  EXPECT_EQ(
+      CompareAndVerify({std::string(data_path) + "gradient32x32.png"}, settings,
+                       TempPath("completed_tasks.csv"), TempPath()),
+      Status::kOk);
+}
+
+TEST_F(FrameworkTest, BasisTranslucent) {
+  ComparisonSettings settings;
+  settings.quiet = false;
+  settings.codec_settings.push_back(
+      {Codec::kBasis, Subsampling::kDefault, /*effort=*/0, /*quality=*/1});
+  EXPECT_EQ(
+      CompareAndVerify({std::string(data_path) + "alpha1x17.png"}, settings,
+                       TempPath("completed_tasks.csv"), TempPath()),
+      Status::kOk);
+}
+
 TEST_F(FrameworkTest, LosslessOnlyCodecs) {
   ComparisonSettings settings;
   settings.codec_settings.push_back(
@@ -273,7 +297,6 @@ TEST_F(FrameworkTest, InconvenientFilePaths) {
 
 TEST_F(FrameworkTest, DifferentImageSetOrCodecOrQuality) {
   ComparisonSettings settings;
-  settings.quiet = false;
   settings.codec_settings = {
       {Codec::kWebp, Subsampling::k444, /*effort=*/0, kQualityLossless},
       {Codec::kWebp2, Subsampling::k444, /*effort=*/0, kQualityLossless}};
