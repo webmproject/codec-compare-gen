@@ -18,6 +18,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <string>
+#include <unordered_set>
 #include <vector>
 
 #include "src/base.h"
@@ -52,9 +53,13 @@ struct TaskOutput {
 
   std::string Serialize() const;
   static StatusOr<TaskOutput> UnserializeNoDistortion(
-      const std::string& serialized_task, bool quiet);
-  static StatusOr<TaskOutput> Unserialize(const std::string& serialized_task,
-                                          bool quiet);
+      const std::string& serialized_task,
+      const std::vector<std::unordered_set<int>>& qualities_per_codec,
+      bool quiet);
+  static StatusOr<TaskOutput> Unserialize(
+      const std::string& serialized_task,
+      const std::vector<std::unordered_set<int>>& qualities_per_codec,
+      bool quiet);
 };
 
 StatusOr<std::vector<TaskInput>> PlanTasks(

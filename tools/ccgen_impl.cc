@@ -30,14 +30,24 @@ namespace codec_compare_gen {
 
 namespace {
 
-void GetAllFilesIn(const std::string& file_or_directory_path,
+void GetAllFilesIn(const std::filesystem::path& file_or_directory_path,
                    std::vector<std::string>& file_paths) {
   if (std::filesystem::is_directory(file_or_directory_path)) {
     for (const std::filesystem::directory_entry& entry :
          std::filesystem::directory_iterator(file_or_directory_path)) {
       GetAllFilesIn(entry.path(), file_paths);
     }
-  } else {
+  } else if (file_or_directory_path.has_extension() &&
+             (file_or_directory_path.extension() == ".png" ||
+              file_or_directory_path.extension() == ".PNG" ||
+              file_or_directory_path.extension() == ".jpg" ||
+              file_or_directory_path.extension() == ".JPG" ||
+              file_or_directory_path.extension() == ".jpeg" ||
+              file_or_directory_path.extension() == ".JPEG" ||
+              file_or_directory_path.extension() == ".gif" ||
+              file_or_directory_path.extension() == ".GIF" ||
+              file_or_directory_path.extension() == ".webp" ||
+              file_or_directory_path.extension() == ".WEBP")) {
     file_paths.push_back(file_or_directory_path);
   }
 }

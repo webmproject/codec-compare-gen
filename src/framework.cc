@@ -171,13 +171,21 @@ StatusOr<std::vector<TaskOutput>> LoadTasks(
       return Status::kUnknownError;
     }
 
+    std::vector<std::unordered_set<int>> qualities_per_codec(
+        static_cast<int>(Codec::kNumCodecs));
+    for (size_t i = 0; i < qualities_per_codec.size(); ++i) {
+      const std::vector<int> q = CodecLossyQualities(static_cast<Codec>(i));
+      qualities_per_codec[i] = std::unordered_set<int>(q.begin(), q.end());
+    }
+
     std::string line;
     while (std::getline(previous_completed_tasks_file, line)) {
-      ASSIGN_OR_RETURN(
-          const TaskOutput task_output,
-          settings.discard_distortion_values
-              ? TaskOutput::UnserializeNoDistortion(line, settings.quiet)
-              : TaskOutput::Unserialize(line, settings.quiet));
+      ASSIGN_OR_RETURN(const TaskOutput task_output,
+                       settings.discard_distortion_values
+                           ? TaskOutput::UnserializeNoDistortion(
+                                 line, qualities_per_codec, settings.quiet)
+                           : TaskOutput::Unserialize(line, qualities_per_codec,
+                                                     settings.quiet));
       completed_tasks.push_back(task_output);
     }
     previous_completed_tasks_file.close();
