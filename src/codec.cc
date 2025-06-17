@@ -126,7 +126,7 @@ std::string CodecPrettyName(Codec codec, bool lossless, Subsampling subsampling,
     case Codec::kFfv1:
       return "FFV1" + subsampling_str;  // No effort setting.
     case Codec::kBasis:
-      return "FFV1";  // No effort setting, only 4:4:4.
+      return "Basis";  // No effort setting, only 4:4:4.
     case Codec::kNumCodecs:
       break;
   }

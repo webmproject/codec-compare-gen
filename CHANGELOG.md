@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.5.10
+
+- Only read files with extensions .jpg, .jpeg, .png and .webp.
+- Fix CodecPrettyName() and task loading for Basis Universal format.
+
 ## v0.5.9
 
 - Add support for Basis Universal format.

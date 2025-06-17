@@ -16,7 +16,7 @@ cmake_minimum_required(VERSION 3.20)
 project(
   codec-compare-gen
   LANGUAGES CXX
-  VERSION 0.5.9)
+  VERSION 0.5.10)
 set(CMAKE_CXX_STANDARD 17)
 
 option(BUILD_SHARED_LIBS "Build the shared codec-compare-gen library" ON)

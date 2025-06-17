@@ -24,6 +24,7 @@
 #include <sstream>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 #include "src/base.h"
@@ -107,6 +108,7 @@ constexpr size_t kNumNonDistortionTokens = 14;
 
 StatusOr<TaskOutput> UnserializeNoDistortion(
     const std::string& serialized_task, const std::vector<std::string> tokens,
+    const std::vector<std::unordered_set<int>>& qualities_per_codec,
     bool quiet) {
   CHECK_OR_RETURN(tokens.size() >= kNumNonDistortionTokens, quiet)
       << "Expected " << kNumNonDistortionTokens << "+ tokens in \""
@@ -117,6 +119,10 @@ StatusOr<TaskOutput> UnserializeNoDistortion(
   ASSIGN_OR_RETURN(const std::string codec_name, Unescape(tokens[t++], quiet));
   ASSIGN_OR_RETURN(task.task_input.codec_settings.codec,
                    CodecFromName(codec_name, quiet));
+  const size_t codec_index =
+      static_cast<size_t>(task.task_input.codec_settings.codec);
+  CHECK_OR_RETURN(codec_index < qualities_per_codec.size(), quiet);
+  const std::unordered_set<int>& qualities = qualities_per_codec[codec_index];
 
   ASSIGN_OR_RETURN(task.task_input.codec_settings.chroma_subsampling,
                    SubsamplingFromString(tokens[t++], quiet));
@@ -130,8 +136,8 @@ StatusOr<TaskOutput> UnserializeNoDistortion(
 
   task.task_input.codec_settings.quality = std::stoi(tokens[t++]);
   CHECK_OR_RETURN(task.task_input.codec_settings.quality == kQualityLossless ||
-                      (task.task_input.codec_settings.quality >= 0 &&
-                       task.task_input.codec_settings.quality <= 100),
+                      qualities.find(task.task_input.codec_settings.quality) !=
+                          qualities.end(),
                   quiet)
       << "Unknown quality in \"" << serialized_task << "\"";
 
@@ -167,17 +173,21 @@ StatusOr<TaskOutput> UnserializeNoDistortion(
 }  // namespace
 
 StatusOr<TaskOutput> TaskOutput::UnserializeNoDistortion(
-    const std::string& serialized_task, bool quiet) {
+    const std::string& serialized_task,
+    const std::vector<std::unordered_set<int>>& qualities_per_codec,
+    bool quiet) {
   return ::codec_compare_gen::UnserializeNoDistortion(
-      serialized_task, Split(serialized_task, ','), quiet);
+      serialized_task, Split(serialized_task, ','), qualities_per_codec, quiet);
 }
 
-StatusOr<TaskOutput> TaskOutput::Unserialize(const std::string& serialized_task,
-                                             bool quiet) {
+StatusOr<TaskOutput> TaskOutput::Unserialize(
+    const std::string& serialized_task,
+    const std::vector<std::unordered_set<int>>& qualities_per_codec,
+    bool quiet) {
   const std::vector<std::string> tokens = Split(serialized_task, ',');
   ASSIGN_OR_RETURN(TaskOutput task,
-                   ::codec_compare_gen::UnserializeNoDistortion(serialized_task,
-                                                                tokens, quiet));
+                   ::codec_compare_gen::UnserializeNoDistortion(
+                       serialized_task, tokens, qualities_per_codec, quiet));
   if (tokens.size() == kNumNonDistortionTokens) {
     // Likely lossless.
     std::fill(task.distortions, task.distortions + kNumDistortionMetrics,
