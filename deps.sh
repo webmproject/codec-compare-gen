@@ -67,7 +67,7 @@ pushd third_party
 
   git clone https://chromium.googlesource.com/webm/libwebp
   pushd libwebp
-    git checkout a4d7a715337ded4451fec90ff8ce79728e04126c # v1.5.0
+    git checkout b7e29b9d75bd31422b00c2a446d49d7af06c328d # v1.6.0
     cmake -S . -B build \
       -DWEBP_BUILD_CWEBP=ON \
       -DWEBP_BUILD_DWEBP=ON \
@@ -82,7 +82,7 @@ pushd third_party
 
   git clone https://chromium.googlesource.com/codecs/libwebp2
   pushd libwebp2
-    git checkout 75878e84787870b62786e3de1f02da7ba0e40b5c
+    git checkout aa3651e5c43a2c22d75ba500e01a016c49fb0bdf
     cmake -S . -B build \
       -DCMAKE_PREFIX_PATH="../libwebp/src/;../libwebp/build/" \
       -DWP2_BUILD_TESTS=OFF \
@@ -127,6 +127,8 @@ pushd third_party
   # FFV1 is part of FFmpeg.
   git clone -b n7.1.1 --depth 1 https://github.com/FFmpeg/FFmpeg.git
   pushd FFmpeg
+    # n8.0 leads to "error while loading shared libraries: libswresample.so.6:
+    #                cannot open shared object file: No such file or directory"
     git checkout db69d06eeeab4f46da15030a80d539efb4503ca8 # n7.1.1
     ./configure --prefix=build --enable-shared --disable-static
     make libavcodec -j${NPROC}

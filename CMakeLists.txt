@@ -16,7 +16,7 @@ cmake_minimum_required(VERSION 3.20)
 project(
   codec-compare-gen
   LANGUAGES CXX
-  VERSION 0.5.10)
+  VERSION 0.5.11)
 set(CMAKE_CXX_STANDARD 17)
 
 option(BUILD_SHARED_LIBS "Build the shared codec-compare-gen library" ON)
@@ -74,6 +74,9 @@ add_library(
   src/timer.h
   src/worker.h)
 target_include_directories(libccgen PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+if(NOT WIN32)
+  target_compile_definitions(libccgen PRIVATE HAVE_UNISTD_H)
+endif()
 
 # Dependencies
 

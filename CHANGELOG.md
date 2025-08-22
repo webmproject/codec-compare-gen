@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.5.11
+
+- Make GetAverageDistortion() process-safe on Unix platforms.
+- Bump the version of libwebp in deps.sh.
+- Bump the version of libwebp2 in deps.sh.
+
 ## v0.5.10
 
 - Only read files with extensions .jpg, .jpeg, .png and .webp.

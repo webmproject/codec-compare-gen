@@ -14,6 +14,10 @@
 
 #include "src/distortion.h"
 
+#ifdef HAVE_UNISTD_H
+#include <unistd.h>
+#endif
+
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
@@ -156,17 +160,28 @@ StatusOr<std::string> GetBinaryDistortion(const std::string& reference_path,
                                           size_t thread_id, bool quiet) {
   CHECK_OR_RETURN(!reference_path.empty(), quiet);
   CHECK_OR_RETURN(!metric_binary_path.empty(), quiet);
+  const bool maybeAnimated = !EndsWith(reference_path, ".png");
+
+  std::string path_prefix;
+  if (image_path.empty() || maybeAnimated) {
+    path_prefix = std::filesystem::temp_directory_path() / "codec_compare_gen";
+#ifdef HAVE_UNISTD_H
+    // Process-safe file name.
+    path_prefix += "_process";
+    path_prefix += std::to_string(getpid());
+#endif
+    // Thread-safe file name.
+    path_prefix += "_thread";
+    path_prefix += std::to_string(thread_id);
+  }
 
   // Create a PNG file containing the original pixels of the current frame if
   // not PNG (could be a GIF with multiple frames for example).
-  const bool maybeAnimated = !EndsWith(reference_path, ".png");
   std::string temp_reference_path;
   std::string_view final_reference_path = reference_path;
   if (maybeAnimated) {
     // Thread-safe file name.
-    temp_reference_path =
-        std::filesystem::temp_directory_path() /
-        ("codec_compare_gen_reference" + std::to_string(thread_id) + ".png");
+    temp_reference_path = path_prefix + "_reference.png";
     OK_OR_RETURN(SaveImage(reference, temp_reference_path, quiet));
     final_reference_path = temp_reference_path;
   }
@@ -176,10 +191,7 @@ StatusOr<std::string> GetBinaryDistortion(const std::string& reference_path,
   std::string temp_image_path;
   std::string_view final_image_path = image_path;
   if (image_path.empty() || maybeAnimated) {
-    // Thread-safe file name.
-    temp_image_path =
-        std::filesystem::temp_directory_path() /
-        ("codec_compare_gen_image" + std::to_string(thread_id) + ".png");
+    temp_image_path = path_prefix + "_image.png";
     OK_OR_RETURN(SaveImage(image, temp_image_path, quiet));
     final_image_path = temp_image_path;
   }
