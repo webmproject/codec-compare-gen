@@ -65,6 +65,32 @@ pushd third_party
     cmake --build build -j${NPROC}
   popd
 
+  git clone https://github.com/strukturag/libheif.git
+  pushd libheif
+    git checkout 35dad50a9145332a7bfdf1ff6aef6801fb613d68 # v1.20.2
+    # Reuse the libaom and dav1d dependencies from libavif.
+    # pushd third-party
+    #   chmod +x *.cmd
+    #   ./aom.cmd
+    #   ./dav1d.cmd
+    # popd
+    cmake -S . -B build \
+      -DBUILD_TESTING=OFF \
+      -DENABLE_PLUGIN_LOADING=OFF \
+      -DWITH_AOM_DECODER=OFF \
+      -DWITH_AOM_ENCODER=ON \
+      -DAOM_INCLUDE_DIR=../libavif/build/_deps/libaom-src/ \
+      -DAOM_LIBRARY=../libavif/build/_deps/aom-build/libaom.a \
+      -DWITH_DAV1D=ON \
+      -DDAV1D_INCLUDE_DIR=../libavif/build/_deps/dav1d-src/include/ \
+      -DDAV1D_LIBRARY=../libavif/build/_deps/dav1d-build/src/libdav1d.a \
+      -DWITH_LIBSHARPYUV=OFF \
+      -DCMAKE_BUILD_TYPE=Release \
+      -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ \
+      -DBUILD_SHARED_LIBS=ON
+    cmake --build build -j${NPROC}
+  popd
+
   git clone https://chromium.googlesource.com/webm/libwebp
   pushd libwebp
     git checkout b7e29b9d75bd31422b00c2a446d49d7af06c328d # v1.6.0

@@ -16,7 +16,7 @@ cmake_minimum_required(VERSION 3.20)
 project(
   codec-compare-gen
   LANGUAGES CXX
-  VERSION 0.5.11)
+  VERSION 0.6.0)
 set(CMAKE_CXX_STANDARD 17)
 
 option(BUILD_SHARED_LIBS "Build the shared codec-compare-gen library" ON)
@@ -37,6 +37,8 @@ add_library(
   src/codec.cc
   src/codec_avif.h
   src/codec_avif.cc
+  src/codec_avif_libheif.h
+  src/codec_avif_libheif.cc
   src/codec_basis.h
   src/codec_basis.cc
   src/codec_combination.h
@@ -93,6 +95,13 @@ target_include_directories(libccgen PRIVATE ${CCGEN_TD}/libavif/include)
 target_link_directories(libccgen PRIVATE ${CCGEN_TD}/libavif/build)
 target_link_libraries(
   libccgen ${CCGEN_TD}/libavif/build/${CCGEN_PREFIX}avif${CCGEN_SUFFIX})
+
+target_compile_definitions(libccgen PRIVATE HAS_HEIF)
+target_include_directories(libccgen PRIVATE ${CCGEN_TD}/libheif/libheif/api)
+target_include_directories(libccgen PRIVATE ${CCGEN_TD}/libheif/build)
+target_link_directories(libccgen PRIVATE ${CCGEN_TD}/libheif/build/libheif)
+target_link_libraries(
+  libccgen ${CCGEN_TD}/libheif/build/libheif/${CCGEN_PREFIX}heif${CCGEN_SUFFIX})
 
 target_compile_definitions(libccgen PRIVATE HAS_WEBP)
 target_include_directories(libccgen PRIVATE ${CCGEN_TD}/libwebp/src)

@@ -27,6 +27,7 @@
 
 #include "src/base.h"
 #include "src/codec_avif.h"
+#include "src/codec_avif_libheif.h"
 #include "src/codec_basis.h"
 #include "src/codec_combination.h"
 #include "src/codec_ffv1.h"
@@ -64,6 +65,8 @@ std::string CodecName(Codec codec) {
       return "avifexp";
     case Codec::kAvifAvm:
       return "avifavm";
+    case Codec::kAvifLibheif:
+      return "aviflibheif";
     case Codec::kCombination:
       return "combination";
     case Codec::kJpegturbo:
@@ -110,6 +113,8 @@ std::string CodecPrettyName(Codec codec, bool lossless, Subsampling subsampling,
     case Codec::kAvifAvm:
       // YCgCo-Re is also used with AVM but save column width by omitting it.
       return "AVIFminiAVM s" + std::to_string(effort) + subsampling_str;
+    case Codec::kAvifLibheif:
+      return "AVIF libheif s" + std::to_string(effort) + subsampling_str;
     case Codec::kCombination:
       return "combination e" + std::to_string(effort) + subsampling_str;
     case Codec::kJpegturbo:
@@ -147,6 +152,8 @@ std::string CodecVersion(Codec codec) {
       return AvifVersion() + "_exp";
     case Codec::kAvifAvm:
       return AvifVersion() + "_avm";
+    case Codec::kAvifLibheif:
+      return AvifLibheifVersion();
     case Codec::kCombination:
       return CodecCombinationVersion();
     case Codec::kJpegturbo:
@@ -177,6 +184,7 @@ StatusOr<Codec> CodecFromName(const std::string& name, bool quiet) {
   if (name == "avif") return Codec::kAvif;
   if (name == "avifexp") return Codec::kAvifExp;
   if (name == "avifavm") return Codec::kAvifAvm;
+  if (name == "aviflibheif") return Codec::kAvifLibheif;
   if (name == "combination") return Codec::kCombination;
   if (name == "jpegturbo") return Codec::kJpegturbo;
   if (name == "jpegli") return Codec::kJpegli;
@@ -200,6 +208,8 @@ std::vector<int> CodecLossyQualities(Codec codec) {
     case Codec::kAvifExp:
     case Codec::kAvifAvm:
       return AvifLossyQualities();
+    case Codec::kAvifLibheif:
+      return AvifLibheifLossyQualities();
     case Codec::kCombination:
       return CodecCombinationLossyQualities();
     case Codec::kJpegturbo:
@@ -240,6 +250,8 @@ std::string CodecExtension(Codec codec) {
       return "hmg";
     case Codec::kAvifAvm:
       return "avmf";
+    case Codec::kAvifLibheif:
+      return "avif";
     case Codec::kCombination:
       return "comb";
     case Codec::kJpegturbo:
@@ -267,6 +279,7 @@ bool CodecIsSupportedByBrowsers(Codec codec) {
   switch (codec) {
     case Codec::kWebp:
     case Codec::kAvif:
+    case Codec::kAvifLibheif:
     case Codec::kJpegturbo:
     case Codec::kJpegli:
     case Codec::kJpegsimple:
@@ -303,6 +316,7 @@ bool CodecSupportsBitDepth(Codec codec, uint32_t d) {
     case Codec::kAvif:
     case Codec::kAvifExp:
     case Codec::kAvifAvm:
+    case Codec::kAvifLibheif:
       return d == 8 || d == 10 || d == 12;  // 10/12 useless here.
     case Codec::kCombination:
       return d == 8;
@@ -336,6 +350,7 @@ WP2SampleFormat CodecToNeededFormat(Codec codec, bool has_transparency) {
     case Codec::kAvif:
     case Codec::kAvifExp:
     case Codec::kAvifAvm:
+    case Codec::kAvifLibheif:
       return has_transparency ? WP2_ARGB_32 : WP2_RGB_24;
     case Codec::kCombination:
       return WP2_ARGB_32;  // Even for opaque images.
@@ -425,12 +440,13 @@ StatusOr<TaskOutput> EncodeDecode(const TaskInput& input,
                   quiet);
 
   auto encode_func =
-      input.codec_settings.codec == Codec::kWebp      ? &EncodeWebp
-      : input.codec_settings.codec == Codec::kWebp2   ? &EncodeWebp2
-      : input.codec_settings.codec == Codec::kJpegXl  ? &EncodeJxl
-      : input.codec_settings.codec == Codec::kAvif    ? &EncodeAvifRegular
-      : input.codec_settings.codec == Codec::kAvifExp ? &EncodeAvifExp
-      : input.codec_settings.codec == Codec::kAvifAvm ? &EncodeAvifAvm
+      input.codec_settings.codec == Codec::kWebp          ? &EncodeWebp
+      : input.codec_settings.codec == Codec::kWebp2       ? &EncodeWebp2
+      : input.codec_settings.codec == Codec::kJpegXl      ? &EncodeJxl
+      : input.codec_settings.codec == Codec::kAvif        ? &EncodeAvifRegular
+      : input.codec_settings.codec == Codec::kAvifExp     ? &EncodeAvifExp
+      : input.codec_settings.codec == Codec::kAvifAvm     ? &EncodeAvifAvm
+      : input.codec_settings.codec == Codec::kAvifLibheif ? &EncodeAvifLibheif
       : input.codec_settings.codec == Codec::kCombination
           ? &EncodeCodecCombination
       : input.codec_settings.codec == Codec::kJpegturbo  ? &EncodeJpegturbo
@@ -448,6 +464,7 @@ StatusOr<TaskOutput> EncodeDecode(const TaskInput& input,
       : input.codec_settings.codec == Codec::kAvif    ? &DecodeAvifRegularOrExp
       : input.codec_settings.codec == Codec::kAvifExp ? &DecodeAvifRegularOrExp
       : input.codec_settings.codec == Codec::kAvifAvm ? &DecodeAvifAvm
+      : input.codec_settings.codec == Codec::kAvifLibheif ? &DecodeAvifLibheif
       : input.codec_settings.codec == Codec::kCombination
           ? &DecodeCodecCombination
       : input.codec_settings.codec == Codec::kJpegturbo  ? &DecodeJpegturbo

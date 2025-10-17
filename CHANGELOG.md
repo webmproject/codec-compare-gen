@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.6.0
+
+- Add libheif-flavored AVIF option on top of the existing libavif-based one.
+
 ## v0.5.11
 
 - Make GetAverageDistortion() process-safe on Unix platforms.
