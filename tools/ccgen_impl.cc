@@ -89,6 +89,7 @@ int Main(int argc, const char* const argv[]) {
                 << "   (mini, YCgCo-Re, AV1)" << std::endl
                 << " [--codec avifavm {444|420} {effort}]" << std::endl
                 << "   (mini, YCgCo-Re, AVM)" << std::endl
+                << " [--codec aviflibheif {444|420} {effort}]" << std::endl
                 << " [--codec combination {444|420} {effort}]" << std::endl
                 << " [--codec jpegturbo {444|420}]" << std::endl
                 << " [--codec jpegli {444|420}]" << std::endl
@@ -162,6 +163,9 @@ int Main(int argc, const char* const argv[]) {
           } else if (codec == "avifavm") {
             codec_settings.push_back(
                 {Codec::kAvifAvm, subsampling.value, effort});
+          } else if (codec == "aviflibheif") {
+            codec_settings.push_back(
+                {Codec::kAvifLibheif, subsampling.value, effort});
           } else if (codec == "combination") {
             codec_settings.push_back(
                 {Codec::kCombination, subsampling.value, effort});

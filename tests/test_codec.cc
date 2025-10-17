@@ -256,6 +256,22 @@ TEST(CodecTest, AvifSlimTranslucent) {
 
 //------------------------------------------------------------------------------
 
+TEST(CodecTest, AvifLibheifMinQuality) {
+  TaskInput input;
+  input.codec_settings = {Codec::kAvifLibheif, kDef, 9, /*quality=*/0};
+  input.image_path = std::string(data_path) + "gradient32x32.png";
+  EXPECT_EQ(EncodeDecodeTest(input), Status::kOk);
+}
+
+TEST(CodecTest, AvifLibheifMaxQuality) {
+  TaskInput input;
+  input.codec_settings = {Codec::kAvifLibheif, kDef, 9, /*quality=*/100};
+  input.image_path = std::string(data_path) + "gradient32x32.png";
+  EXPECT_EQ(EncodeDecodeTest(input), Status::kOk);
+}
+
+//------------------------------------------------------------------------------
+
 TEST(CodecTest, CodecCombinationMinEffort) {
   TaskInput input;
   input.codec_settings = {Codec::kCombination, kDef, /*effort=*/0,
