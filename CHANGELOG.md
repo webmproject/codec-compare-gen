@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.6.1
+
+- Add tune=SSIM and tune=IQ AVIF options.
+
 ## v0.6.0
 
 - Add libheif-flavored AVIF option on top of the existing libavif-based one.

@@ -85,6 +85,8 @@ int Main(int argc, const char* const argv[]) {
                 << " [--codec webp2 {444|420} {effort}]" << std::endl
                 << " [--codec jpegxl 444 {effort}]" << std::endl
                 << " [--codec avif {444|420} {effort}]" << std::endl
+                << " [--codec avifssim {444|420} {effort}]" << std::endl
+                << " [--codec avifiq {444|420} {effort}]" << std::endl
                 << " [--codec avifexp {444|420} {effort}]" << std::endl
                 << "   (mini, YCgCo-Re, AV1)" << std::endl
                 << " [--codec avifavm {444|420} {effort}]" << std::endl
@@ -157,6 +159,12 @@ int Main(int argc, const char* const argv[]) {
                 {Codec::kJpegXl, subsampling.value, effort});
           } else if (codec == "avif") {
             codec_settings.push_back({Codec::kAvif, subsampling.value, effort});
+          } else if (codec == "avifssim") {
+            codec_settings.push_back(
+                {Codec::kAvifSsim, subsampling.value, effort});
+          } else if (codec == "avifiq") {
+            codec_settings.push_back(
+                {Codec::kAvifIq, subsampling.value, effort});
           } else if (codec == "avifexp") {
             codec_settings.push_back(
                 {Codec::kAvifExp, subsampling.value, effort});

@@ -37,7 +37,7 @@ std::vector<int> AvifLossyQualities();
 StatusOr<WP2::Data> EncodeAvif(const TaskInput& input,
                                const Image& original_image,
                                bool minimized_image_box, bool ycgco_re,
-                               bool avm, bool quiet);
+                               const char* tune, bool avm, bool quiet);
 // Returns the decoded image and the color conversion duration.
 StatusOr<std::pair<Image, double>> DecodeAvif(const TaskInput& input,
                                               const WP2::Data& encoded_image,
