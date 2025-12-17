@@ -31,9 +31,11 @@ enum class Codec {
   kWebp,
   kWebp2,
   kJpegXl,
-  kAvif,     // AV1 in HEIF (libavif).
-  kAvifExp,  // AV1 in HEIF, experimental features (mini, YCgCo-Re, libavif).
-  kAvifAvm,  // AVM in HEIF, experimental features (mini, YCgCo-Re, libavif).
+  kAvif,      // AV1 in HEIF (libavif).
+  kAvifSsim,  // AV1 in HEIF (libavif+libaom with tune=ssim).
+  kAvifIq,    // AV1 in HEIF (libavif+libaom with tune=iq).
+  kAvifExp,   // AV1 in HEIF, experimental features (mini, YCgCo-Re, libavif).
+  kAvifAvm,   // AV2 in HEIF, experimental features (mini, YCgCo-Re, libavif).
   kAvifLibheif,  // AV1 in HEIF (libheif).
   kCombination,
   kJpegturbo,

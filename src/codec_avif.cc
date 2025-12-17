@@ -160,7 +160,7 @@ class RwData : public avifRWData {
 StatusOr<WP2::Data> EncodeAvif(const TaskInput& input,
                                const Image& original_image,
                                bool minimized_image_box, bool ycgco_re,
-                               bool avm, bool quiet) {
+                               const char* tune, bool avm, bool quiet) {
   const bool lossless = input.codec_settings.quality == kQualityLossless;
 
   avif::EncoderPtr encoder(avifEncoderCreate());
@@ -173,6 +173,9 @@ StatusOr<WP2::Data> EncodeAvif(const TaskInput& input,
   encoder->headerFormat = minimized_image_box
                               ? (avifHeaderFormat)1  // AVIF_HEADER_REDUCED
                               : AVIF_HEADER_FULL;
+  CHECK_OR_RETURN(avifEncoderSetCodecSpecificOption(encoder.get(), "tune",
+                                                    tune) == AVIF_RESULT_OK,
+                  quiet);
 
   RwData encoded;
   if (original_image.size() == 1) {
