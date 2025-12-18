@@ -194,8 +194,8 @@ StatusOr<Codec> CodecFromName(const std::string& name, bool quiet) {
   if (name == "webp2") return Codec::kWebp2;
   if (name == "jpegxl") return Codec::kJpegXl;
   if (name == "avif") return Codec::kAvif;
-  if (name == "avifssim") return Codec::kAvif;
-  if (name == "avifiq") return Codec::kAvif;
+  if (name == "avifssim") return Codec::kAvifSsim;
+  if (name == "avifiq") return Codec::kAvifIq;
   if (name == "avifexp") return Codec::kAvifExp;
   if (name == "avifavm") return Codec::kAvifAvm;
   if (name == "aviflibheif") return Codec::kAvifLibheif;
