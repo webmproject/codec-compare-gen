@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.6.2
+
+- Minor fix for avifssim and avifiq in CodecFromName().
+
 ## v0.6.1
 
 - Add tune=SSIM and tune=IQ AVIF options.
