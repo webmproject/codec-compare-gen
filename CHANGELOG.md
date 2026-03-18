@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.6.4
+
+- Remove the manual libavif+AVM build logic.
+
 ## v0.6.3
 
 - Bump the version of libavif in deps.sh to v1.4.0.

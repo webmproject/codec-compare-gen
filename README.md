@@ -56,18 +56,6 @@ build/ccgen \
   all repetitions to smooth the timings.
 - `output/encoded` will contain the compressed image files.
 
-#### AVM build
-
-To be able to use `--codec avifavm`, build codec-compare-gen this way:
-
-```sh
-./deps.sh
-mv third_party/libavif third_party/libavif_aom
-mv third_party/libavif_avm third_party/libavif
-cmake -S . -B build -DCMAKE_CXX_COMPILER=clang++
-cmake --build build --parallel
-```
-
 ## Tests
 
 The following instructions are used to make sure the unit tests pass.
