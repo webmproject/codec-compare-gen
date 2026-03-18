@@ -97,7 +97,7 @@ StatusOr<WP2::Data> EncodeBasis(const TaskInput& input,
   params.m_source_images.resize(1);
   params.m_source_images.back().init(pixels.GetRow8(0), pixels.width(),
                                      pixels.height(), num_channels);
-  params.m_etc1s_quality_level = input.codec_settings.quality;
+  params.m_quality_level = input.codec_settings.quality;
   params.m_mip_gen = false;
   params.m_multithreading = false;
 
