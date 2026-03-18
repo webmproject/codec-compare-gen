@@ -2,15 +2,16 @@
 
 ## v0.6.3
 
-- Bump the version of libavif in deps.sh.
-- Bump the version of libheif in deps.sh.
-- Bump the version of libwebp2 in deps.sh.
-- Bump the version of libjxl in deps.sh.
-- Bump the version of openjpeg in deps.sh.
-- Bump the version of FFmpeg in deps.sh.
-- Bump the version of basis_universal in deps.sh.
-- Bump the version of libjpeg-turbo in deps.sh.
-- Bump the version of mozjpeg in deps.sh.
+- Bump the version of libavif in deps.sh to v1.4.0.
+- Bump the version of libheif in deps.sh to v1.21.2.
+- Bump the version of libwebp2 in deps.sh to 8720150.
+- Bump the version of libjxl in deps.sh to v0.11.2.
+- Bump the version of openjpeg in deps.sh to v2.5.4.
+- Bump the version of FFmpeg in deps.sh to n8.1.
+- Bump the version of basis_universal in deps.sh to v2.10.
+- Bump the version of libjpeg-turbo in deps.sh to 3.1.3.
+- Bump the version of mozjpeg in deps.sh to 0826579.
+- Disable multithreading at encoding and decoding with libheif.
 
 ## v0.6.2
 
