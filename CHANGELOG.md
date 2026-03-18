@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.6.3
+
+- Bump the version of libavif in deps.sh.
+- Bump the version of libheif in deps.sh.
+- Bump the version of libwebp2 in deps.sh.
+- Bump the version of libjxl in deps.sh.
+- Bump the version of openjpeg in deps.sh.
+- Bump the version of FFmpeg in deps.sh.
+- Bump the version of basis_universal in deps.sh.
+- Bump the version of libjpeg-turbo in deps.sh.
+- Bump the version of mozjpeg in deps.sh.
+
 ## v0.6.2
 
 - Minor fix for avifssim and avifiq in CodecFromName().

@@ -80,6 +80,9 @@ using HeifEncoder =
     std::unique_ptr<heif_encoder, decltype(&heif_encoder_release)>;
 using HeifImageHandle =
     std::unique_ptr<heif_image_handle, decltype(&heif_image_handle_release)>;
+using HeifDecodingOptions =
+    std::unique_ptr<heif_decoding_options,
+                    decltype(&heif_decoding_options_free)>;
 
 Status ArgbBufferToHeifImage(const WP2::ArgbBuffer& wp2_image,
                              HeifImage* image_ptr, bool quiet) {
@@ -153,7 +156,7 @@ StatusOr<WP2::Data> EncodeAvifLibheif(const TaskInput& input,
             input.codec_settings.chroma_subsampling == Subsampling::k444,
         quiet);
   } else {
-    // Default seems to be 4:2:0.
+    // Default seems to be full-range YUV 4:2:0 with CICP set to 1/13/6.
     // TODO: b/451945988 - Support lossy 4:4:4.
     CHECK_OR_RETURN(
         input.codec_settings.chroma_subsampling == Subsampling::kDefault ||
@@ -167,7 +170,11 @@ StatusOr<WP2::Data> EncodeAvifLibheif(const TaskInput& input,
   err = heif_encoder_set_parameter_integer(encoder, "speed",
                                            input.codec_settings.effort);
   CHECK_OR_RETURN(err.code == heif_error_Ok, quiet)
-      << "heif_encoder_set_parameter_integer for speed failed: " << err.message;
+      << "heif_encoder_set_param for speed failed: " << err.message;
+
+  err = heif_encoder_set_parameter_integer(encoder, "threads", 1);
+  CHECK_OR_RETURN(err.code == heif_error_Ok, quiet)
+      << "heif_encoder_set_param for threads failed: " << err.message;
 
   // TODO: b/451945988 - Support sequences.
   CHECK_OR_RETURN(original_image.size() == 1, quiet);
@@ -197,6 +204,8 @@ StatusOr<std::pair<Image, double>> DecodeAvifLibheif(
   CHECK_OR_RETURN(context != nullptr, quiet) << "heif_context_alloc failed";
   const HeifContext context_ptr(context, &heif_context_free);
 
+  heif_context_set_max_decoding_threads(context, 0);
+
   heif_error err = heif_context_read_from_memory_without_copy(
       context, encoded_image.bytes, encoded_image.size, nullptr);
   CHECK_OR_RETURN(err.code == heif_error_Ok, quiet)
@@ -217,9 +226,16 @@ StatusOr<std::pair<Image, double>> DecodeAvifLibheif(
   const heif_chroma chroma =
       has_alpha ? heif_chroma_interleaved_RGBA : heif_chroma_interleaved_RGB;
 
+  heif_decoding_options* options = heif_decoding_options_alloc();
+  CHECK_OR_RETURN(options != nullptr, quiet)
+      << "heif_decoding_options_alloc failed";
+  const HeifDecodingOptions options_ptr(options, &heif_decoding_options_free);
+  options->num_codec_threads = 1;
+  options->ignore_transformations = true;  // There should be no transformation.
+
   heif_image* decoded = nullptr;
   err =
-      heif_decode_image(handle, &decoded, heif_colorspace_RGB, chroma, nullptr);
+      heif_decode_image(handle, &decoded, heif_colorspace_RGB, chroma, options);
   CHECK_OR_RETURN(err.code == heif_error_Ok && decoded != nullptr, quiet)
       << "heif_decode_image failed: " << err.message;
   const HeifImage decoded_ptr(decoded, &heif_image_release);
