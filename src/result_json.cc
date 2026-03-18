@@ -134,16 +134,10 @@ Status TasksToJson(const std::string& batch_pretty_name, CodecSettings settings,
   const std::string encoded_parent = AppendDirectorySeparator(RemovePrefix(
       /*prefix=*/encoded_common_parent.parent_path(), encoded_common_parent));
 
-  const std::string deps_extra_step =
-      settings.codec == Codec::kAvifAvm
-          ? " && mv third_party/libavif third_party/libavif_aom"
-            " && mv third_party/libavif_avm third_party/libavif"
-          : "";
   const std::string build_cmd =
-      "git clone -b v0.6.3 --depth 1"
+      "git clone -b v0.6.4 --depth 1"
       " https://github.com/webmproject/codec-compare-gen.git"
-      " && cd codec-compare-gen && ./deps.sh" +
-      deps_extra_step +
+      " && cd codec-compare-gen && ./deps.sh"
       " && cmake -S . -B build -DCMAKE_CXX_COMPILER=clang++"
       " && cmake --build build --parallel && cd ..";
   const std::string effort_str =
