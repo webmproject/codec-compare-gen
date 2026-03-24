@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.6.7
+
+- Support images of dimensions below 8 pixels despite some distortion metrics.
+
 ## v0.6.6
 
 - Fix path to libaom binary object for libheif in deps.sh.
