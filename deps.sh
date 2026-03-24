@@ -25,9 +25,9 @@ NPROC=$(nproc)
 mkdir third_party
 pushd third_party
 
-  git clone -b v1.4.0 --depth 1 https://github.com/AOMediaCodec/libavif.git
+  git clone -b v1.4.1 --depth 1 https://github.com/AOMediaCodec/libavif.git
   pushd libavif
-    git checkout d145e1a32af2915779b27e3b0521b6db08dd6bb8 # v1.4.0
+    git checkout 6543b22b5bc706c53f038a16fe515f921556d9b3 # v1.4.1
     cmake -S . -B build \
       -DAVIF_BUILD_APPS=ON \
       -DAVIF_BUILD_EXAMPLES=OFF \
