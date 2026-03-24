@@ -60,7 +60,7 @@ pushd third_party
       -DWITH_AOM_DECODER=OFF \
       -DWITH_AOM_ENCODER=ON \
       -DAOM_INCLUDE_DIR=../libavif/build/_deps/libaom-src/ \
-      -DAOM_LIBRARY=../libavif/build/_deps/aom-build/libaom.a \
+      -DAOM_LIBRARY=../libavif/build/_deps/libaom-build/libaom.a \
       -DWITH_DAV1D=ON \
       -DDAV1D_INCLUDE_DIR=../libavif/build/_deps/dav1d-src/include/ \
       -DDAV1D_LIBRARY=../libavif/build/_deps/dav1d-build/src/libdav1d.a \

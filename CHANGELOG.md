@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.6.6
+
+- Fix path to libaom binary object for libheif in deps.sh.
+
 ## v0.6.5
 
 - Bump the version of libavif in deps.sh to v1.4.1.
