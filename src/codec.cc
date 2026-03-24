@@ -271,7 +271,7 @@ std::string CodecExtension(Codec codec) {
     case Codec::kAvifAvm:
       return "avmf";
     case Codec::kAvifLibheif:
-      return "avif";
+      return "libheif.avif";
     case Codec::kCombination:
       return "comb";
     case Codec::kJpegturbo:
