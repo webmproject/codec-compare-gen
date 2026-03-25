@@ -141,23 +141,38 @@ Status SaveImage(const WP2::ArgbBuffer& image, const std::string& file_path,
       image.format() != WP2_Argb_32 && image.format() != WP2_ARGB_32) {
     WP2::ArgbBuffer image4(WP2IsPremultiplied(image.format()) ? WP2_Argb_32
                                                               : WP2_ARGB_32);
-    CHECK_OR_RETURN(image4.ConvertFrom(image) == WP2_STATUS_OK, quiet);
+    OK_WP2_OR_RETURN(image4.ConvertFrom(image), quiet);
     return ::codec_compare_gen::SaveImage(image4, file_path, quiet);
   }
-
-  CHECK_OR_RETURN(status == WP2_STATUS_OK, quiet)
-      << "SaveImage(" << file_path
-      << ") failed: " << WP2GetStatusMessage(status);
+  OK_WP2_OR_RETURN(status, quiet) << "SaveImage(" << file_path << ") failed";
   return Status::kOk;
 }
 
-StatusOr<std::string> GetBinaryDistortion(const std::string& reference_path,
-                                          const WP2::ArgbBuffer& reference,
-                                          const std::string& image_path,
-                                          const WP2::ArgbBuffer& image,
-                                          const TaskInput& task,
-                                          const std::string& metric_binary_path,
-                                          size_t thread_id, bool quiet) {
+Status ScaleTill8x8(const WP2::ArgbBuffer& from, WP2::ArgbBuffer& to,
+                    bool quiet) {
+  OK_WP2_OR_RETURN(to.SetFormat(from.format()), quiet);
+  OK_WP2_OR_RETURN(
+      to.Resize(std::max(from.width(), 8u), std::max(from.height(), 8u)),
+      quiet);
+  for (uint8_t to_y = 0; to_y < to.height(); ++to_y) {
+    const uint32_t from_y = to_y * (from.height() - 1) / (to.height() - 1);
+    for (uint8_t to_x = 0; to_x < to.width(); ++to_x) {
+      const uint32_t from_x = to_x * (from.width() - 1) / (to.width() - 1);
+      if (WP2Formatbpc(to.format()) == 8) {
+        to.GetRow8(to_y)[to_x] = from.GetRow8(from_y)[from_x];
+      } else {
+        to.GetRow16(to_y)[to_x] = from.GetRow16(from_y)[from_x];
+      }
+    }
+  }
+  return Status::kOk;
+}
+
+StatusOr<std::string> GetBinaryDistortion(
+    const std::string& reference_path, const WP2::ArgbBuffer& reference,
+    const std::string& image_path, const WP2::ArgbBuffer& image,
+    const TaskInput& task, const std::string& metric_binary_path,
+    bool metric_supports_tiny_dimensions, size_t thread_id, bool quiet) {
   CHECK_OR_RETURN(!reference_path.empty(), quiet);
   CHECK_OR_RETURN(!metric_binary_path.empty(), quiet);
   const bool maybeAnimated = !EndsWith(reference_path, ".png");
@@ -175,14 +190,23 @@ StatusOr<std::string> GetBinaryDistortion(const std::string& reference_path,
     path_prefix += std::to_string(thread_id);
   }
 
+  WP2::ArgbBuffer final_reference(reference.format());
+  WP2::ArgbBuffer final_image(image.format());
+  if (metric_supports_tiny_dimensions) {
+    OK_WP2_OR_RETURN(final_reference.SetView(reference), quiet);
+    OK_WP2_OR_RETURN(final_image.SetView(image), quiet);
+  } else {
+    OK_OR_RETURN(ScaleTill8x8(reference, final_reference, quiet));
+    OK_OR_RETURN(ScaleTill8x8(image, final_image, quiet));
+  }
+
   // Create a PNG file containing the original pixels of the current frame if
   // not PNG (could be a GIF with multiple frames for example).
   std::string temp_reference_path;
   std::string_view final_reference_path = reference_path;
-  if (maybeAnimated) {
-    // Thread-safe file name.
+  if (!metric_supports_tiny_dimensions || maybeAnimated) {
     temp_reference_path = path_prefix + "_reference.png";
-    OK_OR_RETURN(SaveImage(reference, temp_reference_path, quiet));
+    OK_OR_RETURN(SaveImage(final_reference, temp_reference_path, quiet));
     final_reference_path = temp_reference_path;
   }
   const FileDeleter temp_reference_path_deleter(temp_reference_path);
@@ -190,9 +214,9 @@ StatusOr<std::string> GetBinaryDistortion(const std::string& reference_path,
   // Create a PNG file containing the decoded pixels if not done or if animated.
   std::string temp_image_path;
   std::string_view final_image_path = image_path;
-  if (image_path.empty() || maybeAnimated) {
+  if (!metric_supports_tiny_dimensions || image_path.empty() || maybeAnimated) {
     temp_image_path = path_prefix + "_image.png";
-    OK_OR_RETURN(SaveImage(image, temp_image_path, quiet));
+    OK_OR_RETURN(SaveImage(final_image, temp_image_path, quiet));
     final_image_path = temp_image_path;
   }
   const FileDeleter temp_image_path_deleter(temp_image_path);
@@ -212,14 +236,18 @@ StatusOr<float> GetLibjxlDistortion(
   if (metric_binary_folder_path.empty()) return -1;
 
   const char* metric_binary_name;
+  bool metric_supports_tiny_dimensions;
   if (metric == DistortionMetric::kLibjxlButteraugli ||
       metric == DistortionMetric::kLibjxlP3norm) {
     metric_binary_name = "butteraugli_main";
+    metric_supports_tiny_dimensions = true;
   } else if (metric == DistortionMetric::kLibjxlSsimulacra) {
     metric_binary_name = "ssimulacra_main";
+    metric_supports_tiny_dimensions = false;
   } else {
     CHECK_OR_RETURN(metric == DistortionMetric::kLibjxlSsimulacra2, quiet);
     metric_binary_name = "ssimulacra2";
+    metric_supports_tiny_dimensions = false;
   }
   const std::string metric_binary_path =
       std::filesystem::path(metric_binary_folder_path) / "libjxl" / "build" /
@@ -227,7 +255,8 @@ StatusOr<float> GetLibjxlDistortion(
   ASSIGN_OR_RETURN(
       std::string standard_output,
       GetBinaryDistortion(reference_path, reference, image_path, image, task,
-                          metric_binary_path, thread_id, quiet));
+                          metric_binary_path, metric_supports_tiny_dimensions,
+                          thread_id, quiet));
 
   if (metric == DistortionMetric::kLibjxlButteraugli ||
       metric == DistortionMetric::kLibjxlP3norm) {
@@ -257,10 +286,12 @@ StatusOr<float> GetDssimDistortion(const std::string& reference_path,
   const std::string metric_binary_path =
       std::filesystem::path(metric_binary_folder_path) / "dssim" / "target" /
       "release" / "dssim";
+  const bool metric_supports_tiny_dimensions = true;
   ASSIGN_OR_RETURN(
       const std::string standard_output,
       GetBinaryDistortion(reference_path, reference, image_path, image, task,
-                          metric_binary_path, thread_id, quiet));
+                          metric_binary_path, metric_supports_tiny_dimensions,
+                          thread_id, quiet));
   return std::stof(Trim(Split(standard_output, '\t').front()));
 }
 

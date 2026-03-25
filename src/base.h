@@ -96,7 +96,7 @@ struct StatusOr {
 };
 
 // Can be used as follows:
-//   OK_OR_RETURN(FuncThatReturnsStatusOrType());
+//   OK_OR_RETURN(FuncThatReturnsStatus());
 #define OK_OR_RETURN(STATUS)                                  \
   do {                                                        \
     const Status checked_status = (STATUS);                   \
@@ -139,6 +139,15 @@ struct LogError {
 #define CHECK_OR_RETURN(CONDITION, QUIET) \
   if (!(CONDITION))                       \
   return LogError(QUIET) << "(" << (__FILE__) << ":" << (__LINE__) << ") "
+
+// Can be used as follows:
+//   OK_WP2_OR_RETURN(FuncThatReturnsWP2Status(), quiet);
+#if defined(HAS_WEBP2)
+#define OK_WP2_OR_RETURN(STATUS, QUIET)                                     \
+  const WP2Status CONCAT(checked_status, __LINE__) = (STATUS);              \
+  CHECK_OR_RETURN(CONCAT(checked_status, __LINE__) == WP2_STATUS_OK, QUIET) \
+      << WP2GetStatusMessage(CONCAT(checked_status, __LINE__)) << " "
+#endif  // HAS_WEBP2
 
 //------------------------------------------------------------------------------
 
