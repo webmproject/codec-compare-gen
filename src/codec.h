@@ -16,6 +16,7 @@
 #define SRC_CODEC_H_
 
 #include <cstddef>
+#include <cstdint>
 #include <string>
 #include <vector>
 
@@ -39,6 +40,15 @@ StatusOr<TaskOutput> EncodeDecode(const TaskInput& input,
                                   const std::string& metric_binary_folder_path,
                                   size_t thread_id, EncodeMode encode_mode,
                                   bool quiet);
+
+StatusOr<std::vector<uint8_t>> Encode(const uint8_t* argb, uint32_t width,
+                                      uint32_t height, Codec codec,
+                                      Subsampling chroma_subsampling,
+                                      int effort, int quality, bool quiet);
+StatusOr<std::vector<uint8_t>> DecodeToArgb(const uint8_t* encoded_image,
+                                            size_t encoded_size,
+                                            uint32_t* width, uint32_t* height,
+                                            bool quiet);
 
 }  // namespace codec_compare_gen
 

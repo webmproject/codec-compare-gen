@@ -20,13 +20,16 @@
 #include "src/base.h"
 #include "src/distortion.h"
 #include "src/frame.h"
-#include "third_party/libwebp2/src/wp2/base.h"
+#include "src/wp2/base.h"
 
 namespace codec_compare_gen {
 namespace {
 
 // Used to pass the data folder path to the GoogleTest suites.
 const char* data_path = nullptr;
+
+// Used to pass the metric binary folder path to the GoogleTest suites.
+const char* binary_path = nullptr;
 
 constexpr bool kQuiet = false;
 constexpr size_t kThreadId = 0;
@@ -122,6 +125,71 @@ TEST(DistortionTest, DifferentFrameCount) {
   EXPECT_GT(distortion.value, 20.0f);
 }
 
+TEST(DistortionTest, Dssim) {
+  const std::string gif_path = std::string(data_path) + "anim80x80.gif";
+  const StatusOr<Image> gif =
+      ReadStillImageOrAnimation(gif_path.c_str(), WP2_ARGB_32, kQuiet);
+  ASSERT_EQ(gif.status, Status::kOk);
+
+  const StatusOr<float> distortion = GetAverageDistortion(
+      gif_path, gif.value, gif_path, gif.value, {}, binary_path,
+      DistortionMetric::kDssim, kThreadId, kQuiet);
+  ASSERT_EQ(distortion.status, Status::kOk);
+  EXPECT_EQ(distortion.value, 0);  // Equality.
+}
+
+TEST(DistortionTest, Ssimulacra) {
+  const std::string gif_path = std::string(data_path) + "anim80x80.gif";
+  const StatusOr<Image> gif =
+      ReadStillImageOrAnimation(gif_path.c_str(), WP2_ARGB_32, kQuiet);
+  ASSERT_EQ(gif.status, Status::kOk);
+
+  const StatusOr<float> distortion = GetAverageDistortion(
+      gif_path, gif.value, gif_path, gif.value, {}, binary_path,
+      DistortionMetric::kLibjxlSsimulacra, kThreadId, kQuiet);
+  ASSERT_EQ(distortion.status, Status::kOk);
+  EXPECT_EQ(distortion.value, 0);  // Equality.
+}
+
+TEST(DistortionTest, Ssimulacra2) {
+  const std::string gif_path = std::string(data_path) + "anim80x80.gif";
+  const StatusOr<Image> gif =
+      ReadStillImageOrAnimation(gif_path.c_str(), WP2_ARGB_32, kQuiet);
+  ASSERT_EQ(gif.status, Status::kOk);
+
+  const StatusOr<float> distortion = GetAverageDistortion(
+      gif_path, gif.value, gif_path, gif.value, {}, binary_path,
+      DistortionMetric::kLibjxlSsimulacra2, kThreadId, kQuiet);
+  ASSERT_EQ(distortion.status, Status::kOk);
+  EXPECT_EQ(distortion.value, 100);  // Equality.
+}
+
+TEST(DistortionTest, Butteraugli) {
+  const std::string gif_path = std::string(data_path) + "anim80x80.gif";
+  const StatusOr<Image> gif =
+      ReadStillImageOrAnimation(gif_path.c_str(), WP2_ARGB_32, kQuiet);
+  ASSERT_EQ(gif.status, Status::kOk);
+
+  const StatusOr<float> distortion = GetAverageDistortion(
+      gif_path, gif.value, gif_path, gif.value, {}, binary_path,
+      DistortionMetric::kLibjxlButteraugli, kThreadId, kQuiet);
+  ASSERT_EQ(distortion.status, Status::kOk);
+  EXPECT_EQ(distortion.value, 0);  // Equality.
+}
+
+TEST(DistortionTest, P3norm) {
+  const std::string gif_path = std::string(data_path) + "anim80x80.gif";
+  const StatusOr<Image> gif =
+      ReadStillImageOrAnimation(gif_path.c_str(), WP2_ARGB_32, kQuiet);
+  ASSERT_EQ(gif.status, Status::kOk);
+
+  const StatusOr<float> distortion = GetAverageDistortion(
+      gif_path, gif.value, gif_path, gif.value, {}, binary_path,
+      DistortionMetric::kLibjxlP3norm, kThreadId, kQuiet);
+  ASSERT_EQ(distortion.status, Status::kOk);
+  EXPECT_EQ(distortion.value, 0);  // Equality.
+}
+
 //------------------------------------------------------------------------------
 
 }  // namespace
@@ -129,12 +197,13 @@ TEST(DistortionTest, DifferentFrameCount) {
 
 int main(int argc, char** argv) {
   ::testing::InitGoogleTest(&argc, argv);
-  if (argc != 2) {
-    std::cerr << "There must be exactly one argument containing the path to "
-                 "the test data folder"
+  if (argc != 3) {
+    std::cerr << "There must be exactly two arguments containing the paths to "
+                 "the test data folder and to the binary folder."
               << std::endl;
     return 1;
   }
   codec_compare_gen::data_path = argv[1];
+  codec_compare_gen::binary_path = argv[2];
   return RUN_ALL_TESTS();
 }

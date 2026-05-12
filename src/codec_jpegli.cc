@@ -31,16 +31,16 @@
 #include "src/task.h"
 
 #if defined(HAS_WEBP2)
-#include "third_party/libwebp2/src/wp2/base.h"
+#include "src/wp2/base.h"
 #endif
 
 #if defined(HAS_JPEGTURBO)
-#include "third_party/libjpeg_turbo/src/jpeglib.h"
+#include "src/jpeglib.h"
 #endif
 
-#if defined(HAS_JPEGXL)
-#include "third_party/libjxl/lib/jpegli/common.h"
-#include "third_party/libjxl/lib/jpegli/encode.h"
+#if defined(HAS_JPEGLI)
+#include "lib/jpegli/common.h"
+#include "lib/jpegli/encode.h"
 #endif
 
 namespace codec_compare_gen {
@@ -57,7 +57,7 @@ std::vector<int> JpegliLossyQualities() {
 
 #if defined(HAS_WEBP2)
 
-#if defined(HAS_JPEGXL) && defined(HAS_JPEGTURBO)
+#if defined(HAS_JPEGLI) && defined(HAS_JPEGTURBO)
 
 namespace {
 
@@ -165,14 +165,14 @@ StatusOr<std::pair<Image, double>> DecodeJpegli(const TaskInput& input,
 #else
 StatusOr<WP2::Data> EncodeJpegli(const TaskInput&, const Image&, bool quiet) {
   CHECK_OR_RETURN(false, quiet)
-      << "Encoding images requires HAS_JPEGXL and HAS_JPEGTURBO";
+      << "Encoding images requires HAS_JPEGLI and HAS_JPEGTURBO";
 }
 StatusOr<std::pair<Image, double>> DecodeJpegli(const TaskInput&,
                                                 const WP2::Data&, bool quiet) {
   CHECK_OR_RETURN(false, quiet)
-      << "Decoding images requires HAS_JPEGXL and HAS_JPEGTURBO";
+      << "Decoding images requires HAS_JPEGLI and HAS_JPEGTURBO";
 }
-#endif  // HAS_JPEGXL && HAS_JPEGTURBO
+#endif  // HAS_JPEGLI && HAS_JPEGTURBO
 
 #endif  // HAS_WEBP2
 

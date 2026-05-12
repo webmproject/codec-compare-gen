@@ -27,17 +27,17 @@
 #include "src/frame.h"
 #include "src/task.h"
 #include "src/timer.h"
-#include "third_party/libwebp/src/webp/mux_types.h"
 
 #if defined(HAS_WEBP2)
-#include "third_party/libwebp2/src/wp2/base.h"
+#include "src/wp2/base.h"
 #endif
 
 #if defined(HAS_WEBP)
-#include "third_party/libwebp/src/webp/decode.h"
-#include "third_party/libwebp/src/webp/demux.h"
-#include "third_party/libwebp/src/webp/encode.h"
-#include "third_party/libwebp/src/webp/mux.h"
+#include "src/webp/decode.h"
+#include "src/webp/demux.h"
+#include "src/webp/encode.h"
+#include "src/webp/mux.h"
+#include "src/webp/mux_types.h"
 #endif
 
 namespace codec_compare_gen {

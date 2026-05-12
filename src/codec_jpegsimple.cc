@@ -28,11 +28,11 @@
 #include "src/task.h"
 
 #if defined(HAS_WEBP2)
-#include "third_party/libwebp2/src/wp2/base.h"
+#include "src/wp2/base.h"
 #endif
 
 #if defined(HAS_JPEGSIMPLE)
-#include "third_party/sjpeg/src/sjpeg.h"
+#include "src/sjpeg.h"
 #endif
 
 namespace codec_compare_gen {

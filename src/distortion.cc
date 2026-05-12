@@ -37,8 +37,8 @@
 #include "src/task.h"
 
 #if defined(HAS_WEBP2)
-#include "third_party/libwebp2/imageio/image_enc.h"
-#include "third_party/libwebp2/src/wp2/base.h"
+#include "imageio/image_enc.h"
+#include "src/wp2/base.h"
 #endif  // HAS_WEBP2
 
 namespace codec_compare_gen {
@@ -154,9 +154,9 @@ Status ScaleTill8x8(const WP2::ArgbBuffer& from, WP2::ArgbBuffer& to,
   OK_WP2_OR_RETURN(
       to.Resize(std::max(from.width(), 8u), std::max(from.height(), 8u)),
       quiet);
-  for (uint8_t to_y = 0; to_y < to.height(); ++to_y) {
+  for (uint32_t to_y = 0; to_y < to.height(); ++to_y) {
     const uint32_t from_y = to_y * (from.height() - 1) / (to.height() - 1);
-    for (uint8_t to_x = 0; to_x < to.width(); ++to_x) {
+    for (uint32_t to_x = 0; to_x < to.width(); ++to_x) {
       const uint32_t from_x = to_x * (from.width() - 1) / (to.width() - 1);
       if (WP2Formatbpc(to.format()) == 8) {
         to.GetRow8(to_y)[to_x] = from.GetRow8(from_y)[from_x];
@@ -192,7 +192,8 @@ StatusOr<std::string> GetBinaryDistortion(
 
   WP2::ArgbBuffer final_reference(reference.format());
   WP2::ArgbBuffer final_image(image.format());
-  if (metric_supports_tiny_dimensions) {
+  if (metric_supports_tiny_dimensions ||
+      (reference.width() >= 8 && reference.height() >= 8)) {
     OK_WP2_OR_RETURN(final_reference.SetView(reference), quiet);
     OK_WP2_OR_RETURN(final_image.SetView(image), quiet);
   } else {
@@ -250,8 +251,8 @@ StatusOr<float> GetLibjxlDistortion(
     metric_supports_tiny_dimensions = false;
   }
   const std::string metric_binary_path =
-      std::filesystem::path(metric_binary_folder_path) / "libjxl" / "build" /
-      "tools" / metric_binary_name;
+      std::filesystem::path(metric_binary_folder_path) / "_deps" /
+      "libjxl-build" / "tools" / metric_binary_name;
   ASSIGN_OR_RETURN(
       std::string standard_output,
       GetBinaryDistortion(reference_path, reference, image_path, image, task,
@@ -284,8 +285,8 @@ StatusOr<float> GetDssimDistortion(const std::string& reference_path,
   if (metric_binary_folder_path.empty()) return -1;
 
   const std::string metric_binary_path =
-      std::filesystem::path(metric_binary_folder_path) / "dssim" / "target" /
-      "release" / "dssim";
+      std::filesystem::path(metric_binary_folder_path) / "_deps" / "dssim-src" /
+      "target" / "release" / "dssim";
   const bool metric_supports_tiny_dimensions = true;
   ASSIGN_OR_RETURN(
       const std::string standard_output,

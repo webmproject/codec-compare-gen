@@ -28,17 +28,17 @@
 #include "src/timer.h"
 
 #if defined(HAS_WEBP2)
-#include "third_party/libwebp2/src/wp2/base.h"
+#include "src/wp2/base.h"
 #endif
 
 #if defined(HAS_JPEGXL)
-#include "third_party/libjxl/lib/include/jxl/codestream_header.h"
-#include "third_party/libjxl/lib/include/jxl/color_encoding.h"
-#include "third_party/libjxl/lib/include/jxl/decode.h"
-#include "third_party/libjxl/lib/include/jxl/decode_cxx.h"
-#include "third_party/libjxl/lib/include/jxl/encode.h"
-#include "third_party/libjxl/lib/include/jxl/encode_cxx.h"
-#include "third_party/libjxl/lib/include/jxl/types.h"
+#include "lib/include/jxl/codestream_header.h"
+#include "lib/include/jxl/color_encoding.h"
+#include "lib/include/jxl/decode.h"
+#include "lib/include/jxl/decode_cxx.h"
+#include "lib/include/jxl/encode.h"
+#include "lib/include/jxl/encode_cxx.h"
+#include "lib/include/jxl/types.h"
 #endif
 
 namespace codec_compare_gen {

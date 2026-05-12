@@ -27,12 +27,12 @@
 #include "src/task.h"
 
 #if defined(HAS_WEBP2)
-#include "third_party/libwebp2/src/wp2/base.h"
+#include "src/wp2/base.h"
 #endif
 
 #if defined(HAS_FFV1)
 extern "C" {
-#include "third_party/FFmpeg/libavcodec/avcodec.h"
+#include "libavcodec/avcodec.h"
 }
 #endif
 
@@ -127,6 +127,7 @@ StatusOr<WP2::Data> EncodeFfv1(const TaskInput& input,
   ffv1.context->time_base = {1, 25};
   ffv1.context->framerate = {25, 1};
   ffv1.context->thread_count = 1;
+  ffv1.context->slices = 1;
   // TODO(yguyon): Support 16-bit.
   CHECK_OR_RETURN(WP2Formatbpc(pixels.format()) == 8, quiet);
   ffv1.context->pix_fmt =

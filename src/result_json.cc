@@ -134,12 +134,34 @@ Status TasksToJson(const std::string& batch_pretty_name, CodecSettings settings,
   const std::string encoded_parent = AppendDirectorySeparator(RemovePrefix(
       /*prefix=*/encoded_common_parent.parent_path(), encoded_common_parent));
 
+  const std::string build_option =
+      settings.codec == Codec::kWebp    ? " -DCCGEN_ENABLE_WEBP=ON"
+      : settings.codec == Codec::kWebp2 ? " -DCCGEN_ENABLE_WEBP2=ON"
+      : settings.codec == Codec::kJpegXl || settings.codec == Codec::kJpegli
+          ? " -DCCGEN_ENABLE_JPEGXL=ON"
+      : settings.codec == Codec::kAvif || settings.codec == Codec::kAvifSsim ||
+              settings.codec == Codec::kAvifIq ||
+              settings.codec == Codec::kAvifExp ||
+              settings.codec == Codec::kAvifAvm ||
+              settings.codec == Codec::kAvifLibheif
+          ? " -DCCGEN_ENABLE_AVIF=ON"
+      : settings.codec == Codec::kCombination ? ""
+      : settings.codec == Codec::kJpegturbo ||
+              settings.codec == Codec::kJpegsimple ||
+              settings.codec == Codec::kJpegmoz
+          ? " -DCCGEN_ENABLE_JPEG=ON"
+      : settings.codec == Codec::kJp2   ? " -DCCGEN_ENABLE_JPEG2000=ON"
+      : settings.codec == Codec::kFfv1  ? " -DCCGEN_ENABLE_FFV1=ON"
+      : settings.codec == Codec::kBasis ? " -DCCGEN_ENABLE_BASIS=ON"
+                                        : "";
+
   const std::string build_cmd =
-      "git clone -b v0.6.7 --depth 1"
-      " https://github.com/webmproject/codec-compare-gen.git"
-      " && cd codec-compare-gen && ./deps.sh"
-      " && cmake -S . -B build -DCMAKE_CXX_COMPILER=clang++"
-      " && cmake --build build --parallel && cd ..";
+      "git clone -b v0.7.0 --depth 1"
+      " https://github.com/webmproject/codec-compare-gen.git ccgen"
+      " && cmake -S ccgen -B ccgen/build" +
+      build_option +
+      " -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++"
+      " && cmake --build ccgen/build --parallel";
   const std::string effort_str =
       (settings.codec == Codec::kWebp || settings.codec == Codec::kWebp2 ||
        settings.codec == Codec::kJpegXl || settings.codec == Codec::kAvif ||
@@ -150,13 +172,13 @@ Status TasksToJson(const std::string& batch_pretty_name, CodecSettings settings,
           ? " " + std::to_string(settings.effort)
           : "";  // kJpegturbo, kJpegli, and kJpegmoz have no effort setting.
   std::string encoding_cmd =
-      "codec-compare-gen/build/ccgen --codec " + CodecName(settings.codec) +
-      " " + SubsamplingToString(settings.chroma_subsampling) + effort_str;
+      "ccgen/build/ccgen --codec " + CodecName(settings.codec) + " " +
+      SubsamplingToString(settings.chroma_subsampling) + effort_str;
   if (settings.quality == kQualityLossless) {
     encoding_cmd += " --lossless";
   } else {
     encoding_cmd += " --lossy --quality ${quality}";
-    encoding_cmd += " --metric_binary_folder codec-compare-gen/third_party/";
+    encoding_cmd += " --metric_binary_folder ccgen/build/";
   }
   encoding_cmd += " -- ${original_name}";
 

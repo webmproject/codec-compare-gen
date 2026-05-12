@@ -26,14 +26,14 @@
 #include "src/task.h"
 
 #if defined(HAS_WEBP2)
-#include "third_party/libwebp2/src/wp2/base.h"
+#include "src/wp2/base.h"
 #endif
 
 #if defined(HAS_BASIS)
-#include "third_party/basis_universal/encoder/basisu_comp.h"
-#include "third_party/basis_universal/encoder/basisu_enc.h"
-#include "third_party/basis_universal/transcoder/basisu.h"
-#include "third_party/basis_universal/transcoder/basisu_transcoder.h"
+#include "encoder/basisu_comp.h"
+#include "encoder/basisu_enc.h"
+#include "transcoder/basisu.h"
+#include "transcoder/basisu_transcoder.h"
 #endif
 
 namespace codec_compare_gen {
@@ -62,9 +62,15 @@ BasisContext::~BasisContext() {
 }
 
 std::vector<int> BasisLossyQualities() {
-  std::vector<int> qualities(basisu::BASISU_QUALITY_MAX -
-                             basisu::BASISU_QUALITY_MIN + 1);
-  std::iota(qualities.begin(), qualities.end(), basisu::BASISU_QUALITY_MIN);
+#if defined(HAS_BASIS)
+  const uint32_t kBasisQualityMin = basisu::BASISU_QUALITY_MIN;
+  const uint32_t kBasisQualityMax = basisu::BASISU_QUALITY_MAX;
+#else
+  const uint32_t kBasisQualityMin = 1;
+  const uint32_t kBasisQualityMax = 255;
+#endif
+  std::vector<int> qualities(kBasisQualityMax - kBasisQualityMin + 1);
+  std::iota(qualities.begin(), qualities.end(), kBasisQualityMin);
   return qualities;
 }
 
@@ -100,6 +106,7 @@ StatusOr<WP2::Data> EncodeBasis(const TaskInput& input,
   params.m_quality_level = input.codec_settings.quality;
   params.m_mip_gen = false;
   params.m_multithreading = false;
+  params.m_status_output = false;
 
   // There must be at least one thread on top of the calling thread apparently.
   basisu::job_pool job_pool(/*num_threads=*/1);

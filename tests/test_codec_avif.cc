@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <algorithm>
 #include <numeric>
 #include <vector>
 
@@ -38,6 +39,7 @@ TEST(AvifTest, Qualities) {
 
   std::vector<int> expected_quantizers(64);
   std::iota(expected_quantizers.begin(), expected_quantizers.end(), 0);
+  std::reverse(expected_quantizers.begin(), expected_quantizers.end());
 
   // Make sure the AVIF quality list maps to the exact range [0:63] without gaps
   // or duplicates.

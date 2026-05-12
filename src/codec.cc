@@ -18,6 +18,7 @@
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
+#include <cstring>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
@@ -46,7 +47,8 @@
 #include "src/timer.h"
 
 #if defined(HAS_WEBP2)
-#include "third_party/libwebp2/src/wp2/base.h"
+#include "imageio/anim_image_dec.h"
+#include "src/wp2/base.h"
 #endif  // HAS_WEBP2
 
 namespace codec_compare_gen {
@@ -220,10 +222,16 @@ std::vector<int> CodecLossyQualities(Codec codec) {
       return JpegXLLossyQualities();
     case Codec::kAvif:
     case Codec::kAvifSsim:
-    case Codec::kAvifIq:
     case Codec::kAvifExp:
     case Codec::kAvifAvm:
       return AvifLossyQualities();
+    case Codec::kAvifIq: {
+      std::vector<int> qualities = AvifLossyQualities();
+      // Remove the lossless quality because it is rejected with tune=iq.
+      assert(qualities.back() == 100);
+      qualities.pop_back();
+      return qualities;
+    }
     case Codec::kAvifLibheif:
       return AvifLibheifLossyQualities();
     case Codec::kCombination:
@@ -434,6 +442,54 @@ StatusOr<std::pair<Image, double>> DecodeAvifAvm(const TaskInput& input,
   return DecodeAvif(input, encoded_image, /*avm=*/true, quiet);
 }
 
+typedef StatusOr<WP2::Data> (*EncodeFunc)(const TaskInput&, const Image&,
+                                          bool quiet);
+typedef StatusOr<std::pair<Image, double>> (*DecodeFunc)(const TaskInput&,
+                                                         const WP2::Data&,
+                                                         bool quiet);
+
+EncodeFunc GetEncodeFunc(Codec codec) {
+  return codec == Codec::kWebp          ? &EncodeWebp
+         : codec == Codec::kWebp2       ? &EncodeWebp2
+         : codec == Codec::kJpegXl      ? &EncodeJxl
+         : codec == Codec::kAvif        ? &EncodeAvifRegular
+         : codec == Codec::kAvifSsim    ? &EncodeAvifSsim
+         : codec == Codec::kAvifIq      ? &EncodeAvifIq
+         : codec == Codec::kAvifExp     ? &EncodeAvifExp
+         : codec == Codec::kAvifAvm     ? &EncodeAvifAvm
+         : codec == Codec::kAvifLibheif ? &EncodeAvifLibheif
+         : codec == Codec::kCombination ? &EncodeCodecCombination
+         : codec == Codec::kJpegturbo   ? &EncodeJpegturbo
+         : codec == Codec::kJpegli      ? &EncodeJpegli
+         : codec == Codec::kJpegsimple  ? &EncodeJpegsimple
+         : codec == Codec::kJpegmoz     ? &EncodeJpegmoz
+         : codec == Codec::kJp2         ? &EncodeOpenjpeg
+         : codec == Codec::kFfv1        ? &EncodeFfv1
+         : codec == Codec::kBasis       ? &EncodeBasis
+                                        : nullptr;
+}
+
+DecodeFunc GetDecodeFunc(Codec codec) {
+  return codec == Codec::kWebp          ? &DecodeWebp
+         : codec == Codec::kWebp2       ? &DecodeWebp2
+         : codec == Codec::kJpegXl      ? &DecodeJxl
+         : codec == Codec::kAvif        ? &DecodeAvifRegularOrExp
+         : codec == Codec::kAvifSsim    ? &DecodeAvifRegularOrExp
+         : codec == Codec::kAvifIq      ? &DecodeAvifRegularOrExp
+         : codec == Codec::kAvifExp     ? &DecodeAvifRegularOrExp
+         : codec == Codec::kAvifAvm     ? &DecodeAvifAvm
+         : codec == Codec::kAvifLibheif ? &DecodeAvifLibheif
+         : codec == Codec::kCombination ? &DecodeCodecCombination
+         : codec == Codec::kJpegturbo   ? &DecodeJpegturbo
+         : codec == Codec::kJpegli      ? &DecodeJpegli
+         : codec == Codec::kJpegsimple  ? &DecodeJpegsimple
+         : codec == Codec::kJpegmoz     ? &DecodeJpegmoz
+         : codec == Codec::kJp2         ? &DecodeOpenjpeg
+         : codec == Codec::kFfv1        ? &DecodeFfv1
+         : codec == Codec::kBasis       ? &DecodeBasis
+                                        : nullptr;
+}
+
 }  // namespace
 
 StatusOr<TaskOutput> EncodeDecode(const TaskInput& input,
@@ -475,47 +531,6 @@ StatusOr<TaskOutput> EncodeDecode(const TaskInput& input,
                       WP2Formatbpc(original_image.front().pixels.format())),
                   quiet);
 
-  auto encode_func =
-      input.codec_settings.codec == Codec::kWebp          ? &EncodeWebp
-      : input.codec_settings.codec == Codec::kWebp2       ? &EncodeWebp2
-      : input.codec_settings.codec == Codec::kJpegXl      ? &EncodeJxl
-      : input.codec_settings.codec == Codec::kAvif        ? &EncodeAvifRegular
-      : input.codec_settings.codec == Codec::kAvifSsim    ? &EncodeAvifSsim
-      : input.codec_settings.codec == Codec::kAvifIq      ? &EncodeAvifIq
-      : input.codec_settings.codec == Codec::kAvifExp     ? &EncodeAvifExp
-      : input.codec_settings.codec == Codec::kAvifAvm     ? &EncodeAvifAvm
-      : input.codec_settings.codec == Codec::kAvifLibheif ? &EncodeAvifLibheif
-      : input.codec_settings.codec == Codec::kCombination
-          ? &EncodeCodecCombination
-      : input.codec_settings.codec == Codec::kJpegturbo  ? &EncodeJpegturbo
-      : input.codec_settings.codec == Codec::kJpegli     ? &EncodeJpegli
-      : input.codec_settings.codec == Codec::kJpegsimple ? &EncodeJpegsimple
-      : input.codec_settings.codec == Codec::kJpegmoz    ? &EncodeJpegmoz
-      : input.codec_settings.codec == Codec::kJp2        ? &EncodeOpenjpeg
-      : input.codec_settings.codec == Codec::kFfv1       ? &EncodeFfv1
-      : input.codec_settings.codec == Codec::kBasis      ? &EncodeBasis
-                                                         : nullptr;
-  auto decode_func =
-      input.codec_settings.codec == Codec::kWebp       ? &DecodeWebp
-      : input.codec_settings.codec == Codec::kWebp2    ? &DecodeWebp2
-      : input.codec_settings.codec == Codec::kJpegXl   ? &DecodeJxl
-      : input.codec_settings.codec == Codec::kAvif     ? &DecodeAvifRegularOrExp
-      : input.codec_settings.codec == Codec::kAvifSsim ? &DecodeAvifRegularOrExp
-      : input.codec_settings.codec == Codec::kAvifIq   ? &DecodeAvifRegularOrExp
-      : input.codec_settings.codec == Codec::kAvifExp  ? &DecodeAvifRegularOrExp
-      : input.codec_settings.codec == Codec::kAvifAvm  ? &DecodeAvifAvm
-      : input.codec_settings.codec == Codec::kAvifLibheif ? &DecodeAvifLibheif
-      : input.codec_settings.codec == Codec::kCombination
-          ? &DecodeCodecCombination
-      : input.codec_settings.codec == Codec::kJpegturbo  ? &DecodeJpegturbo
-      : input.codec_settings.codec == Codec::kJpegli     ? &DecodeJpegli
-      : input.codec_settings.codec == Codec::kJpegsimple ? &DecodeJpegsimple
-      : input.codec_settings.codec == Codec::kJpegmoz    ? &DecodeJpegmoz
-      : input.codec_settings.codec == Codec::kJp2        ? &DecodeOpenjpeg
-      : input.codec_settings.codec == Codec::kFfv1       ? &DecodeFfv1
-      : input.codec_settings.codec == Codec::kBasis      ? &DecodeBasis
-                                                         : nullptr;
-
   const Timer encoding_duration;
   WP2::Data encoded_image;
   if (encode_mode == EncodeMode::kLoadFromDisk) {
@@ -528,6 +543,7 @@ StatusOr<TaskOutput> EncodeDecode(const TaskInput& input,
     file.read(reinterpret_cast<char*>(encoded_image.bytes),
               static_cast<long>(length));
   } else {
+    const EncodeFunc encode_func = GetEncodeFunc(input.codec_settings.codec);
     CHECK_OR_RETURN(encode_func != nullptr, quiet);
     ASSIGN_OR_RETURN(encoded_image, encode_func(input, original_image, quiet));
   }
@@ -540,6 +556,7 @@ StatusOr<TaskOutput> EncodeDecode(const TaskInput& input,
 
   const Timer decoding_duration;
   Image decoded_image;
+  const DecodeFunc decode_func = GetDecodeFunc(input.codec_settings.codec);
   CHECK_OR_RETURN(decode_func != nullptr, quiet);
   {
     ASSIGN_OR_RETURN(auto image_and_color_conversion_duration,
@@ -597,10 +614,73 @@ StatusOr<TaskOutput> EncodeDecode(const TaskInput& input,
   return task;
 }
 
+StatusOr<std::vector<uint8_t>> Encode(const uint8_t* argb, uint32_t width,
+                                      uint32_t height, Codec codec,
+                                      Subsampling chroma_subsampling,
+                                      int effort, int quality, bool quiet) {
+  TaskInput input;
+  input.codec_settings = {codec, chroma_subsampling, effort, quality};
+
+  WP2::ArgbBuffer buffer(WP2_ARGB_32);
+  OK_WP2_OR_RETURN(buffer.Import(WP2_ARGB_32, width, height, argb, width * 4),
+                   quiet);
+
+  Image original_image;
+  original_image.emplace_back(std::move(buffer), /*duration_ms=*/0);
+
+  const bool has_transparency = original_image.front().pixels.HasTransparency();
+  const WP2SampleFormat needed_format =
+      CodecToNeededFormat(codec, has_transparency);
+  if (original_image.front().pixels.format() != needed_format) {
+    ASSIGN_OR_RETURN(original_image,
+                     CloneAs(original_image, needed_format, quiet));
+  }
+
+  const EncodeFunc encode_func = GetEncodeFunc(input.codec_settings.codec);
+  CHECK_OR_RETURN(encode_func != nullptr, quiet);
+  ASSIGN_OR_RETURN(WP2::Data encoded_image,
+                   encode_func(input, original_image, quiet));
+
+  return std::vector<uint8_t>(encoded_image.bytes,
+                              encoded_image.bytes + encoded_image.size);
+}
+
+StatusOr<std::vector<uint8_t>> DecodeToArgb(const uint8_t* encoded_image,
+                                            size_t encoded_size,
+                                            uint32_t* width, uint32_t* height,
+                                            bool quiet) {
+  WP2::ArgbBuffer buffer(WP2_ARGB_32);
+  WP2::ImageReader reader(encoded_image, encoded_size, &buffer);
+  bool is_last;
+  uint32_t duration_ms;
+  OK_WP2_OR_RETURN(reader.ReadFrame(&is_last, &duration_ms), quiet);
+
+  *width = buffer.width();
+  *height = buffer.height();
+  std::vector<uint8_t> output(buffer.width() * buffer.height() * 4);
+  for (uint32_t y = 0; y < buffer.height(); ++y) {
+    std::memcpy(&output[y * buffer.width() * 4], buffer.GetRow8(y),
+                buffer.width() * 4);
+  }
+  return output;
+}
+
 #else
 
-StatusOr<TaskOutput> EncodeDecode(const TaskInput&, bool quiet) {
-  CHECK_OR_RETURN(false, quiet) << "Reading images requires HAS_WEBP2";
+StatusOr<TaskOutput> EncodeDecode(const TaskInput&, const std::string&, size_t,
+                                  EncodeMode, bool quiet) {
+  CHECK_OR_RETURN(false, quiet)
+      << "Encoding/decoding images requires HAS_WEBP2";
+}
+
+StatusOr<std::vector<uint8_t>> Encode(const uint8_t*, uint32_t, uint32_t, Codec,
+                                      Subsampling, int, int, bool quiet) {
+  CHECK_OR_RETURN(false, quiet) << "Encoding images requires HAS_WEBP2";
+}
+
+StatusOr<std::vector<uint8_t>> DecodeToArgb(const uint8_t*, size_t, uint32_t*,
+                                            uint32_t*, bool quiet) {
+  CHECK_OR_RETURN(false, quiet) << "Decoding images requires HAS_WEBP2";
 }
 
 #endif  // HAS_WEBP2
