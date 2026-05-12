@@ -28,10 +28,10 @@
 #include "src/task.h"
 
 #if defined(HAS_WEBP2)
-#include "third_party/libwebp2/src/wp2/base.h"
-#include "third_party/libwebp2/src/wp2/decode.h"
-#include "third_party/libwebp2/src/wp2/encode.h"
-#include "third_party/libwebp2/src/wp2/format_constants.h"
+#include "src/wp2/base.h"
+#include "src/wp2/decode.h"
+#include "src/wp2/encode.h"
+#include "src/wp2/format_constants.h"
 #endif  // HAS_WEBP2
 
 namespace codec_compare_gen {

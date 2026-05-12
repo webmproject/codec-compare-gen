@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.7.0
+
+- Replace deps.sh by cmake/Modules.
+- Bump the versions of dependencies.
+- Add emscripten build support for CCGEN_ENABLE_JPEG=ON, CCGEN_ENABLE_WEBP=ON
+  and CCGEN_ENABLE_WEBP2=ON.
+
 ## v0.6.7
 
 - Support images of dimensions below 8 pixels despite some distortion metrics.

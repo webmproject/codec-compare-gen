@@ -32,11 +32,11 @@
 #include "src/task.h"
 
 #if defined(HAS_WEBP2)
-#include "third_party/libwebp2/src/wp2/base.h"
+#include "src/wp2/base.h"
 #endif
 
 #if defined(HAS_JPEGMOZ)
-#include "third_party/mozjpeg/jpeglib.h"
+#include "jpeglib.h"
 #endif
 
 namespace codec_compare_gen {
@@ -45,8 +45,8 @@ std::string JpegmozVersion() {
 #if defined(HAS_JPEGMOZ)
   // JPEG_LIB_VERSION in jconfig.h seems to be the version of the turbojpeg
   // library MozJPEG is based on. I could not find an API for MozJPEG version.
-  // Hardcode the version tied to the GitHub commit used in deps.sh.
-  return "4.1.5";  // 6c9f0897afa1c2738d7222a0a9ab49e8b536a267
+  // Hardcode the version tied to the GitHub commit used in CMakeLists.txt.
+  return "5.0.X";  // 08265790774cd0714832c9e675522acbe5581437
 #else
   return "n/a";
 #endif

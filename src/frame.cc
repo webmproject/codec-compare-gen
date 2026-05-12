@@ -21,13 +21,13 @@
 #include <iostream>
 #include <utility>
 
+#include "imageio/anim_image_dec.h"
+#include "imageio/image_enc.h"
 #include "src/base.h"
 #include "src/codec_webp.h"
 #include "src/distortion.h"
 #include "src/task.h"
-#include "third_party/libwebp2/imageio/anim_image_dec.h"
-#include "third_party/libwebp2/imageio/image_enc.h"
-#include "third_party/libwebp2/src/wp2/base.h"
+#include "src/wp2/base.h"
 #endif  // HAS_WEBP2
 
 namespace codec_compare_gen {

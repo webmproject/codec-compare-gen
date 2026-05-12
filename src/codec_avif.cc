@@ -14,6 +14,7 @@
 
 #include "src/codec_avif.h"
 
+#include <algorithm>
 #include <cassert>
 #include <cstdint>
 #include <string>
@@ -27,7 +28,7 @@
 #include "src/timer.h"
 
 #if defined(HAS_WEBP2)
-#include "third_party/libwebp2/src/wp2/base.h"
+#include "src/wp2/base.h"
 #endif
 
 #if defined(HAS_AVIF)
@@ -54,6 +55,7 @@ std::vector<int> AvifLossyQualities() {
     //   quantizer = ((100 - quality) * 63 + 50) / 100;
     qualities[i] = ((63 - i) * 100 + 63 / 2) / 63;
   }
+  std::reverse(qualities.begin(), qualities.end());
   return qualities;  // [0:63] (63 is lossless but in YUV so RGB is lossy).
 }
 
@@ -246,8 +248,8 @@ StatusOr<std::pair<Image, double>> DecodeAvif(const TaskInput& input,
 }
 
 #else
-StatusOr<WP2::Data> EncodeAvif(const TaskInput&, const Image&, bool, bool, bool,
-                               bool quiet) {
+StatusOr<WP2::Data> EncodeAvif(const TaskInput&, const Image&, bool, bool,
+                               const char*, bool, bool quiet) {
   CHECK_OR_RETURN(false, quiet) << "Encoding images requires HAS_AVIF";
 }
 StatusOr<std::pair<Image, double>> DecodeAvif(const TaskInput&,

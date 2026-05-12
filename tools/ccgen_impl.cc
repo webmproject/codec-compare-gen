@@ -112,8 +112,7 @@ int Main(int argc, const char* const argv[]) {
                 << (kDefSet.abort_above_fail_ratio * 100) << "%" << std::endl
                 << " [--skip_all_remaining]" << std::endl
                 << " [--quiet]" << std::endl
-                << " [--metric_binary_folder {path to third_party created by "
-                   "deps.sh}]"
+                << " [--metric_binary_folder {path to CMake build folder}]"
                 << std::endl
                 << " [--encoded_folder {path}]" << std::endl
                 << " --progress_file {path}" << std::endl
@@ -251,6 +250,14 @@ int Main(int argc, const char* const argv[]) {
     std::cerr << "There must be --lossy/--qualities or --lossless but not both"
               << std::endl;
     return 1;
+  }
+  if (lossy && settings.metric_binary_folder_path.empty() && argc >= 1) {
+    const std::filesystem::path metric_binary_folder_path =
+        std::filesystem::path(argv[0]).parent_path();
+    if (std::filesystem::exists(metric_binary_folder_path / "_deps" /
+                                "dssim-src" / "target" / "release" / "dssim")) {
+      settings.metric_binary_folder_path = metric_binary_folder_path;
+    }
   }
   if (lossy && settings.metric_binary_folder_path.empty()) {
     std::cerr << "Missing --metric_binary_folder for lossy evaluations"

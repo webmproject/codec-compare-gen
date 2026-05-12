@@ -22,7 +22,7 @@
 #include "src/base.h"
 
 #if defined(HAS_WEBP2)
-#include "third_party/libwebp2/src/wp2/base.h"
+#include "src/wp2/base.h"
 #endif
 
 namespace codec_compare_gen {
