@@ -24,13 +24,11 @@
 #include <vector>
 
 #include "src/base.h"
+#include "src/codec.h"
 #include "src/frame.h"
 #include "src/task.h"
 #include "src/timer.h"
-
-#if defined(HAS_WEBP2)
 #include "src/wp2/base.h"
-#endif
 
 #if defined(HAS_WEBP)
 #include "src/webp/decode.h"
@@ -41,14 +39,18 @@
 #endif
 
 namespace codec_compare_gen {
-
 namespace {
+
 std::string VersionToString(int version) {
   return std::to_string((version >> 16) & 0xff) + "." +
          std::to_string((version >> 8) & 0xff) + "." +
          std::to_string(version & 0xff);
 }
-}  // namespace
+
+std::string WebpPrettyName(bool lossless, Subsampling subsampling, int effort) {
+  return (lossless ? "WebP z" : "WebP m") + std::to_string(effort) +
+         SubsamplingToPrettyString(lossless, subsampling);
+}
 
 std::string WebpVersion() {
 #if defined(HAS_WEBP)
@@ -68,8 +70,6 @@ std::vector<int> WebpLossyQualities() {
   return qualities;  // [0:100]
 }
 
-#if defined(HAS_WEBP2)
-
 WP2SampleFormat WebPPictureFormat() {
   const uint32_t is_little_endian = 1;
   return reinterpret_cast<const uint8_t*>(&is_little_endian)[0] ? WP2_BGRA_32
@@ -77,8 +77,6 @@ WP2SampleFormat WebPPictureFormat() {
 }
 
 #if defined(HAS_WEBP)
-
-namespace {
 
 // Returns a WebPPicture that points to the given ArgbBuffer.
 StatusOr<WebPPicture> ArgbBufferToWebPPicture(WP2::ArgbBuffer& buffer,
@@ -104,8 +102,6 @@ int WriterFunction(const uint8_t* data, size_t data_size,
       *reinterpret_cast<WP2::Data*>(const_cast<void*>(picture->custom_ptr));
   return bytes.Append(data, data_size) == WP2_STATUS_OK ? 1 : 0;
 }
-
-}  // namespace
 
 StatusOr<WP2::Data> EncodeWebp(const TaskInput& input,
                                const Image& original_image, bool quiet) {
@@ -236,6 +232,22 @@ StatusOr<std::pair<Image, double>> DecodeWebp(const TaskInput&,
 }
 #endif  // HAS_WEBP
 
-#endif  // HAS_WEBP2
+}  // namespace
+
+CodecMetadata GetWebpMetadata() {
+  return CodecMetadata{
+      "webp",
+      WebpPrettyName,
+      WebpVersion,
+      WebpLossyQualities,
+      "webp",
+      /*is_supported_by_browsers=*/true,
+      /*supports_16bit=*/false,
+      WebPPictureFormat(),
+      WebPPictureFormat(),
+      EncodeWebp,
+      DecodeWebp,
+  };
+}
 
 }  // namespace codec_compare_gen

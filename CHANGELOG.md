@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.7.1
+
+- Bump the versions of the libavif and libheif dependencies.
+
 ## v0.7.0
 
 - Replace deps.sh by cmake/Modules.

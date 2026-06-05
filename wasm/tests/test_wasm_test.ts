@@ -41,6 +41,10 @@ function fromByteVector(v: any): Uint8Array {
   return bytes;
 }
 
+// Loading codec_wasm_bin.wasm can take a long time, especially if sanitizers
+// were enabled during the build. See b/514217988.
+jasmine.DEFAULT_TIMEOUT_INTERVAL = 60000;
+
 describe('Codec WASM', () => {
   let module: any;
   let pngBytes: Uint8Array;

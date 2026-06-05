@@ -22,26 +22,32 @@
 #include <vector>
 
 #include "src/base.h"
+#include "src/codec.h"
 #include "src/codec_jpegturbo.h"
 #include "src/frame.h"
 #include "src/serialization.h"
 #include "src/task.h"
-
-#if defined(HAS_WEBP2)
 #include "src/wp2/base.h"
-#endif
 
 #if defined(HAS_JPEGSIMPLE)
 #include "src/sjpeg.h"
 #endif
 
 namespace codec_compare_gen {
+namespace {
+
+std::string JpegsimplePrettyName(bool lossless, Subsampling subsampling,
+                                 int effort) {
+  return "SimpleJPEG m" + std::to_string(effort) +
+         SubsamplingToPrettyString(lossless, subsampling);
+}
 
 std::string JpegsimpleVersion() {
 #if defined(HAS_JPEGSIMPLE)
   return std::to_string(SjpegVersion() / 1000000) + "." +
          std::to_string(SjpegVersion() % 10000 / 100) + "." +
-         std::to_string(SjpegVersion() % 100) + "_" + JpegturboVersion();
+         std::to_string(SjpegVersion() % 100) + "_" +
+         GetJpegturboMetadata().version();
 #else
   return "n/a";
 #endif
@@ -52,8 +58,6 @@ std::vector<int> JpegsimpleLossyQualities() {
   std::iota(qualities.begin(), qualities.end(), 0);
   return qualities;
 }
-
-#if defined(HAS_WEBP2)
 
 #if defined(HAS_JPEGSIMPLE) && defined(HAS_JPEGTURBO)
 
@@ -95,25 +99,30 @@ StatusOr<WP2::Data> EncodeJpegsimple(const TaskInput& input,
   return data;
 }
 
-StatusOr<std::pair<Image, double>> DecodeJpegsimple(
-    const TaskInput& input, const WP2::Data& encoded_image, bool quiet) {
-  return DecodeJpegturbo(input, encoded_image, quiet);
-}
-
 #else
 StatusOr<WP2::Data> EncodeJpegsimple(const TaskInput&, const Image&,
                                      bool quiet) {
   CHECK_OR_RETURN(false, quiet)
       << "Encoding images requires HAS_JPEGSIMPLE and HAS_JPEGTURBO";
 }
-StatusOr<std::pair<Image, double>> DecodeJpegsimple(const TaskInput&,
-                                                    const WP2::Data&,
-                                                    bool quiet) {
-  CHECK_OR_RETURN(false, quiet)
-      << "Decoding images requires HAS_JPEGSIMPLE and HAS_JPEGTURBO";
-}
 #endif  // HAS_JPEGSIMPLE && HAS_JPEGTURBO
 
-#endif  // HAS_WEBP2
+}  // namespace
+
+CodecMetadata GetJpegsimpleMetadata() {
+  return CodecMetadata{
+      "jpegsimple",
+      JpegsimplePrettyName,
+      JpegsimpleVersion,
+      JpegsimpleLossyQualities,
+      "s.jpg",
+      /*is_supported_by_browsers=*/true,
+      /*supports_16bit=*/false,
+      /*opaque_format=*/WP2_RGB_24,
+      /*transparent_format=*/WP2_FORMAT_NUM,  // No alpha support.
+      EncodeJpegsimple,
+      GetJpegturboMetadata().decode,
+  };
+}
 
 }  // namespace codec_compare_gen

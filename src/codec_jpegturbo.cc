@@ -21,13 +21,11 @@
 #include <vector>
 
 #include "src/base.h"
+#include "src/codec.h"
 #include "src/frame.h"
 #include "src/serialization.h"
 #include "src/task.h"
-
-#if defined(HAS_WEBP2)
 #include "src/wp2/base.h"
-#endif
 
 #if defined(HAS_JPEGTURBO)
 #include "jconfigint.h"
@@ -35,6 +33,11 @@
 #endif
 
 namespace codec_compare_gen {
+namespace {
+
+std::string JpegturboPrettyName(bool lossless, Subsampling subsampling, int) {
+  return "TurboJPEG" + SubsamplingToPrettyString(lossless, subsampling);
+}
 
 std::string JpegturboVersion() {
 #if defined(HAS_JPEGTURBO)
@@ -49,8 +52,6 @@ std::vector<int> JpegturboLossyQualities() {
   std::iota(qualities.begin(), qualities.end(), 0);
   return qualities;
 }
-
-#if defined(HAS_WEBP2)
 
 #if defined(HAS_JPEGTURBO)
 
@@ -141,6 +142,22 @@ StatusOr<std::pair<Image, double>> DecodeJpegturbo(const TaskInput&,
 }
 #endif  // HAS_JPEGTURBO
 
-#endif  // HAS_WEBP2
+}  // namespace
+
+CodecMetadata GetJpegturboMetadata() {
+  return CodecMetadata{
+      "jpegturbo",
+      JpegturboPrettyName,
+      JpegturboVersion,
+      JpegturboLossyQualities,
+      "turbo.jpg",
+      /*is_supported_by_browsers=*/true,
+      /*supports_16bit=*/false,
+      /*opaque_format=*/WP2_RGB_24,
+      /*transparent_format=*/WP2_FORMAT_NUM,  // No alpha support.
+      EncodeJpegturbo,
+      DecodeJpegturbo,
+  };
+}
 
 }  // namespace codec_compare_gen

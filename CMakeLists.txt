@@ -16,7 +16,7 @@ cmake_minimum_required(VERSION 3.20)
 project(
   codec-compare-gen
   LANGUAGES CXX
-  VERSION 0.7.0)
+  VERSION 0.7.1)
 set(CMAKE_CXX_STANDARD 17)
 
 # Options
@@ -256,7 +256,6 @@ endif()
 
 if(CCGEN_ENABLE_WEBP2)
   include(LocalLibwebp2)
-  target_compile_definitions(libccgen PRIVATE HAS_WEBP2)
   target_link_libraries(libccgen webp2 imageio)
   if(CCGEN_ENABLE_WEBP)
     # libccgen also uses WebP encoding and decoding through libwebp2.
@@ -397,12 +396,10 @@ if(NOT CCGEN_WASM)
   target_include_directories(are_images_equivalent
                              PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
   target_link_libraries(are_images_equivalent libccgen)
-  target_compile_definitions(are_images_equivalent PRIVATE HAS_WEBP2)
 
   add_executable(strip_metadata tools/strip_metadata.cc)
   target_include_directories(strip_metadata PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
   target_link_libraries(strip_metadata libccgen)
-  target_compile_definitions(strip_metadata PRIVATE HAS_WEBP2)
 endif()
 
 # Tests
@@ -435,7 +432,6 @@ if(CCGEN_BUILD_TESTING)
       target_include_directories(${TEST_NAME}
                                  PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
       target_link_libraries(${TEST_NAME} PRIVATE libccgen GTest::gtest)
-      target_compile_definitions(${TEST_NAME} PRIVATE HAS_WEBP2)
       if(${ARGC} EQUAL 3)
         add_test(NAME ${TEST_NAME}
                  COMMAND ${TEST_NAME} ${CMAKE_CURRENT_SOURCE_DIR}/${ARGV1}/

@@ -115,7 +115,8 @@ Status TasksToJson(const std::string& batch_pretty_name, CodecSettings settings,
 
   // See EncodeDecode().
   const bool has_decoded_path =
-      has_encoded_path && !CodecIsSupportedByBrowsers(settings.codec);
+      has_encoded_path &&
+      !GetCodecMetadata(settings.codec).is_supported_by_browsers;
 
   std::ofstream file(results_file_path, std::ios::trunc);
   CHECK_OR_RETURN(file.is_open(), quiet) << "Failed to open results file at "
@@ -156,7 +157,7 @@ Status TasksToJson(const std::string& batch_pretty_name, CodecSettings settings,
                                         : "";
 
   const std::string build_cmd =
-      "git clone -b v0.7.0 --depth 1"
+      "git clone -b v0.7.1 --depth 1"
       " https://github.com/webmproject/codec-compare-gen.git ccgen"
       " && cmake -S ccgen -B ccgen/build" +
       build_option +
@@ -172,7 +173,8 @@ Status TasksToJson(const std::string& batch_pretty_name, CodecSettings settings,
           ? " " + std::to_string(settings.effort)
           : "";  // kJpegturbo, kJpegli, and kJpegmoz have no effort setting.
   std::string encoding_cmd =
-      "ccgen/build/ccgen --codec " + CodecName(settings.codec) + " " +
+      "ccgen/build/ccgen --codec " +
+      std::string(GetCodecMetadata(settings.codec).name) + " " +
       SubsamplingToString(settings.chroma_subsampling) + effort_str;
   if (settings.quality == kQualityLossless) {
     encoding_cmd += " --lossless";
@@ -205,9 +207,9 @@ Status TasksToJson(const std::string& batch_pretty_name, CodecSettings settings,
     )json"
        << Escape(batch_pretty_name) << R"json(,
     )json"
-       << Escape(CodecName(settings.codec)) << R"json(,
+       << Escape(GetCodecMetadata(settings.codec).name) << R"json(,
     )json"
-       << Escape(CodecVersion(settings.codec) + "_" +
+       << Escape(GetCodecMetadata(settings.codec).version() + "_" +
                  SubsamplingToString(settings.chroma_subsampling))
        << R"json(,
     )json"

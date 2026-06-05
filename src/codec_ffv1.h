@@ -15,31 +15,13 @@
 #ifndef SRC_CODEC_FFV1_H_
 #define SRC_CODEC_FFV1_H_
 
-#include <string>
-#include <utility>
-
-#include "src/base.h"
-#include "src/frame.h"
-#include "src/task.h"
-
-#if defined(HAS_WEBP2)
-#include "src/wp2/base.h"
-#endif
+#include "src/codec.h"
 
 namespace codec_compare_gen {
 
 // FFV1 is a lossless intra-frame video coding format. The library libavcodec is
 // in the FFmpeg project.
-
-std::string Ffv1Version();
-
-#if defined(HAS_WEBP2)
-StatusOr<WP2::Data> EncodeFfv1(const TaskInput& input,
-                               const Image& original_image, bool quiet);
-StatusOr<std::pair<Image, double>> DecodeFfv1(const TaskInput& input,
-                                              const WP2::Data& encoded_image,
-                                              bool quiet);
-#endif  // HAS_WEBP2
+CodecMetadata GetFfv1Metadata();
 
 }  // namespace codec_compare_gen
 

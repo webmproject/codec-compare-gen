@@ -20,22 +20,17 @@
 #include <vector>
 
 #include "src/base.h"
-
-#if defined(HAS_WEBP2)
 #include "src/wp2/base.h"
-#endif
 
 namespace codec_compare_gen {
 
 struct Frame {
-#if defined(HAS_WEBP2)
   Frame() = default;
   Frame(Frame&&) = default;
   Frame(WP2::ArgbBuffer&& pixels, uint32_t duration_ms)
       : pixels(std::move(pixels)), duration_ms(duration_ms) {};
 
   WP2::ArgbBuffer pixels;
-#endif
   uint32_t duration_ms;  // 0 for still images.
 };
 
@@ -43,8 +38,6 @@ struct Frame {
 using Image = std::vector<Frame>;
 
 uint32_t GetDurationMs(const Image& image);
-
-#if defined(HAS_WEBP2)
 
 inline constexpr WP2SampleFormat kARGB32 = WP2_ARGB_32;
 
@@ -64,8 +57,6 @@ StatusOr<Image> ReadStillImageOrAnimation(const char* file_path,
 // animations).
 Status WriteStillImageOrAnimation(const Image& image, const char* file_path,
                                   bool quiet);
-
-#endif
 
 }  // namespace codec_compare_gen
 

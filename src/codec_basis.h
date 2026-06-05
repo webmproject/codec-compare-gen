@@ -15,21 +15,9 @@
 #ifndef SRC_CODEC_BASIS_H_
 #define SRC_CODEC_BASIS_H_
 
-#include <string>
-#include <utility>
-#include <vector>
-
-#include "src/base.h"
-#include "src/frame.h"
-#include "src/task.h"
-
-#if defined(HAS_WEBP2)
-#include "src/wp2/base.h"
-#endif
+#include "src/codec.h"
 
 namespace codec_compare_gen {
-
-std::string BasisVersion();
 
 class BasisContext {
  public:
@@ -40,15 +28,7 @@ class BasisContext {
   bool enabled;
 };
 
-std::vector<int> BasisLossyQualities();
-
-#if defined(HAS_WEBP2)
-StatusOr<WP2::Data> EncodeBasis(const TaskInput& input,
-                                const Image& original_image, bool quiet);
-StatusOr<std::pair<Image, double>> DecodeBasis(const TaskInput& input,
-                                               const WP2::Data& encoded_image,
-                                               bool quiet);
-#endif  // HAS_WEBP2
+CodecMetadata GetBasisMetadata();
 
 }  // namespace codec_compare_gen
 

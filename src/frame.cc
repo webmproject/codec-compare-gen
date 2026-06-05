@@ -15,8 +15,6 @@
 #include "src/frame.h"
 
 #include <cstdint>
-
-#if defined(HAS_WEBP2)
 #include <fstream>
 #include <iostream>
 #include <utility>
@@ -24,11 +22,11 @@
 #include "imageio/anim_image_dec.h"
 #include "imageio/image_enc.h"
 #include "src/base.h"
+#include "src/codec.h"
 #include "src/codec_webp.h"
 #include "src/distortion.h"
 #include "src/task.h"
 #include "src/wp2/base.h"
-#endif  // HAS_WEBP2
 
 namespace codec_compare_gen {
 
@@ -39,8 +37,6 @@ uint32_t GetDurationMs(const Image& image) {
   }
   return duration_ms;
 }
-
-#if defined(HAS_WEBP2)
 
 StatusOr<Image> CloneAs(const Image& from, WP2SampleFormat format, bool quiet) {
   Image to;
@@ -173,14 +169,12 @@ Status WriteStillImageOrAnimation(const Image& image, const char* file_path,
                          ? MakeView(image, quiet)
                          : CloneAs(image, WP2_BGRA_32, quiet));
     ASSIGN_OR_RETURN(const WP2::Data encoded_image,
-                     EncodeWebp(input, bgra, quiet));
+                     GetCodecMetadata(Codec::kWebp).encode(input, bgra, quiet));
     std::ofstream(file_path, std::ios::binary)
         .write(reinterpret_cast<char*>(encoded_image.bytes),
                encoded_image.size);
   }
   return Status::kOk;
 }
-
-#endif  // HAS_WEBP2
 
 }  // namespace codec_compare_gen

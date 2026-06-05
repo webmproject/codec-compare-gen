@@ -18,21 +18,40 @@
 #include <cstddef>
 #include <cstdint>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "src/base.h"
+#include "src/frame.h"
 #include "src/task.h"
+#include "src/wp2/base.h"
 
 namespace codec_compare_gen {
 
-std::string CodecName(Codec codec);
-std::string CodecPrettyName(Codec codec, bool lossless, Subsampling subsampling,
-                            int effort);
-std::string CodecVersion(Codec codec);
+struct CodecMetadata {
+  const char* name;
+
+  std::string (*pretty_name)(bool lossless, Subsampling subsampling,
+                             int effort);
+  std::string (*version)();
+  std::vector<int> (*lossy_qualities)();
+  const char* extension;
+  bool is_supported_by_browsers;
+  bool supports_16bit;
+  WP2SampleFormat opaque_format;
+  WP2SampleFormat transparent_format;  // WP2_FORMAT_NUM if no alpha support.
+
+  // Returns the encoded image bytes.
+  StatusOr<WP2::Data> (*encode)(const TaskInput&, const Image&, bool quiet);
+  // Returns the decoded image pixels and the color conversion duration if any.
+  StatusOr<std::pair<Image, double>> (*decode)(const TaskInput&,
+                                               const WP2::Data&, bool quiet);
+};
+
+CodecMetadata GetCodecMetadata(Codec codec);
 StatusOr<Codec> CodecFromName(const std::string& name, bool quiet);
-std::vector<int> CodecLossyQualities(Codec codec);
-std::string CodecExtension(Codec codec);
-bool CodecIsSupportedByBrowsers(Codec codec);
+
+std::string SubsamplingToPrettyString(bool lossless, Subsampling subsampling);
 
 enum class EncodeMode { kEncode, kEncodeAndSaveToDisk, kLoadFromDisk };
 

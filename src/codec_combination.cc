@@ -22,21 +22,27 @@
 #include <vector>
 
 #include "src/base.h"
+#include "src/codec.h"
 #include "src/codec_jpegxl.h"
 #include "src/codec_webp.h"
 #include "src/codec_webp2.h"
 #include "src/frame.h"
 #include "src/task.h"
 #include "src/timer.h"
-
-#if defined(HAS_WEBP2)
 #include "src/wp2/base.h"
-#endif
 
 namespace codec_compare_gen {
+namespace {
+
+std::string CodecCombinationPrettyName(bool lossless, Subsampling subsampling,
+                                       int effort) {
+  return "combination e" + std::to_string(effort) +
+         SubsamplingToPrettyString(lossless, subsampling);
+}
 
 std::string CodecCombinationVersion() {
-  return WebpVersion() + "_" + Webp2Version() + "_" + JpegXLVersion();
+  return GetWebpMetadata().version() + "_" + GetWebp2Metadata().version() +
+         "_" + GetJpegXlMetadata().version();
 }
 
 std::vector<int> CodecCombinationLossyQualities() {
@@ -44,10 +50,6 @@ std::vector<int> CodecCombinationLossyQualities() {
   std::iota(qualities.begin(), qualities.end(), 5);
   return qualities;  // [5:95] so that every quality works with each codec.
 }
-
-#if defined(HAS_WEBP2)
-
-namespace {
 
 bool HasTransparency(const Image& image) {
   for (const Frame& frame : image) {
@@ -60,8 +62,6 @@ struct CodecEffort {
   Codec codec;
   int effort;
 };
-
-}  // namespace
 
 StatusOr<WP2::Data> EncodeCodecCombination(const TaskInput& input,
                                            const Image& original_image,
@@ -98,14 +98,18 @@ StatusOr<WP2::Data> EncodeCodecCombination(const TaskInput& input,
 
     using std::swap;
     if (specialized_input.codec_settings.codec == Codec::kWebp) {
-      ASSIGN_OR_RETURN(const Image image,
-                       CloneAs(original_image, WebPPictureFormat(), quiet));
+      ASSIGN_OR_RETURN(
+          const Image image,
+          CloneAs(original_image,
+                  GetCodecMetadata(Codec::kWebp).transparent_format, quiet));
       ASSIGN_OR_RETURN(WP2::Data candidate,
-                       EncodeWebp(specialized_input, image, quiet));
+                       GetCodecMetadata(Codec::kWebp)
+                           .encode(specialized_input, image, quiet));
       if (data.IsEmpty() || candidate.size < data.size) swap(data, candidate);
     } else if (specialized_input.codec_settings.codec == Codec::kWebp2) {
       ASSIGN_OR_RETURN(WP2::Data candidate,
-                       EncodeWebp2(specialized_input, original_image, quiet));
+                       GetCodecMetadata(Codec::kWebp2)
+                           .encode(specialized_input, original_image, quiet));
       if (data.IsEmpty() || candidate.size < data.size) swap(data, candidate);
     } else {
       assert(specialized_input.codec_settings.codec == Codec::kJpegXl);
@@ -114,7 +118,8 @@ StatusOr<WP2::Data> EncodeCodecCombination(const TaskInput& input,
       ASSIGN_OR_RETURN(const Image image,
                        CloneAs(original_image, jxl_format, quiet));
       ASSIGN_OR_RETURN(WP2::Data candidate,
-                       EncodeJxl(specialized_input, image, quiet));
+                       GetCodecMetadata(Codec::kJpegXl)
+                           .encode(specialized_input, image, quiet));
       if (data.IsEmpty() || candidate.size < data.size) swap(data, candidate);
     }
   }
@@ -126,7 +131,9 @@ StatusOr<std::pair<Image, double>> DecodeCodecCombination(
   if (encoded_image.size >= 12 &&
       std::equal(encoded_image.bytes, encoded_image.bytes + 4, "RIFF") &&
       std::equal(encoded_image.bytes + 8, encoded_image.bytes + 12, "WEBP")) {
-    ASSIGN_OR_RETURN(auto webp, DecodeWebp(input, encoded_image, quiet));
+    ASSIGN_OR_RETURN(
+        auto webp,
+        GetCodecMetadata(Codec::kWebp).decode(input, encoded_image, quiet));
     const Timer color_conversion_duration;
     ASSIGN_OR_RETURN(Image clone, CloneAs(webp.first, WP2_ARGB_32, quiet));
     return std::pair<Image, double>(
@@ -135,16 +142,37 @@ StatusOr<std::pair<Image, double>> DecodeCodecCombination(
 
   if (encoded_image.size >= 3 && encoded_image.bytes[0] == 0xf4 &&
       encoded_image.bytes[1] == 0xff && encoded_image.bytes[2] == 0x6f) {
-    return DecodeWebp2(input, encoded_image, quiet);
+    return GetCodecMetadata(Codec::kWebp2).decode(input, encoded_image, quiet);
   }
 
-  ASSIGN_OR_RETURN(auto jxl, DecodeJxl(input, encoded_image, quiet));
+  ASSIGN_OR_RETURN(
+      auto jxl,
+      GetCodecMetadata(Codec::kJpegXl).decode(input, encoded_image, quiet));
   const Timer color_conversion_duration;
   ASSIGN_OR_RETURN(Image clone, CloneAs(jxl.first, WP2_ARGB_32, quiet));
   return std::pair<Image, double>(
       std::move(clone), jxl.second + color_conversion_duration.seconds());
 }
 
-#endif  // HAS_WEBP2
+}  // namespace
+
+CodecMetadata GetCombinationMetadata() {
+  return CodecMetadata{
+      "combination",
+      CodecCombinationPrettyName,
+      CodecCombinationVersion,
+      CodecCombinationLossyQualities,
+      "comb",
+      GetWebpMetadata().is_supported_by_browsers &&
+          GetWebp2Metadata().is_supported_by_browsers &&
+          GetJpegXlMetadata().is_supported_by_browsers,
+      GetWebpMetadata().supports_16bit && GetWebp2Metadata().supports_16bit &&
+          GetJpegXlMetadata().supports_16bit,
+      /*opaque_format=*/WP2_ARGB_32,
+      /*transparent_format=*/WP2_ARGB_32,
+      EncodeCodecCombination,
+      DecodeCodecCombination,
+  };
+}
 
 }  // namespace codec_compare_gen

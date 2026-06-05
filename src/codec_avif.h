@@ -15,34 +15,15 @@
 #ifndef SRC_CODEC_AVIF_H_
 #define SRC_CODEC_AVIF_H_
 
-#include <string>
-#include <utility>
-#include <vector>
-
-#include "src/base.h"
-#include "src/frame.h"
-#include "src/task.h"
-
-#if defined(HAS_WEBP2)
-#include "src/wp2/base.h"
-#endif
+#include "src/codec.h"
 
 namespace codec_compare_gen {
 
-std::string AvifVersion();
-
-std::vector<int> AvifLossyQualities();
-
-#if defined(HAS_WEBP2)
-StatusOr<WP2::Data> EncodeAvif(const TaskInput& input,
-                               const Image& original_image,
-                               bool minimized_image_box, bool ycgco_re,
-                               const char* tune, bool avm, bool quiet);
-// Returns the decoded image and the color conversion duration.
-StatusOr<std::pair<Image, double>> DecodeAvif(const TaskInput& input,
-                                              const WP2::Data& encoded_image,
-                                              bool avm, bool quiet);
-#endif  // HAS_WEBP2
+CodecMetadata GetAvifMetadata();
+CodecMetadata GetAvifSsimMetadata();
+CodecMetadata GetAvifIqMetadata();
+CodecMetadata GetAvifExpMetadata();
+CodecMetadata GetAvifAvmMetadata();
 
 }  // namespace codec_compare_gen
 

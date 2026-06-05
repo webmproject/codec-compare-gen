@@ -15,30 +15,11 @@
 #ifndef SRC_CODEC_JPEGSIMPLE_H_
 #define SRC_CODEC_JPEGSIMPLE_H_
 
-#include <string>
-#include <utility>
-#include <vector>
-
-#include "src/base.h"
-#include "src/frame.h"
-#include "src/task.h"
-
-#if defined(HAS_WEBP2)
-#include "src/wp2/base.h"
-#endif
+#include "src/codec.h"
 
 namespace codec_compare_gen {
 
-std::string JpegsimpleVersion();
-
-std::vector<int> JpegsimpleLossyQualities();
-
-#if defined(HAS_WEBP2)
-StatusOr<WP2::Data> EncodeJpegsimple(const TaskInput& input,
-                                     const Image& original_image, bool quiet);
-StatusOr<std::pair<Image, double>> DecodeJpegsimple(
-    const TaskInput& input, const WP2::Data& encoded_image, bool quiet);
-#endif  // HAS_WEBP2
+CodecMetadata GetJpegsimpleMetadata();
 
 }  // namespace codec_compare_gen
 

@@ -21,13 +21,11 @@
 #include <vector>
 
 #include "src/base.h"
+#include "src/codec.h"
 #include "src/frame.h"
 #include "src/serialization.h"
 #include "src/task.h"
-
-#if defined(HAS_WEBP2)
 #include "src/wp2/base.h"
-#endif
 
 #if defined(HAS_BASIS)
 #include "encoder/basisu_comp.h"
@@ -37,27 +35,15 @@
 #endif
 
 namespace codec_compare_gen {
+namespace {
+
+std::string BasisPrettyName(bool, Subsampling, int) { return "Basis"; }
 
 std::string BasisVersion() {
 #if defined(HAS_BASIS)
   return BASISU_LIB_VERSION_STRING;
 #else
   return "n/a";
-#endif
-}
-
-BasisContext::BasisContext(bool enabled) : enabled(enabled) {
-#if defined(HAS_BASIS)
-  if (enabled) {
-    basisu::basisu_encoder_init();
-    // Uncomment for debugging.
-    // basisu::enable_debug_printf(true);
-  }
-#endif
-}
-BasisContext::~BasisContext() {
-#if defined(HAS_BASIS)
-  if (enabled) basisu::basisu_encoder_deinit();
 #endif
 }
 
@@ -74,7 +60,24 @@ std::vector<int> BasisLossyQualities() {
   return qualities;
 }
 
-#if defined(HAS_WEBP2)
+}  // namespace
+
+BasisContext::BasisContext(bool enabled) : enabled(enabled) {
+#if defined(HAS_BASIS)
+  if (enabled) {
+    basisu::basisu_encoder_init();
+    // Uncomment for debugging.
+    // basisu::enable_debug_printf(true);
+  }
+#endif
+}
+BasisContext::~BasisContext() {
+#if defined(HAS_BASIS)
+  if (enabled) basisu::basisu_encoder_deinit();
+#endif
+}
+
+namespace {
 
 #if defined(HAS_BASIS)
 
@@ -205,6 +208,22 @@ StatusOr<std::pair<Image, double>> DecodeBasis(const TaskInput&,
 }
 #endif  // HAS_BASIS
 
-#endif  // HAS_WEBP2
+}  // namespace
+
+CodecMetadata GetBasisMetadata() {
+  return CodecMetadata{
+      "basis",
+      BasisPrettyName,
+      BasisVersion,
+      BasisLossyQualities,
+      "basis",
+      /*is_supported_by_browsers=*/false,
+      /*supports_16bit=*/false,
+      /*opaque_format=*/WP2_RGB_24,
+      /*transparent_format=*/WP2_RGBA_32,
+      EncodeBasis,
+      DecodeBasis,
+  };
+}
 
 }  // namespace codec_compare_gen

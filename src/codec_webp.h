@@ -15,34 +15,11 @@
 #ifndef SRC_CODEC_WEBP_H_
 #define SRC_CODEC_WEBP_H_
 
-#include <string>
-#include <utility>
-#include <vector>
-
-#include "src/base.h"
-#include "src/frame.h"
-#include "src/task.h"
-
-#if defined(HAS_WEBP2)
-#include "src/wp2/base.h"
-#endif
+#include "src/codec.h"
 
 namespace codec_compare_gen {
 
-std::string WebpVersion();
-
-std::vector<int> WebpLossyQualities();
-
-#if defined(HAS_WEBP2)
-WP2SampleFormat WebPPictureFormat();
-
-StatusOr<WP2::Data> EncodeWebp(const TaskInput& input,
-                               const Image& original_image, bool quiet);
-// Returns the decoded image and the color conversion duration.
-StatusOr<std::pair<Image, double>> DecodeWebp(const TaskInput& input,
-                                              const WP2::Data& encoded_image,
-                                              bool quiet);
-#endif  // HAS_WEBP2
+CodecMetadata GetWebpMetadata();
 
 }  // namespace codec_compare_gen
 
