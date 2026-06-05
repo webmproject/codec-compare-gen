@@ -174,7 +174,8 @@ StatusOr<std::vector<TaskOutput>> LoadTasks(
     std::vector<std::unordered_set<int>> qualities_per_codec(
         static_cast<int>(Codec::kNumCodecs));
     for (size_t i = 0; i < qualities_per_codec.size(); ++i) {
-      const std::vector<int> q = CodecLossyQualities(static_cast<Codec>(i));
+      const std::vector<int> q =
+          GetCodecMetadata(static_cast<Codec>(i)).lossy_qualities();
       qualities_per_codec[i] = std::unordered_set<int>(q.begin(), q.end());
     }
 
@@ -429,12 +430,14 @@ Status Compare(const std::vector<std::string>& image_paths,
                                           : "") +
                                      std::to_string(codec_settings.effort);
       const std::string batch_file_name =
-          CodecName(codec_settings.codec) + "_" +
-          SubsamplingToString(codec_settings.chroma_subsampling) + "_" +
-          effort_str;
-      const std::string batch_pretty_name = CodecPrettyName(
-          codec_settings.codec, codec_settings.quality == kQualityLossless,
-          codec_settings.chroma_subsampling, codec_settings.effort);
+          GetCodecMetadata(codec_settings.codec).name +
+          ("_" + SubsamplingToString(codec_settings.chroma_subsampling)) +
+          ("_" + effort_str);
+      const std::string batch_pretty_name =
+          GetCodecMetadata(codec_settings.codec)
+              .pretty_name(codec_settings.quality == kQualityLossless,
+                           codec_settings.chroma_subsampling,
+                           codec_settings.effort);
       OK_OR_RETURN(TasksToJson(batch_pretty_name, codec_settings, tasks,
                                settings.quiet,
                                std::filesystem::path(results_folder_path) /
@@ -459,8 +462,8 @@ Status Compare(const std::vector<std::string>& image_paths,
     const CodecSettings& codec_settings = input.codec_settings;
     std::cout << std::endl
               << "Input settings" << std::endl
-              << "  Codec:              " << CodecName(codec_settings.codec)
-              << std::endl
+              << "  Codec:              "
+              << GetCodecMetadata(codec_settings.codec).name << std::endl
               << "  Chroma subsampling: "
               << SubsamplingToString(codec_settings.chroma_subsampling)
               << std::endl

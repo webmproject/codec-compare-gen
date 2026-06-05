@@ -274,11 +274,11 @@ int Main(int argc, const char* const argv[]) {
     std::vector<std::vector<int>> qualities(
         static_cast<int>(Codec::kNumCodecs));
     for (size_t i = 0; i < qualities.size(); ++i) {
-      qualities[i] = CodecLossyQualities(static_cast<Codec>(i));
+      qualities[i] = GetCodecMetadata(static_cast<Codec>(i)).lossy_qualities();
     }
     for (const CodecEffort& setting : codec_settings) {
       if (qualities.at(static_cast<int>(setting.codec)).empty()) {
-        std::cerr << CodecName(setting.codec)
+        std::cerr << GetCodecMetadata(setting.codec).name
                   << " does not support lossy encoding" << std::endl;
         return 1;
       }

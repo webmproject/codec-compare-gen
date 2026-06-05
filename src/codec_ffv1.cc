@@ -14,21 +14,20 @@
 
 #include "src/codec_ffv1.h"
 
-#if defined(HAS_FFV1) && defined(HAS_WEBP2)
+#if defined(HAS_FFV1)
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
 #endif
 #include <string>
 #include <utility>
+#include <vector>
 
 #include "src/base.h"
+#include "src/codec.h"
 #include "src/frame.h"
 #include "src/task.h"
-
-#if defined(HAS_WEBP2)
 #include "src/wp2/base.h"
-#endif
 
 #if defined(HAS_FFV1)
 extern "C" {
@@ -37,6 +36,11 @@ extern "C" {
 #endif
 
 namespace codec_compare_gen {
+namespace {
+
+std::string Ffv1PrettyName(bool lossless, Subsampling subsampling, int) {
+  return "FFV1" + SubsamplingToPrettyString(lossless, subsampling);
+}
 
 std::string Ffv1Version() {
 #if defined(HAS_FFV1)
@@ -48,11 +52,9 @@ std::string Ffv1Version() {
 #endif
 }
 
-#if defined(HAS_WEBP2)
+std::vector<int> Ffv1LossyQualities() { return {}; }
 
 #if defined(HAS_FFV1)
-
-namespace {
 
 struct Ffv1 {
  public:
@@ -101,8 +103,6 @@ struct Ffv1Container {
   AVPixelFormat format;
   uint32_t extradata_size;
 };
-
-}  // namespace
 
 StatusOr<WP2::Data> EncodeFfv1(const TaskInput& input,
                                const Image& original_image, bool quiet) {
@@ -266,6 +266,22 @@ StatusOr<std::pair<Image, double>> DecodeFfv1(const TaskInput&,
 }
 #endif  // HAS_FFV1
 
-#endif  // HAS_WEBP2
+}  // namespace
+
+CodecMetadata GetFfv1Metadata() {
+  return CodecMetadata{
+      "ffv1",
+      Ffv1PrettyName,
+      Ffv1Version,
+      Ffv1LossyQualities,
+      "ffv1",
+      /*is_supported_by_browsers=*/false,
+      /*supports_16bit=*/false,
+      /*opaque_format=*/WP2_BGRA_32,
+      /*transparent_format=*/WP2_FORMAT_NUM,  // No alpha support.
+      EncodeFfv1,
+      DecodeFfv1,
+  };
+}
 
 }  // namespace codec_compare_gen

@@ -20,19 +20,16 @@
 #include <cstdlib>
 #include <numeric>
 #include <string>
-#include <utility>
 #include <vector>
 
 #include "src/base.h"
+#include "src/codec.h"
 #include "src/codec_jpegturbo.h"
 #include "src/codec_jpegxl.h"
 #include "src/frame.h"
 #include "src/serialization.h"
 #include "src/task.h"
-
-#if defined(HAS_WEBP2)
 #include "src/wp2/base.h"
-#endif
 
 #if defined(HAS_JPEGTURBO)
 #include "src/jpeglib.h"
@@ -44,9 +41,14 @@
 #endif
 
 namespace codec_compare_gen {
+namespace {
+
+std::string JpegliPrettyName(bool lossless, Subsampling subsampling, int) {
+  return "Jpegli" + SubsamplingToPrettyString(lossless, subsampling);
+}
 
 std::string JpegliVersion() {
-  return JpegXLVersion() + "_" + JpegturboVersion();
+  return GetJpegXlMetadata().version() + "_" + GetJpegturboMetadata().version();
 }
 
 std::vector<int> JpegliLossyQualities() {
@@ -55,11 +57,7 @@ std::vector<int> JpegliLossyQualities() {
   return qualities;
 }
 
-#if defined(HAS_WEBP2)
-
 #if defined(HAS_JPEGLI) && defined(HAS_JPEGTURBO)
-
-namespace {
 
 void jpeg_catch_error(j_common_ptr cinfo) {
   // (*cinfo->err->output_message) (cinfo); // to print encountered errors
@@ -67,8 +65,6 @@ void jpeg_catch_error(j_common_ptr cinfo) {
   jpegli_destroy(cinfo);
   longjmp(*jpeg_jmpbuf, 1);
 }
-
-}  // namespace
 
 StatusOr<WP2::Data> EncodeJpegli(const TaskInput& input,
                                  const Image& original_image, bool quiet) {
@@ -156,24 +152,29 @@ StatusOr<WP2::Data> EncodeJpegli(const TaskInput& input,
   return data;
 }
 
-StatusOr<std::pair<Image, double>> DecodeJpegli(const TaskInput& input,
-                                                const WP2::Data& encoded_image,
-                                                bool quiet) {
-  return DecodeJpegturbo(input, encoded_image, quiet);
-}
-
 #else
 StatusOr<WP2::Data> EncodeJpegli(const TaskInput&, const Image&, bool quiet) {
   CHECK_OR_RETURN(false, quiet)
       << "Encoding images requires HAS_JPEGLI and HAS_JPEGTURBO";
 }
-StatusOr<std::pair<Image, double>> DecodeJpegli(const TaskInput&,
-                                                const WP2::Data&, bool quiet) {
-  CHECK_OR_RETURN(false, quiet)
-      << "Decoding images requires HAS_JPEGLI and HAS_JPEGTURBO";
-}
 #endif  // HAS_JPEGLI && HAS_JPEGTURBO
 
-#endif  // HAS_WEBP2
+}  // namespace
+
+CodecMetadata GetJpegliMetadata() {
+  return CodecMetadata{
+      "jpegli",
+      JpegliPrettyName,
+      JpegliVersion,
+      JpegliLossyQualities,
+      "li.jpg",
+      /*is_supported_by_browsers=*/true,
+      /*supports_16bit=*/false,
+      /*opaque_format=*/WP2_RGB_24,
+      /*transparent_format=*/WP2_FORMAT_NUM,  // No alpha support.
+      EncodeJpegli,
+      GetJpegturboMetadata().decode,
+  };
+}
 
 }  // namespace codec_compare_gen

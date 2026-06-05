@@ -26,6 +26,7 @@
 #include <utility>
 #include <vector>
 
+#include "imageio/anim_image_dec.h"
 #include "src/base.h"
 #include "src/codec_avif.h"
 #include "src/codec_avif_libheif.h"
@@ -45,452 +46,69 @@
 #include "src/framework.h"
 #include "src/task.h"
 #include "src/timer.h"
-
-#if defined(HAS_WEBP2)
-#include "imageio/anim_image_dec.h"
 #include "src/wp2/base.h"
-#endif  // HAS_WEBP2
 
 namespace codec_compare_gen {
 
-std::string CodecName(Codec codec) {
+CodecMetadata GetCodecMetadata(Codec codec) {
   switch (codec) {
     case Codec::kWebp:
-      return "webp";
+      return GetWebpMetadata();
     case Codec::kWebp2:
-      return "webp2";
+      return GetWebp2Metadata();
     case Codec::kJpegXl:
-      return "jpegxl";
+      return GetJpegXlMetadata();
     case Codec::kAvif:
-      return "avif";
+      return GetAvifMetadata();
     case Codec::kAvifSsim:
-      return "avifssim";
+      return GetAvifSsimMetadata();
     case Codec::kAvifIq:
-      return "avifiq";
+      return GetAvifIqMetadata();
     case Codec::kAvifExp:
-      return "avifexp";
+      return GetAvifExpMetadata();
     case Codec::kAvifAvm:
-      return "avifavm";
+      return GetAvifAvmMetadata();
     case Codec::kAvifLibheif:
-      return "aviflibheif";
+      return GetAvifLibheifMetadata();
     case Codec::kCombination:
-      return "combination";
+      return GetCombinationMetadata();
     case Codec::kJpegturbo:
-      return "jpegturbo";
+      return GetJpegturboMetadata();
     case Codec::kJpegli:
-      return "jpegli";
+      return GetJpegliMetadata();
     case Codec::kJpegsimple:
-      return "jpegsimple";
+      return GetJpegsimpleMetadata();
     case Codec::kJpegmoz:
-      return "jpegmoz";
+      return GetJpegmozMetadata();
     case Codec::kJp2:
-      return "jp2";
+      return GetJp2Metadata();
     case Codec::kFfv1:
-      return "ffv1";
+      return GetFfv1Metadata();
     case Codec::kBasis:
-      return "basis";
+      return GetBasisMetadata();
     case Codec::kNumCodecs:
       break;
   }
   assert(false);
-  return "unknown";
-}
-
-std::string CodecPrettyName(Codec codec, bool lossless, Subsampling subsampling,
-                            int effort) {
-  const std::string subsampling_str =
-      (lossless && (subsampling == Subsampling::kDefault ||
-                    subsampling == Subsampling::k444))
-          ? ""
-          : (subsampling == Subsampling::k444 ? " 4:4:4" : " 4:2:0");
-  switch (codec) {
-    case Codec::kWebp:
-      return (lossless ? "WebP z" : "WebP m") + std::to_string(effort) +
-             subsampling_str;
-    case Codec::kWebp2:
-      return "WebP2 e" + std::to_string(effort) + subsampling_str;
-    case Codec::kJpegXl:
-      return "JPEG XL e" + std::to_string(effort);  // Only 4:4:4.
-    case Codec::kAvif:
-      return "AVIF s" + std::to_string(effort) + subsampling_str;
-    case Codec::kAvifSsim:
-      return "AVIF tune=SSIM s" + std::to_string(effort) + subsampling_str;
-    case Codec::kAvifIq:
-      return "AVIF tune=IQ s" + std::to_string(effort) + subsampling_str;
-    case Codec::kAvifExp:
-      return "AVIFmini" + std::string(lossless ? "YCgCo" : "") +
-             (" s" + std::to_string(effort)) + subsampling_str;
-    case Codec::kAvifAvm:
-      // YCgCo-Re is also used with AVM but save column width by omitting it.
-      return "AVIFminiAVM s" + std::to_string(effort) + subsampling_str;
-    case Codec::kAvifLibheif:
-      return "AVIF libheif s" + std::to_string(effort) + subsampling_str;
-    case Codec::kCombination:
-      return "combination e" + std::to_string(effort) + subsampling_str;
-    case Codec::kJpegturbo:
-      return "TurboJPEG" + subsampling_str;  // No effort setting.
-    case Codec::kJpegli:
-      return "Jpegli" + subsampling_str;  // No effort setting.
-    case Codec::kJpegsimple:
-      return "SimpleJPEG m" + std::to_string(effort) + subsampling_str;
-    case Codec::kJpegmoz:
-      return "MozJPEG" + subsampling_str;  // No effort setting.
-    case Codec::kJp2:
-      return "JPEG2000" + subsampling_str;  // No effort setting.
-    case Codec::kFfv1:
-      return "FFV1" + subsampling_str;  // No effort setting.
-    case Codec::kBasis:
-      return "Basis";  // No effort setting, only 4:4:4.
-    case Codec::kNumCodecs:
-      break;
-  }
-  assert(false);
-  return "unknown" + subsampling_str;
-}
-
-std::string CodecVersion(Codec codec) {
-  switch (codec) {
-    case Codec::kWebp:
-      return WebpVersion();
-    case Codec::kWebp2:
-      return Webp2Version();
-    case Codec::kJpegXl:
-      return JpegXLVersion();
-    case Codec::kAvif:
-      return AvifVersion();
-    case Codec::kAvifSsim:
-      return AvifVersion() + "_tunessim";
-    case Codec::kAvifIq:
-      return AvifVersion() + "_tuneiq";
-    case Codec::kAvifExp:
-      return AvifVersion() + "_exp";
-    case Codec::kAvifAvm:
-      return AvifVersion() + "_avm";
-    case Codec::kAvifLibheif:
-      return AvifLibheifVersion();
-    case Codec::kCombination:
-      return CodecCombinationVersion();
-    case Codec::kJpegturbo:
-      return JpegturboVersion();
-    case Codec::kJpegli:
-      return JpegliVersion();
-    case Codec::kJpegsimple:
-      return JpegsimpleVersion();
-    case Codec::kJpegmoz:
-      return JpegmozVersion();
-    case Codec::kJp2:
-      return OpenjpegVersion();
-    case Codec::kFfv1:
-      return Ffv1Version();
-    case Codec::kBasis:
-      return BasisVersion();
-    case Codec::kNumCodecs:
-      break;
-  }
-  assert(false);
-  return "unknown";
+  return CodecMetadata();
 }
 
 StatusOr<Codec> CodecFromName(const std::string& name, bool quiet) {
-  if (name == "webp") return Codec::kWebp;
-  if (name == "webp2") return Codec::kWebp2;
-  if (name == "jpegxl") return Codec::kJpegXl;
-  if (name == "avif") return Codec::kAvif;
-  if (name == "avifssim") return Codec::kAvifSsim;
-  if (name == "avifiq") return Codec::kAvifIq;
-  if (name == "avifexp") return Codec::kAvifExp;
-  if (name == "avifavm") return Codec::kAvifAvm;
-  if (name == "aviflibheif") return Codec::kAvifLibheif;
-  if (name == "combination") return Codec::kCombination;
-  if (name == "jpegturbo") return Codec::kJpegturbo;
-  if (name == "jpegli") return Codec::kJpegli;
-  if (name == "jpegsimple") return Codec::kJpegsimple;
-  if (name == "jpegmoz") return Codec::kJpegmoz;
-  if (name == "jp2") return Codec::kJp2;
-  if (name == "ffv1") return Codec::kFfv1;
-  CHECK_OR_RETURN(name == "basis", quiet) << "Unknown codec \"" << name << "\"";
-  return Codec::kBasis;
-}
-
-std::vector<int> CodecLossyQualities(Codec codec) {
-  switch (codec) {
-    case Codec::kWebp:
-      return WebpLossyQualities();
-    case Codec::kWebp2:
-      return Webp2LossyQualities();
-    case Codec::kJpegXl:
-      return JpegXLLossyQualities();
-    case Codec::kAvif:
-    case Codec::kAvifSsim:
-    case Codec::kAvifExp:
-    case Codec::kAvifAvm:
-      return AvifLossyQualities();
-    case Codec::kAvifIq: {
-      std::vector<int> qualities = AvifLossyQualities();
-      // Remove the lossless quality because it is rejected with tune=iq.
-      assert(qualities.back() == 100);
-      qualities.pop_back();
-      return qualities;
+  for (int c = 0; c < static_cast<int>(Codec::kNumCodecs); ++c) {
+    if (GetCodecMetadata(static_cast<Codec>(c)).name == name) {
+      return static_cast<Codec>(c);
     }
-    case Codec::kAvifLibheif:
-      return AvifLibheifLossyQualities();
-    case Codec::kCombination:
-      return CodecCombinationLossyQualities();
-    case Codec::kJpegturbo:
-      return JpegturboLossyQualities();
-    case Codec::kJpegli:
-      return JpegliLossyQualities();
-    case Codec::kJpegsimple:
-      return JpegsimpleLossyQualities();
-    case Codec::kJpegmoz:
-      return JpegmozLossyQualities();
-    case Codec::kJp2:
-      return OpenjpegLossyQualities();
-    case Codec::kFfv1:
-      return {};
-    case Codec::kBasis:
-      return BasisLossyQualities();
-    case Codec::kNumCodecs:
-      break;
   }
-  assert(false);
-  return {};
+  CHECK_OR_RETURN(false, quiet) << "Unknown codec \"" << name << "\"";
+  return Status::kUnknownError;
 }
 
-std::string CodecExtension(Codec codec) {
-  switch (codec) {
-    case Codec::kWebp:
-      return "webp";
-    case Codec::kWebp2:
-      return "wp2";
-    case Codec::kJpegXl:
-      return "jxl";
-    case Codec::kAvif:
-      return "avif";
-    case Codec::kAvifSsim:
-      return "ssim.avif";
-    case Codec::kAvifIq:
-      return "iq.avif";
-    case Codec::kAvifExp:
-      // See "MIME type registration" Annex in
-      // "ISO/IEC 23008-12 3rd edition DAM 2 Low-overhead image file format"
-      // https://www.mpeg.org/wp-content/uploads/mpeg_meetings/149_Geneva/w24745.zip
-      return "hmg";
-    case Codec::kAvifAvm:
-      return "avmf";
-    case Codec::kAvifLibheif:
-      return "libheif.avif";
-    case Codec::kCombination:
-      return "comb";
-    case Codec::kJpegturbo:
-      return "turbo.jpg";
-    case Codec::kJpegli:
-      return "li.jpg";
-    case Codec::kJpegsimple:
-      return "s.jpg";
-    case Codec::kJpegmoz:
-      return "moz.jpg";
-    case Codec::kJp2:
-      return "jp2";  // Matches OPJ_CODEC_JP2 used in codec_openjpeg.cc.
-    case Codec::kFfv1:
-      return "ffv1";
-    case Codec::kBasis:
-      return "basis";
-    case Codec::kNumCodecs:
-      break;
-  }
-  assert(false);
-  return "unknown";
+std::string SubsamplingToPrettyString(bool lossless, Subsampling subsampling) {
+  return (lossless && (subsampling == Subsampling::kDefault ||
+                       subsampling == Subsampling::k444))
+             ? ""
+             : (subsampling == Subsampling::k444 ? " 4:4:4" : " 4:2:0");
 }
-
-bool CodecIsSupportedByBrowsers(Codec codec) {
-  switch (codec) {
-    case Codec::kWebp:
-    case Codec::kAvif:
-    case Codec::kAvifSsim:
-    case Codec::kAvifIq:
-    case Codec::kAvifLibheif:
-    case Codec::kJpegturbo:
-    case Codec::kJpegli:
-    case Codec::kJpegsimple:
-    case Codec::kJpegmoz:
-      return true;
-    case Codec::kWebp2:
-    case Codec::kJpegXl:
-    case Codec::kAvifExp:
-    case Codec::kAvifAvm:
-    case Codec::kCombination:
-    case Codec::kJp2:
-    case Codec::kFfv1:
-    case Codec::kBasis:
-      return false;
-    case Codec::kNumCodecs:
-      break;
-  }
-  assert(false);
-  return false;
-}
-
-#if defined(HAS_WEBP2)
-
-namespace {
-
-bool CodecSupportsBitDepth(Codec codec, uint32_t d) {
-  switch (codec) {
-    case Codec::kWebp:
-      return d == 8;
-    case Codec::kWebp2:
-      return d == 8 || d == 10;  // 10 useless here.
-    case Codec::kJpegXl:
-      return d == 8 || d == 16;
-    case Codec::kAvif:
-    case Codec::kAvifSsim:
-    case Codec::kAvifIq:
-    case Codec::kAvifExp:
-    case Codec::kAvifAvm:
-    case Codec::kAvifLibheif:
-      return d == 8 || d == 10 || d == 12;  // 10/12 useless here.
-    case Codec::kCombination:
-      return d == 8;
-    case Codec::kJpegturbo:
-    case Codec::kJpegli:
-    case Codec::kJpegsimple:
-    case Codec::kJpegmoz:
-      return d == 8;
-    case Codec::kJp2:
-      return d == 8 || d == 16;
-    case Codec::kFfv1:
-      return d == 8;
-    case Codec::kBasis:
-      return d == 8;
-    case Codec::kNumCodecs:
-      break;
-  }
-  assert(false);
-  return false;
-}
-
-// Returns the 8-bit format layout required by the API of the given codec.
-WP2SampleFormat CodecToNeededFormat(Codec codec, bool has_transparency) {
-  switch (codec) {
-    case Codec::kWebp:
-      return WebPPictureFormat();
-    case Codec::kWebp2:
-      return WP2_ARGB_32;  // Even for opaque images.
-    case Codec::kJpegXl:
-      return has_transparency ? WP2_RGBA_32 : WP2_RGB_24;
-    case Codec::kAvif:
-    case Codec::kAvifSsim:
-    case Codec::kAvifIq:
-    case Codec::kAvifExp:
-    case Codec::kAvifAvm:
-    case Codec::kAvifLibheif:
-      return has_transparency ? WP2_ARGB_32 : WP2_RGB_24;
-    case Codec::kCombination:
-      return WP2_ARGB_32;  // Even for opaque images.
-    case Codec::kJpegturbo:
-    case Codec::kJpegli:
-    case Codec::kJpegsimple:
-    case Codec::kJpegmoz:
-      return WP2_RGB_24;
-    case Codec::kJp2:
-      return has_transparency ? WP2_RGBA_32 : WP2_RGB_24;
-    case Codec::kFfv1:
-      return WP2_BGRA_32;
-    case Codec::kBasis:
-      return has_transparency ? WP2_RGBA_32 : WP2_RGB_24;
-    case Codec::kNumCodecs:
-      break;
-  }
-  assert(false);
-  return WP2_FORMAT_NUM;
-}
-
-// Variants of AVIF.
-StatusOr<WP2::Data> EncodeAvifRegular(const TaskInput& input,
-                                      const Image& original_image, bool quiet) {
-  return EncodeAvif(input, original_image, /*minimized_image_box=*/false,
-                    /*ycgco_re=*/false, /*tune=*/nullptr, /*avm=*/false, quiet);
-}
-StatusOr<WP2::Data> EncodeAvifSsim(const TaskInput& input,
-                                   const Image& original_image, bool quiet) {
-  return EncodeAvif(input, original_image, /*minimized_image_box=*/false,
-                    /*ycgco_re=*/false, /*tune=*/"ssim", /*avm=*/false, quiet);
-}
-StatusOr<WP2::Data> EncodeAvifIq(const TaskInput& input,
-                                 const Image& original_image, bool quiet) {
-  return EncodeAvif(input, original_image, /*minimized_image_box=*/false,
-                    /*ycgco_re=*/false, /*tune=*/"iq", /*avm=*/false, quiet);
-}
-StatusOr<std::pair<Image, double>> DecodeAvifRegularOrExp(
-    const TaskInput& input, const WP2::Data& encoded_image, bool quiet) {
-  return DecodeAvif(input, encoded_image, /*avm=*/false, quiet);
-}
-StatusOr<WP2::Data> EncodeAvifExp(const TaskInput& input,
-                                  const Image& original_image, bool quiet) {
-  return EncodeAvif(input, original_image, /*minimized_image_box=*/true,
-                    /*ycgco_re=*/true, /*tune=*/nullptr, /*avm=*/false, quiet);
-}
-StatusOr<WP2::Data> EncodeAvifAvm(const TaskInput& input,
-                                  const Image& original_image, bool quiet) {
-  return EncodeAvif(input, original_image, /*minimized_image_box=*/true,
-                    /*ycgco_re=*/true, /*tune=*/nullptr, /*avm=*/true, quiet);
-}
-StatusOr<std::pair<Image, double>> DecodeAvifAvm(const TaskInput& input,
-                                                 const WP2::Data& encoded_image,
-                                                 bool quiet) {
-  return DecodeAvif(input, encoded_image, /*avm=*/true, quiet);
-}
-
-typedef StatusOr<WP2::Data> (*EncodeFunc)(const TaskInput&, const Image&,
-                                          bool quiet);
-typedef StatusOr<std::pair<Image, double>> (*DecodeFunc)(const TaskInput&,
-                                                         const WP2::Data&,
-                                                         bool quiet);
-
-EncodeFunc GetEncodeFunc(Codec codec) {
-  return codec == Codec::kWebp          ? &EncodeWebp
-         : codec == Codec::kWebp2       ? &EncodeWebp2
-         : codec == Codec::kJpegXl      ? &EncodeJxl
-         : codec == Codec::kAvif        ? &EncodeAvifRegular
-         : codec == Codec::kAvifSsim    ? &EncodeAvifSsim
-         : codec == Codec::kAvifIq      ? &EncodeAvifIq
-         : codec == Codec::kAvifExp     ? &EncodeAvifExp
-         : codec == Codec::kAvifAvm     ? &EncodeAvifAvm
-         : codec == Codec::kAvifLibheif ? &EncodeAvifLibheif
-         : codec == Codec::kCombination ? &EncodeCodecCombination
-         : codec == Codec::kJpegturbo   ? &EncodeJpegturbo
-         : codec == Codec::kJpegli      ? &EncodeJpegli
-         : codec == Codec::kJpegsimple  ? &EncodeJpegsimple
-         : codec == Codec::kJpegmoz     ? &EncodeJpegmoz
-         : codec == Codec::kJp2         ? &EncodeOpenjpeg
-         : codec == Codec::kFfv1        ? &EncodeFfv1
-         : codec == Codec::kBasis       ? &EncodeBasis
-                                        : nullptr;
-}
-
-DecodeFunc GetDecodeFunc(Codec codec) {
-  return codec == Codec::kWebp          ? &DecodeWebp
-         : codec == Codec::kWebp2       ? &DecodeWebp2
-         : codec == Codec::kJpegXl      ? &DecodeJxl
-         : codec == Codec::kAvif        ? &DecodeAvifRegularOrExp
-         : codec == Codec::kAvifSsim    ? &DecodeAvifRegularOrExp
-         : codec == Codec::kAvifIq      ? &DecodeAvifRegularOrExp
-         : codec == Codec::kAvifExp     ? &DecodeAvifRegularOrExp
-         : codec == Codec::kAvifAvm     ? &DecodeAvifAvm
-         : codec == Codec::kAvifLibheif ? &DecodeAvifLibheif
-         : codec == Codec::kCombination ? &DecodeCodecCombination
-         : codec == Codec::kJpegturbo   ? &DecodeJpegturbo
-         : codec == Codec::kJpegli      ? &DecodeJpegli
-         : codec == Codec::kJpegsimple  ? &DecodeJpegsimple
-         : codec == Codec::kJpegmoz     ? &DecodeJpegmoz
-         : codec == Codec::kJp2         ? &DecodeOpenjpeg
-         : codec == Codec::kFfv1        ? &DecodeFfv1
-         : codec == Codec::kBasis       ? &DecodeBasis
-                                        : nullptr;
-}
-
-}  // namespace
 
 StatusOr<TaskOutput> EncodeDecode(const TaskInput& input,
                                   const std::string& metric_binary_folder_path,
@@ -499,8 +117,10 @@ StatusOr<TaskOutput> EncodeDecode(const TaskInput& input,
   TaskOutput task;
   task.task_input = input;
 
-  const WP2SampleFormat initial_format = CodecToNeededFormat(
-      input.codec_settings.codec, /*has_transparency=*/true);
+  const CodecMetadata& codec = GetCodecMetadata(input.codec_settings.codec);
+  const bool supports_transparency = codec.transparent_format != WP2_FORMAT_NUM;
+  const WP2SampleFormat initial_format =
+      supports_transparency ? codec.transparent_format : codec.opaque_format;
   ASSIGN_OR_RETURN(Image original_image,
                    ReadStillImageOrAnimation(input.image_path.c_str(),
                                              initial_format, quiet));
@@ -510,7 +130,7 @@ StatusOr<TaskOutput> EncodeDecode(const TaskInput& input,
     has_transparency |= frame.pixels.HasTransparency();
   }
   WP2SampleFormat needed_format =
-      CodecToNeededFormat(input.codec_settings.codec, has_transparency);
+      has_transparency ? codec.transparent_format : codec.opaque_format;
   if (initial_format != needed_format) {
     needed_format = WP2FormatAtbpc(
         needed_format, WP2Formatbpc(original_image.front().pixels.format()));
@@ -520,16 +140,17 @@ StatusOr<TaskOutput> EncodeDecode(const TaskInput& input,
                      CloneAs(original_image, needed_format, quiet));
   }
   if (WP2Formatbpc(original_image.front().pixels.format()) == 16 &&
-      !CodecSupportsBitDepth(input.codec_settings.codec, 16) &&
+      !codec.supports_16bit &&
       input.codec_settings.quality == kQualityLossless) {
     // The codec does not support 16-bit images. Consider the frames to be 8-bit
     // and twice as large. The compression rate is likely terrible.
     ASSIGN_OR_RETURN(original_image, SpreadTo8bit(original_image, quiet));
   }
-  CHECK_OR_RETURN(CodecSupportsBitDepth(
-                      input.codec_settings.codec,
-                      WP2Formatbpc(original_image.front().pixels.format())),
-                  quiet);
+  CHECK_OR_RETURN(
+      WP2Formatbpc(original_image.front().pixels.format()) == 8 ||
+          (WP2Formatbpc(original_image.front().pixels.format()) == 16 &&
+           codec.supports_16bit),
+      quiet);
 
   const Timer encoding_duration;
   WP2::Data encoded_image;
@@ -543,9 +164,8 @@ StatusOr<TaskOutput> EncodeDecode(const TaskInput& input,
     file.read(reinterpret_cast<char*>(encoded_image.bytes),
               static_cast<long>(length));
   } else {
-    const EncodeFunc encode_func = GetEncodeFunc(input.codec_settings.codec);
-    CHECK_OR_RETURN(encode_func != nullptr, quiet);
-    ASSIGN_OR_RETURN(encoded_image, encode_func(input, original_image, quiet));
+    CHECK_OR_RETURN(codec.encode != nullptr, quiet);
+    ASSIGN_OR_RETURN(encoded_image, codec.encode(input, original_image, quiet));
   }
   task.encoding_duration = encoding_duration.seconds();
   task.image_width = original_image.front().pixels.width();
@@ -556,11 +176,10 @@ StatusOr<TaskOutput> EncodeDecode(const TaskInput& input,
 
   const Timer decoding_duration;
   Image decoded_image;
-  const DecodeFunc decode_func = GetDecodeFunc(input.codec_settings.codec);
-  CHECK_OR_RETURN(decode_func != nullptr, quiet);
+  CHECK_OR_RETURN(codec.decode != nullptr, quiet);
   {
     ASSIGN_OR_RETURN(auto image_and_color_conversion_duration,
-                     decode_func(input, encoded_image, quiet));
+                     codec.decode(input, encoded_image, quiet));
     decoded_image = std::move(image_and_color_conversion_duration.first);
     task.decoding_color_conversion_duration =
         image_and_color_conversion_duration.second;
@@ -575,7 +194,7 @@ StatusOr<TaskOutput> EncodeDecode(const TaskInput& input,
                encoded_image.size);
 
     // Some image formats are not supported by all major browsers.
-    if (!CodecIsSupportedByBrowsers(input.codec_settings.codec)) {
+    if (!codec.is_supported_by_browsers) {
       // Also write a PNG or WebP of the decoded image to disk for convenience.
       // Keep the PNG extension for the simplicity of the whole pipeline.
       decoded_path = input.encoded_path + ".png";
@@ -594,8 +213,7 @@ StatusOr<TaskOutput> EncodeDecode(const TaskInput& input,
                          decoded_image, input, metric_binary_folder_path,
                          DistortionMetric::kLibwebp2Psnr, thread_id, quiet));
     CHECK_OR_RETURN(false, quiet)
-        << input.image_path << " encoded with "
-        << CodecName(task.task_input.codec_settings.codec)
+        << input.image_path << " encoded with " << codec.name
         << " was not decoded losslessly (PSNR " << psnr << "dB)";
   }
 
@@ -628,18 +246,20 @@ StatusOr<std::vector<uint8_t>> Encode(const uint8_t* argb, uint32_t width,
   Image original_image;
   original_image.emplace_back(std::move(buffer), /*duration_ms=*/0);
 
-  const bool has_transparency = original_image.front().pixels.HasTransparency();
+  const bool supports_transparency =
+      GetCodecMetadata(codec).transparent_format != WP2_FORMAT_NUM;
   const WP2SampleFormat needed_format =
-      CodecToNeededFormat(codec, has_transparency);
+      supports_transparency && original_image.front().pixels.HasTransparency()
+          ? GetCodecMetadata(codec).transparent_format
+          : GetCodecMetadata(codec).opaque_format;
   if (original_image.front().pixels.format() != needed_format) {
     ASSIGN_OR_RETURN(original_image,
                      CloneAs(original_image, needed_format, quiet));
   }
 
-  const EncodeFunc encode_func = GetEncodeFunc(input.codec_settings.codec);
-  CHECK_OR_RETURN(encode_func != nullptr, quiet);
-  ASSIGN_OR_RETURN(WP2::Data encoded_image,
-                   encode_func(input, original_image, quiet));
+  CHECK_OR_RETURN(GetCodecMetadata(codec).encode != nullptr, quiet);
+  ASSIGN_OR_RETURN(WP2::Data encoded_image, GetCodecMetadata(codec).encode(
+                                                input, original_image, quiet));
 
   return std::vector<uint8_t>(encoded_image.bytes,
                               encoded_image.bytes + encoded_image.size);
@@ -664,25 +284,5 @@ StatusOr<std::vector<uint8_t>> DecodeToArgb(const uint8_t* encoded_image,
   }
   return output;
 }
-
-#else
-
-StatusOr<TaskOutput> EncodeDecode(const TaskInput&, const std::string&, size_t,
-                                  EncodeMode, bool quiet) {
-  CHECK_OR_RETURN(false, quiet)
-      << "Encoding/decoding images requires HAS_WEBP2";
-}
-
-StatusOr<std::vector<uint8_t>> Encode(const uint8_t*, uint32_t, uint32_t, Codec,
-                                      Subsampling, int, int, bool quiet) {
-  CHECK_OR_RETURN(false, quiet) << "Encoding images requires HAS_WEBP2";
-}
-
-StatusOr<std::vector<uint8_t>> DecodeToArgb(const uint8_t*, size_t, uint32_t*,
-                                            uint32_t*, bool quiet) {
-  CHECK_OR_RETURN(false, quiet) << "Decoding images requires HAS_WEBP2";
-}
-
-#endif  // HAS_WEBP2
 
 }  // namespace codec_compare_gen

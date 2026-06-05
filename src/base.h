@@ -142,12 +142,10 @@ struct LogError {
 
 // Can be used as follows:
 //   OK_WP2_OR_RETURN(FuncThatReturnsWP2Status(), quiet);
-#if defined(HAS_WEBP2)
 #define OK_WP2_OR_RETURN(STATUS, QUIET)                                     \
   const WP2Status CONCAT(checked_status, __LINE__) = (STATUS);              \
   CHECK_OR_RETURN(CONCAT(checked_status, __LINE__) == WP2_STATUS_OK, QUIET) \
       << WP2GetStatusMessage(CONCAT(checked_status, __LINE__)) << " "
-#endif  // HAS_WEBP2
 
 //------------------------------------------------------------------------------
 

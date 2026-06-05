@@ -22,43 +22,38 @@
 #include <vector>
 
 #include "src/base.h"
+#include "src/codec.h"
 #include "src/frame.h"
 #include "src/framework.h"
 #include "src/serialization.h"
 #include "src/task.h"
-
-#if defined(HAS_WEBP2)
 #include "src/wp2/base.h"
 #include "src/wp2/decode.h"
 #include "src/wp2/encode.h"
 #include "src/wp2/format_constants.h"
-#endif  // HAS_WEBP2
 
 namespace codec_compare_gen {
-
 namespace {
+
 std::string VersionToString(int version) {
   return std::to_string((version >> 16) & 0xff) + "." +
          std::to_string((version >> 8) & 0xff) + "." +
          std::to_string(version & 0xff);
 }
-}  // namespace
 
-std::string Webp2Version() {
-#if defined(HAS_WEBP2)
-  return VersionToString(WP2GetVersion());
-#else
-  return "n/a";
-#endif  // HAS_WEBP2
+std::string Webp2PrettyName(bool lossless, Subsampling subsampling,
+                            int effort) {
+  return "WebP2 e" + std::to_string(effort) +
+         SubsamplingToPrettyString(lossless, subsampling);
 }
+
+std::string Webp2Version() { return VersionToString(WP2GetVersion()); }
 
 std::vector<int> Webp2LossyQualities() {
   std::vector<int> qualities(96);
   std::iota(qualities.begin(), qualities.end(), 0);
   return qualities;  // [0:95] because [96:100] is near-lossless and lossless.
 }
-
-#if defined(HAS_WEBP2)
 
 StatusOr<WP2::Data> EncodeWebp2(const TaskInput& input,
                                 const Image& original_image, bool quiet) {
@@ -138,6 +133,22 @@ StatusOr<std::pair<Image, double>> DecodeWebp2(const TaskInput& input,
   return std::pair<Image, double>(std::move(image), 0);
 }
 
-#endif  // HAS_WEBP2
+}  // namespace
+
+CodecMetadata GetWebp2Metadata() {
+  return CodecMetadata{
+      "webp2",
+      Webp2PrettyName,
+      Webp2Version,
+      Webp2LossyQualities,
+      "wp2",
+      /*is_supported_by_browsers=*/false,
+      /*supports_16bit=*/false,
+      /*opaque_format=*/WP2_ARGB_32,
+      /*transparent_format=*/WP2_ARGB_32,
+      EncodeWebp2,
+      DecodeWebp2,
+  };
+}
 
 }  // namespace codec_compare_gen

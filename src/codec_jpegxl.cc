@@ -23,13 +23,11 @@
 #include <vector>
 
 #include "src/base.h"
+#include "src/codec.h"
 #include "src/frame.h"
 #include "src/task.h"
 #include "src/timer.h"
-
-#if defined(HAS_WEBP2)
 #include "src/wp2/base.h"
-#endif
 
 #if defined(HAS_JPEGXL)
 #include "lib/include/jxl/codestream_header.h"
@@ -42,6 +40,11 @@
 #endif
 
 namespace codec_compare_gen {
+namespace {
+
+std::string JpegXlPrettyName(bool, Subsampling, int effort) {
+  return "JPEG XL e" + std::to_string(effort);  // Only 4:4:4.
+}
 
 std::string JpegXLVersion() {
 #if defined(HAS_JPEGXL)
@@ -58,8 +61,6 @@ std::vector<int> JpegXLLossyQualities() {
   std::iota(qualities.begin(), qualities.end(), 0);
   return qualities;  // [0:99] because 100 is lossless.
 }
-
-#if defined(HAS_WEBP2)
 
 #if defined(HAS_JPEGXL)
 
@@ -310,6 +311,22 @@ StatusOr<std::pair<Image, double>> DecodeJxl(const TaskInput&, const WP2::Data&,
 }
 #endif  // HAS_JPEGXL
 
-#endif  // HAS_WEBP2
+}  // namespace
+
+CodecMetadata GetJpegXlMetadata() {
+  return CodecMetadata{
+      "jpegxl",
+      JpegXlPrettyName,
+      JpegXLVersion,
+      JpegXLLossyQualities,
+      "jxl",
+      /*is_supported_by_browsers=*/false,
+      /*supports_16bit=*/true,
+      /*opaque_format=*/WP2_RGB_24,
+      /*transparent_format=*/WP2_RGBA_32,
+      EncodeJxl,
+      DecodeJxl,
+  };
+}
 
 }  // namespace codec_compare_gen

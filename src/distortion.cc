@@ -29,21 +29,16 @@
 #include <string>
 #include <string_view>
 
+#include "imageio/image_enc.h"
 #include "src/base.h"
 #include "src/codec.h"
 #include "src/frame.h"
 #include "src/framework.h"
 #include "src/serialization.h"
 #include "src/task.h"
-
-#if defined(HAS_WEBP2)
-#include "imageio/image_enc.h"
 #include "src/wp2/base.h"
-#endif  // HAS_WEBP2
 
 namespace codec_compare_gen {
-
-#if defined(HAS_WEBP2)
 
 namespace {
 
@@ -100,8 +95,8 @@ StatusOr<float> GetLibwebp2Distortion(const WP2::ArgbBuffer& reference,
 
   CHECK_OR_RETURN(status == WP2_STATUS_OK, quiet)
       << "GetDistortion(" << metric << ") failed on " << task.image_path
-      << " and " << CodecName(task.codec_settings.codec) << " at effort "
-      << task.codec_settings.effort << ", chroma subsampling "
+      << " and " << GetCodecMetadata(task.codec_settings.codec).name
+      << " at effort " << task.codec_settings.effort << ", chroma subsampling "
       << SubsamplingToString(task.codec_settings.chroma_subsampling)
       << " and quality " << task.codec_settings.quality << ": "
       << WP2GetStatusMessage(status);
@@ -115,8 +110,9 @@ StatusOr<float> GetLibwebp2Distortion(const WP2::ArgbBuffer& reference,
     if (!quiet) {
       std::cerr << "Error: " << task.image_path
                 << " was encoded or decoded with loss in "
-                << CodecName(task.codec_settings.codec) << " format at effort "
-                << task.codec_settings.effort << ", chroma subsampling "
+                << GetCodecMetadata(task.codec_settings.codec).name
+                << " format at effort " << task.codec_settings.effort
+                << ", chroma subsampling "
                 << SubsamplingToString(task.codec_settings.chroma_subsampling)
                 << " and quality " << task.codec_settings.quality << " (alpha "
                 << distortion[0] << "dB, R " << distortion[1] << "dB, G "
@@ -424,17 +420,5 @@ StatusOr<bool> PixelEquality(const Image& a, const Image& b, bool quiet) {
   CHECK_OR_RETURN(a_time == b_time && a_time == a_duration_ms, quiet);
   return true;
 }
-
-#else
-StatusOr<float> GetAverageDistortion(const std::string&, const Image&,
-                                     const std::string&, const Image&,
-                                     const TaskInput&, const std::string&,
-                                     DistortionMetric, size_t, bool quiet) {
-  CHECK_OR_RETURN(false, quiet) << "Computing distortions requires HAS_WEBP2";
-}
-StatusOr<bool> PixelEquality(const Image&, const Image&, bool quiet) {
-  CHECK_OR_RETURN(false, quiet) << "Equality check requires HAS_WEBP2";
-}
-#endif  // HAS_WEBP2
 
 }  // namespace codec_compare_gen

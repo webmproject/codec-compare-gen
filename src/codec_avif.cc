@@ -22,14 +22,12 @@
 #include <vector>
 
 #include "src/base.h"
+#include "src/codec.h"
 #include "src/frame.h"
 #include "src/serialization.h"
 #include "src/task.h"
 #include "src/timer.h"
-
-#if defined(HAS_WEBP2)
 #include "src/wp2/base.h"
-#endif
 
 #if defined(HAS_AVIF)
 #include "avif/avif.h"
@@ -37,6 +35,36 @@
 #endif
 
 namespace codec_compare_gen {
+namespace {
+
+std::string AvifPrettyName(bool lossless, Subsampling subsampling, int effort) {
+  return "AVIF s" + std::to_string(effort) +
+         SubsamplingToPrettyString(lossless, subsampling);
+}
+
+std::string AvifSsimPrettyName(bool lossless, Subsampling subsampling,
+                               int effort) {
+  return "AVIF tune=SSIM s" + std::to_string(effort) +
+         SubsamplingToPrettyString(lossless, subsampling);
+}
+
+std::string AvifIqPrettyName(bool lossless, Subsampling subsampling,
+                             int effort) {
+  return "AVIF tune=IQ s" + std::to_string(effort) +
+         SubsamplingToPrettyString(lossless, subsampling);
+}
+
+std::string AvifExpPrettyName(bool lossless, Subsampling subsampling,
+                              int effort) {
+  return "AVIFmini s" + std::to_string(effort) +
+         SubsamplingToPrettyString(lossless, subsampling);
+}
+
+std::string AvifAvmPrettyName(bool lossless, Subsampling subsampling,
+                              int effort) {
+  return "AVIFminiAVM s" + std::to_string(effort) +
+         SubsamplingToPrettyString(lossless, subsampling);
+}
 
 std::string AvifVersion() {
 #if defined(HAS_AVIF)
@@ -48,22 +76,28 @@ std::string AvifVersion() {
 #endif
 }
 
+std::string AvifSsimVersion() { return AvifVersion() + "_tunessim"; }
+std::string AvifIqVersion() { return AvifVersion() + "_tuneiq"; }
+std::string AvifExpVersion() { return AvifVersion() + "_exp"; }
+std::string AvifAvmVersion() { return AvifVersion() + "_avm"; }
+
 std::vector<int> AvifLossyQualities() {
   std::vector<int> qualities(64);
   for (int i = 0; i < qualities.size(); ++i) {
-    // Reverse avifQualityToQuantizer():
-    //   quantizer = ((100 - quality) * 63 + 50) / 100;
     qualities[i] = ((63 - i) * 100 + 63 / 2) / 63;
   }
   std::reverse(qualities.begin(), qualities.end());
-  return qualities;  // [0:63] (63 is lossless but in YUV so RGB is lossy).
+  return qualities;
 }
 
-#if defined(HAS_WEBP2)
+std::vector<int> AvifIqLossyQualities() {
+  std::vector<int> qualities = AvifLossyQualities();
+  assert(!qualities.empty() && qualities.back() == 100);
+  qualities.pop_back();
+  return qualities;
+}
 
 #if defined(HAS_AVIF)
-
-namespace {
 
 StatusOr<avifRGBFormat> WP2SampleFormatToAvifRGBFormat(WP2SampleFormat format) {
   if (format == WP2_Argb_32) return AVIF_RGB_FORMAT_ARGB;
@@ -157,8 +191,6 @@ class RwData : public avifRWData {
   ~RwData() { avifRWDataFree(this); }
 };
 
-}  // namespace
-
 StatusOr<WP2::Data> EncodeAvif(const TaskInput& input,
                                const Image& original_image,
                                bool minimized_image_box, bool ycgco_re,
@@ -246,7 +278,6 @@ StatusOr<std::pair<Image, double>> DecodeAvif(const TaskInput& input,
   }
   return std::pair<Image, double>(std::move(image), color_conversion_duration);
 }
-
 #else
 StatusOr<WP2::Data> EncodeAvif(const TaskInput&, const Image&, bool, bool,
                                const char*, bool, bool quiet) {
@@ -259,6 +290,121 @@ StatusOr<std::pair<Image, double>> DecodeAvif(const TaskInput&,
 }
 #endif  // HAS_AVIF
 
-#endif  // HAS_WEBP2
+StatusOr<WP2::Data> EncodeAvifRegular(const TaskInput& input,
+                                      const Image& original_image, bool quiet) {
+  return EncodeAvif(input, original_image, /*minimized_image_box=*/false,
+                    /*ycgco_re=*/false, /*tune=*/nullptr, /*avm=*/false, quiet);
+}
+StatusOr<WP2::Data> EncodeAvifSsim(const TaskInput& input,
+                                   const Image& original_image, bool quiet) {
+  return EncodeAvif(input, original_image, /*minimized_image_box=*/false,
+                    /*ycgco_re=*/false, /*tune=*/"ssim", /*avm=*/false, quiet);
+}
+StatusOr<WP2::Data> EncodeAvifIq(const TaskInput& input,
+                                 const Image& original_image, bool quiet) {
+  return EncodeAvif(input, original_image, /*minimized_image_box=*/false,
+                    /*ycgco_re=*/false, /*tune=*/"iq", /*avm=*/false, quiet);
+}
+StatusOr<std::pair<Image, double>> DecodeAvifRegularOrExp(
+    const TaskInput& input, const WP2::Data& encoded_image, bool quiet) {
+  return DecodeAvif(input, encoded_image, /*avm=*/false, quiet);
+}
+StatusOr<WP2::Data> EncodeAvifExp(const TaskInput& input,
+                                  const Image& original_image, bool quiet) {
+  return EncodeAvif(input, original_image, /*minimized_image_box=*/true,
+                    /*ycgco_re=*/true, /*tune=*/nullptr, /*avm=*/false, quiet);
+}
+StatusOr<WP2::Data> EncodeAvifAvm(const TaskInput& input,
+                                  const Image& original_image, bool quiet) {
+  return EncodeAvif(input, original_image, /*minimized_image_box=*/true,
+                    /*ycgco_re=*/true, /*tune=*/nullptr, /*avm=*/true, quiet);
+}
+StatusOr<std::pair<Image, double>> DecodeAvifAvm(const TaskInput& input,
+                                                 const WP2::Data& encoded_image,
+                                                 bool quiet) {
+  return DecodeAvif(input, encoded_image, /*avm=*/true, quiet);
+}
+
+}  // namespace
+
+CodecMetadata GetAvifMetadata() {
+  return CodecMetadata{
+      "avif",
+      AvifPrettyName,
+      AvifVersion,
+      AvifLossyQualities,
+      "avif",
+      /*is_supported_by_browsers=*/true,
+      /*supports_16bit=*/false,
+      /*opaque_format=*/WP2_RGB_24,
+      /*transparent_format=*/WP2_ARGB_32,
+      EncodeAvifRegular,
+      DecodeAvifRegularOrExp,
+  };
+}
+
+CodecMetadata GetAvifSsimMetadata() {
+  return CodecMetadata{
+      "avifssim",
+      AvifSsimPrettyName,
+      AvifSsimVersion,
+      AvifLossyQualities,
+      "ssim.avif",
+      /*is_supported_by_browsers=*/true,
+      /*supports_16bit=*/false,
+      /*opaque_format=*/WP2_RGB_24,
+      /*transparent_format=*/WP2_ARGB_32,
+      EncodeAvifSsim,
+      DecodeAvifRegularOrExp,
+  };
+}
+
+CodecMetadata GetAvifIqMetadata() {
+  return CodecMetadata{
+      "avifiq",
+      AvifIqPrettyName,
+      AvifIqVersion,
+      AvifIqLossyQualities,
+      "iq.avif",
+      /*is_supported_by_browsers=*/true,
+      /*supports_16bit=*/false,
+      /*opaque_format=*/WP2_RGB_24,
+      /*transparent_format=*/WP2_ARGB_32,
+      EncodeAvifIq,
+      DecodeAvifRegularOrExp,
+  };
+}
+
+CodecMetadata GetAvifExpMetadata() {
+  return CodecMetadata{
+      "avifexp",
+      AvifExpPrettyName,
+      AvifExpVersion,
+      AvifLossyQualities,
+      "hmg",
+      /*is_supported_by_browsers=*/false,
+      /*supports_16bit=*/false,
+      /*opaque_format=*/WP2_RGB_24,
+      /*transparent_format=*/WP2_ARGB_32,
+      EncodeAvifExp,
+      DecodeAvifRegularOrExp,
+  };
+}
+
+CodecMetadata GetAvifAvmMetadata() {
+  return CodecMetadata{
+      "avifavm",
+      AvifAvmPrettyName,
+      AvifAvmVersion,
+      AvifLossyQualities,
+      "avmf",
+      /*is_supported_by_browsers=*/false,
+      /*supports_16bit=*/false,
+      /*opaque_format=*/WP2_RGB_24,
+      /*transparent_format=*/WP2_ARGB_32,
+      EncodeAvifAvm,
+      DecodeAvifAvm,
+  };
+}
 
 }  // namespace codec_compare_gen

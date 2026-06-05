@@ -14,7 +14,7 @@
 
 #include "src/codec_jpegmoz.h"
 
-#if defined(HAS_JPEGMOZ) && defined(HAS_WEBP2)
+#if defined(HAS_JPEGMOZ)
 #include <csetjmp>
 #include <cstdint>
 #include <cstdlib>
@@ -25,21 +25,24 @@
 #include <vector>
 
 #include "src/base.h"
+#include "src/codec.h"
 #include "src/frame.h"
-#if defined(HAS_JPEGMOZ) && defined(HAS_WEBP2)
+#if defined(HAS_JPEGMOZ)
 #include "src/serialization.h"
 #endif
 #include "src/task.h"
-
-#if defined(HAS_WEBP2)
 #include "src/wp2/base.h"
-#endif
 
 #if defined(HAS_JPEGMOZ)
 #include "jpeglib.h"
 #endif
 
 namespace codec_compare_gen {
+namespace {
+
+std::string JpegmozPrettyName(bool lossless, Subsampling subsampling, int) {
+  return "MozJPEG" + SubsamplingToPrettyString(lossless, subsampling);
+}
 
 std::string JpegmozVersion() {
 #if defined(HAS_JPEGMOZ)
@@ -58,11 +61,7 @@ std::vector<int> JpegmozLossyQualities() {
   return qualities;
 }
 
-#if defined(HAS_WEBP2)
-
 #if defined(HAS_JPEGMOZ)
-
-namespace {
 
 void jpeg_catch_error(j_common_ptr cinfo) {
   // (*cinfo->err->output_message) (cinfo); // to print encountered errors
@@ -70,8 +69,6 @@ void jpeg_catch_error(j_common_ptr cinfo) {
   jpeg_destroy(cinfo);
   longjmp(*jpeg_jmpbuf, 1);
 }
-
-}  // namespace
 
 StatusOr<WP2::Data> EncodeJpegmoz(const TaskInput& input,
                                   const Image& original_image, bool quiet) {
@@ -214,6 +211,22 @@ StatusOr<std::pair<Image, double>> DecodeJpegmoz(const TaskInput&,
 }
 #endif  // HAS_JPEGMOZ
 
-#endif  // HAS_WEBP2
+}  // namespace
+
+CodecMetadata GetJpegmozMetadata() {
+  return CodecMetadata{
+      "jpegmoz",
+      JpegmozPrettyName,
+      JpegmozVersion,
+      JpegmozLossyQualities,
+      "moz.jpg",
+      /*is_supported_by_browsers=*/true,
+      /*supports_16bit=*/false,
+      /*opaque_format=*/WP2_RGB_24,
+      /*transparent_format=*/WP2_FORMAT_NUM,  // No alpha support.
+      EncodeJpegmoz,
+      DecodeJpegmoz,
+  };
+}
 
 }  // namespace codec_compare_gen

@@ -4,10 +4,9 @@ include(CcgenFetchContent)
 FetchContent_Declare(
   libavif
   GIT_REPOSITORY "https://github.com/AOMediaCodec/libavif.git"
-  # GIT_TAG v1.4.1 does not contain the latest AVM tag.
-  GIT_TAG 257b1e45f979491d905786d80691ba33a7597290
+  GIT_TAG v1.4.2
   GIT_PROGRESS ON
-  GIT_SHALLOW OFF
+  GIT_SHALLOW ON
   UPDATE_COMMAND "")
 
 set(AVIF_BUILD_APPS

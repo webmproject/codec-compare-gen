@@ -15,39 +15,14 @@
 #ifndef SRC_CODEC_COMBINATION_H_
 #define SRC_CODEC_COMBINATION_H_
 
-#include <string>
-#include <utility>
-#include <vector>
-
-#include "src/base.h"
-#include "src/frame.h"
-#include "src/task.h"
-
-#if defined(HAS_WEBP2)
-#include "src/wp2/base.h"
-#endif
+#include "src/codec.h"
 
 namespace codec_compare_gen {
-
-std::string CodecCombinationVersion();
-
-std::vector<int> CodecCombinationLossyQualities();
-
-#if defined(HAS_WEBP2)
 
 // Tries encoding the original_image as WebP, WebP2 and/or JpegXL at various
 // efforts depending on input.codec_settings.effort. Returns the smallest
 // encoded payload.
-StatusOr<WP2::Data> EncodeCodecCombination(const TaskInput& input,
-                                           const Image& original_image,
-                                           bool quiet);
-
-// Returns the encoded_image decoded by the first successful codec among WebP,
-// WebP2 and JpegXL and the color conversion duration.
-StatusOr<std::pair<Image, double>> DecodeCodecCombination(
-    const TaskInput& input, const WP2::Data& encoded_image, bool quiet);
-
-#endif  // HAS_WEBP2
+CodecMetadata GetCombinationMetadata();
 
 }  // namespace codec_compare_gen
 

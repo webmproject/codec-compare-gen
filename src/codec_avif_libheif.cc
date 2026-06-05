@@ -28,13 +28,11 @@
 #include <vector>
 
 #include "src/base.h"
+#include "src/codec.h"
 #include "src/frame.h"
 #include "src/task.h"
 #include "src/timer.h"
-
-#if defined(HAS_WEBP2)
 #include "src/wp2/base.h"
-#endif
 
 #if defined(HAS_HEIF)
 #include "libheif/heif_aux_images.h"
@@ -48,6 +46,13 @@
 #endif
 
 namespace codec_compare_gen {
+namespace {
+
+std::string AvifLibheifPrettyName(bool lossless, Subsampling subsampling,
+                                  int effort) {
+  return "AVIF libheif s" + std::to_string(effort) +
+         SubsamplingToPrettyString(lossless, subsampling);
+}
 
 std::string AvifLibheifVersion() {
 #if defined(HAS_HEIF)
@@ -67,11 +72,7 @@ std::vector<int> AvifLibheifLossyQualities() {
   return qualities;  // [0:63] (63 is lossless but in YUV so RGB is lossy).
 }
 
-#if defined(HAS_WEBP2)
-
 #if defined(HAS_HEIF)
-
-namespace {
 
 // heif_cxx.h already provides a C++ API but it relies on throwing exceptions.
 using HeifImage = std::unique_ptr<heif_image, decltype(&heif_image_release)>;
@@ -130,8 +131,6 @@ heif_error writer_callback(heif_context* ctx, const void* data, size_t size,
   return {status == WP2_STATUS_OK ? heif_error_Ok
                                   : heif_error_Memory_allocation_error};
 }
-
-}  // namespace
 
 StatusOr<WP2::Data> EncodeAvifLibheif(const TaskInput& input,
                                       const Image& original_image, bool quiet) {
@@ -277,6 +276,22 @@ StatusOr<std::pair<Image, double>> DecodeAvifLibheif(const TaskInput&,
 }
 #endif  // HAS_HEIF
 
-#endif  // HAS_WEBP2
+}  // namespace
+
+CodecMetadata GetAvifLibheifMetadata() {
+  return CodecMetadata{
+      "aviflibheif",
+      AvifLibheifPrettyName,
+      AvifLibheifVersion,
+      AvifLibheifLossyQualities,
+      "libheif.avif",
+      /*is_supported_by_browsers=*/true,
+      /*supports_16bit=*/false,
+      /*opaque_format=*/WP2_RGB_24,
+      /*transparent_format=*/WP2_ARGB_32,
+      EncodeAvifLibheif,
+      DecodeAvifLibheif,
+  };
+}
 
 }  // namespace codec_compare_gen

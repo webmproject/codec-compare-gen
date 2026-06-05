@@ -14,7 +14,7 @@
 
 #include "src/codec_openjpeg.h"
 
-#if defined(HAS_OPENJPEG) && defined(HAS_WEBP2)
+#if defined(HAS_OPENJPEG)
 #include <algorithm>
 #include <cassert>
 #include <cmath>
@@ -32,18 +32,21 @@
 #include <vector>
 
 #include "src/base.h"
+#include "src/codec.h"
 #include "src/frame.h"
 #include "src/task.h"
-
-#if defined(HAS_WEBP2)
 #include "src/wp2/base.h"
-#endif
 
 #if defined(HAS_OPENJPEG)
 #include "openjpeg.h"
 #endif
 
 namespace codec_compare_gen {
+namespace {
+
+std::string OpenjpegPrettyName(bool lossless, Subsampling subsampling, int) {
+  return "JPEG2000" + SubsamplingToPrettyString(lossless, subsampling);
+}
 
 std::string OpenjpegVersion() {
 #if defined(HAS_OPENJPEG)
@@ -58,8 +61,6 @@ std::vector<int> OpenjpegLossyQualities() {
   std::iota(qualities.begin(), qualities.end(), 0);
   return qualities;
 }
-
-#if defined(HAS_WEBP2)
 
 #if defined(HAS_OPENJPEG)
 
@@ -404,6 +405,22 @@ StatusOr<std::pair<Image, double>> DecodeOpenjpeg(const TaskInput&,
 }
 #endif  // HAS_OPENJPEG
 
-#endif  // HAS_WEBP2
+}  // namespace
+
+CodecMetadata GetJp2Metadata() {
+  return CodecMetadata{
+      "jp2",
+      OpenjpegPrettyName,
+      OpenjpegVersion,
+      OpenjpegLossyQualities,
+      "jp2",
+      /*is_supported_by_browsers=*/false,
+      /*supports_16bit=*/true,
+      /*opaque_format=*/WP2_RGB_24,
+      /*transparent_format=*/WP2_RGBA_32,
+      EncodeOpenjpeg,
+      DecodeOpenjpeg,
+  };
+}
 
 }  // namespace codec_compare_gen

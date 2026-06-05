@@ -21,10 +21,7 @@
 #include "src/base.h"
 #include "src/frame.h"
 #include "src/task.h"
-
-#if defined(HAS_WEBP2)
 #include "src/wp2/base.h"
-#endif
 
 namespace codec_compare_gen {
 
@@ -40,10 +37,8 @@ StatusOr<float> GetAverageDistortion(
 // They must have the same total duration.
 StatusOr<bool> PixelEquality(const Image& a, const Image& b, bool quiet);
 
-#if defined(HAS_WEBP2)
 StatusOr<bool> PixelEquality(const WP2::ArgbBuffer& a, const WP2::ArgbBuffer& b,
                              bool quiet);
-#endif
 
 }  // namespace codec_compare_gen
 

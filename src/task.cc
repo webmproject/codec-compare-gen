@@ -58,7 +58,7 @@ std::string GetEncodedFilePath(const std::string& folder_path,
   } else {
     ext << "q" << std::setfill('0') << std::setw(3) << codec_settings.quality;
   }
-  ext << "." << CodecExtension(codec_settings.codec);
+  ext << "." << GetCodecMetadata(codec_settings.codec).extension;
   path.replace_extension(ext.str());
   return path;
 }
@@ -80,7 +80,7 @@ bool operator==(const TaskInput& a, const TaskInput& b) {
 
 std::string TaskInput::Serialize() const {
   std::stringstream ss;
-  ss << Escape(CodecName(codec_settings.codec)) << ", "
+  ss << Escape(GetCodecMetadata(codec_settings.codec).name) << ", "
      << SubsamplingToString(codec_settings.chroma_subsampling) << ", "
      << codec_settings.effort << ", " << codec_settings.quality << ", "
      << Escape(image_path);

@@ -30,7 +30,8 @@ static int QualityToQuantizer(int quality) {
 }
 
 TEST(AvifTest, Qualities) {
-  const std::vector<int> qualities = CodecLossyQualities(Codec::kAvif);
+  const std::vector<int> qualities =
+      GetCodecMetadata(Codec::kAvif).lossy_qualities();
   std::vector<int> quantizers;
   quantizers.reserve(qualities.size());
   for (int quality : qualities) {
