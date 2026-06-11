@@ -82,6 +82,8 @@ int Main(int argc, const char* const argv[]) {
                 << std::filesystem::path(argv[0]).filename().string()
                 << std::endl
                 << " [--codec webp {444|420} {effort}]" << std::endl
+                << " [--codec webprs 444]" << std::endl
+                << " [--codec webpencwebprsdec {444|420} {effort}]" << std::endl
                 << " [--codec webp2 {444|420} {effort}]" << std::endl
                 << " [--codec jpegxl 444 {effort}]" << std::endl
                 << " [--codec avif {444|420} {effort}]" << std::endl
@@ -136,6 +138,8 @@ int Main(int argc, const char* const argv[]) {
         codec_settings.push_back({Codec::kFfv1, subsampling.value});
       } else if (codec == "basis") {
         codec_settings.push_back({Codec::kBasis, subsampling.value});
+      } else if (codec == "webprs") {
+        codec_settings.push_back({Codec::kWebpRs, subsampling.value});
       } else if (arg_index < argc) {
         const std::string effort_str = argv[++arg_index];
         const auto range_delimiter = effort_str.find("..");
@@ -150,6 +154,9 @@ int Main(int argc, const char* const argv[]) {
              effort += (low < high ? 1 : -1)) {
           if (codec == "webp") {
             codec_settings.push_back({Codec::kWebp, subsampling.value, effort});
+          } else if (codec == "webpencwebprsdec") {
+            codec_settings.push_back(
+                {Codec::kWebpEncWebpRsDec, subsampling.value, effort});
           } else if (codec == "wp2" || codec == "webp2") {
             codec_settings.push_back(
                 {Codec::kWebp2, subsampling.value, effort});

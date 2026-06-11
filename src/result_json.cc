@@ -136,7 +136,10 @@ Status TasksToJson(const std::string& batch_pretty_name, CodecSettings settings,
       /*prefix=*/encoded_common_parent.parent_path(), encoded_common_parent));
 
   const std::string build_option =
-      settings.codec == Codec::kWebp    ? " -DCCGEN_ENABLE_WEBP=ON"
+      settings.codec == Codec::kWebp     ? " -DCCGEN_ENABLE_WEBP=ON"
+      : settings.codec == Codec::kWebpRs ? " -DCCGEN_ENABLE_WEBPRS=ON"
+      : settings.codec == Codec::kWebpEncWebpRsDec
+          ? " -DCCGEN_ENABLE_WEBP=ON -DCCGEN_ENABLE_WEBPRS=ON"
       : settings.codec == Codec::kWebp2 ? " -DCCGEN_ENABLE_WEBP2=ON"
       : settings.codec == Codec::kJpegXl || settings.codec == Codec::kJpegli
           ? " -DCCGEN_ENABLE_JPEGXL=ON"
@@ -157,21 +160,23 @@ Status TasksToJson(const std::string& batch_pretty_name, CodecSettings settings,
                                         : "";
 
   const std::string build_cmd =
-      "git clone -b v0.7.1 --depth 1"
+      "git clone -b v0.7.2 --depth 1"
       " https://github.com/webmproject/codec-compare-gen.git ccgen"
       " && cmake -S ccgen -B ccgen/build" +
       build_option +
       " -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++"
       " && cmake --build ccgen/build --parallel";
   const std::string effort_str =
-      (settings.codec == Codec::kWebp || settings.codec == Codec::kWebp2 ||
-       settings.codec == Codec::kJpegXl || settings.codec == Codec::kAvif ||
-       settings.codec == Codec::kAvifSsim || settings.codec == Codec::kAvifIq ||
-       settings.codec == Codec::kAvifExp || settings.codec == Codec::kAvifAvm ||
+      (settings.codec == Codec::kWebp ||
+       settings.codec == Codec::kWebpEncWebpRsDec ||
+       settings.codec == Codec::kWebp2 || settings.codec == Codec::kJpegXl ||
+       settings.codec == Codec::kAvif || settings.codec == Codec::kAvifSsim ||
+       settings.codec == Codec::kAvifIq || settings.codec == Codec::kAvifExp ||
+       settings.codec == Codec::kAvifAvm ||
        settings.codec == Codec::kCombination ||
        settings.codec == Codec::kJpegsimple)
           ? " " + std::to_string(settings.effort)
-          : "";  // kJpegturbo, kJpegli, and kJpegmoz have no effort setting.
+          : "";
   std::string encoding_cmd =
       "ccgen/build/ccgen --codec " +
       std::string(GetCodecMetadata(settings.codec).name) + " " +

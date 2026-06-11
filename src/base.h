@@ -28,23 +28,25 @@ namespace codec_compare_gen {
 enum class Status { kOk, kUnknownError };
 
 enum class Codec {
-  kWebp,
-  kWebp2,
-  kJpegXl,
-  kAvif,      // AV1 in HEIF (libavif).
-  kAvifSsim,  // AV1 in HEIF (libavif+libaom with tune=ssim).
-  kAvifIq,    // AV1 in HEIF (libavif+libaom with tune=iq).
-  kAvifExp,   // AV1 in HEIF, experimental features (mini, YCgCo-Re, libavif).
-  kAvifAvm,   // AV2 in HEIF, experimental features (mini, YCgCo-Re, libavif).
-  kAvifLibheif,  // AV1 in HEIF (libheif).
-  kCombination,
-  kJpegturbo,
-  kJpegli,
-  kJpegsimple,
-  kJpegmoz,
-  kJp2,
-  kFfv1,
-  kBasis,
+  kWebp,    // WebP, C implementation libwebp.
+  kWebpRs,  // WebP, Rust image crate (image-webp). No lossy encoder for now.
+  kWebpEncWebpRsDec,  // Encode with kWebp, decode with kWebpRs.
+  kWebp2,             // Experimental format WebP2, C++ implementation libwebp2.
+  kJpegXl,            // JPEG XL, C++ implementation libjxl.
+  kAvif,      // AV1 in HEIF, C implementation libavif (+libaom+libdav1d).
+  kAvifSsim,  // kAvif with tune=ssim.
+  kAvifIq,    // kAvif with tune=iq.
+  kAvifExp,   // kAvif with experimental features (mini, YCgCo-Re).
+  kAvifAvm,   // AV2 in HEIF, exp features, C implementation libavif (+libavm).
+  kAvifLibheif,  // AV1 in HEIF, C++ implementation libheif (+libaom+libdav1d).
+  kCombination,  // Smallest file among WebP, WebP2 and JPEG XL.
+  kJpegturbo,    // JPEG, C implementation libjpeg-turbo.
+  kJpegli,       // JPEG, C++ implementation jpegli.
+  kJpegsimple,   // JPEG, C implementation sjpeg.
+  kJpegmoz,      // JPEG, C implementation mozjpeg.
+  kJp2,          // JPEG 2000, C implementation openjpeg.
+  kFfv1,         // FFV1, C implementation libavcodec (FFmpeg).
+  kBasis,        // Basis Universal, C++ implementation basis_universal.
   kNumCodecs
 };
 

@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.7.3
+
+- No longer check for the P3-norm distortion metric upper bound.
+- Fix the reproduction command lines and version strings of Codec::kWebpRs and
+  Codec::kWebpEncWebpRsDec.
+
+## v0.7.2
+
+- Add the Rust image-webp crate as an alternative to libwebp for decoding WebP.
+
 ## v0.7.1
 
 - Bump the versions of the libavif and libheif dependencies.

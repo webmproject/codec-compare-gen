@@ -278,7 +278,7 @@ CodecMetadata GetFfv1Metadata() {
       /*is_supported_by_browsers=*/false,
       /*supports_16bit=*/false,
       /*opaque_format=*/WP2_BGRA_32,
-      /*transparent_format=*/WP2_FORMAT_NUM,  // No alpha support.
+      /*transparent_format=*/WP2_BGRA_32,
       EncodeFfv1,
       DecodeFfv1,
   };
