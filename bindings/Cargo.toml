@@ -1,0 +1,13 @@
+[package]
+name = "ccgen_webp_rs"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "ccgen_webp_rs"
+path = "lib.rs"
+crate-type = ["staticlib", "lib"]
+
+[dependencies]
+image = "0.25.10"
+image-webp = "0.2.4"

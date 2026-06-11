@@ -16,17 +16,19 @@ cmake_minimum_required(VERSION 3.20)
 project(
   codec-compare-gen
   LANGUAGES CXX
-  VERSION 0.7.1)
+  VERSION 0.7.3)
 set(CMAKE_CXX_STANDARD 17)
 
 # Options
 
 option(CCGEN_ENABLE_AVIF "Build with AVIF support (libavif[aom+dav1d])" ON)
-option(CCGEN_ENABLE_HEIF "Build with HEIF support (libheif[aom+dav1d])" OFF)
+option(CCGEN_ENABLE_AVIF_LIBHEIF "Build with AVIF support (libheif[aom+dav1d])"
+       OFF)
 option(CCGEN_ENABLE_JPEG "Build with JPEG support (Turbo, Moz, sjpeg)" ON)
 option(CCGEN_ENABLE_JPEG2000 "Build with JPEG 2000 support (OpenJPEG)" OFF)
 option(CCGEN_ENABLE_JPEGXL "Build with JPEG XL support (libjxl, jpegli)" ON)
 option(CCGEN_ENABLE_WEBP "Build with WebP support (libwebp)" ON)
+option(CCGEN_ENABLE_WEBPRS "Build with WebP support (Rust image crate)" ON)
 option(CCGEN_ENABLE_WEBP2 "Build with WebP 2 support (libwebp2) [REQUIRED]" ON)
 option(CCGEN_ENABLE_FFV1 "Build with FFV1 support (libavcodec from FFmpeg)" OFF)
 option(CCGEN_ENABLE_BASIS "Build with Basis Universal support" OFF)
@@ -83,6 +85,8 @@ add_library(
   src/codec_openjpeg.cc
   src/codec_webp.h
   src/codec_webp.cc
+  src/codec_webp_rs.h
+  src/codec_webp_rs.cc
   src/codec_webp2.h
   src/codec_webp2.cc
   src/distortion.h
@@ -239,9 +243,10 @@ if(CCGEN_ENABLE_AVIF)
   target_compile_definitions(libccgen PRIVATE HAS_AVIF)
   target_link_libraries(libccgen avif)
 endif()
-if(CCGEN_ENABLE_HEIF)
+if(CCGEN_ENABLE_AVIF_LIBHEIF)
   if(NOT CCGEN_ENABLE_AVIF)
-    message(FATAL_ERROR "CCGEN_ENABLE_HEIF=ON requires CCGEN_ENABLE_AVIF=ON.")
+    message(
+      FATAL_ERROR "CCGEN_ENABLE_AVIF_LIBHEIF=ON requires CCGEN_ENABLE_AVIF=ON.")
   endif()
   include(LocalLibheif)
   target_compile_definitions(libccgen PRIVATE HAS_HEIF)
@@ -252,6 +257,32 @@ if(CCGEN_ENABLE_WEBP)
   include(LocalLibwebp)
   target_compile_definitions(libccgen PRIVATE HAS_WEBP)
   target_link_libraries(libccgen webpmux webpdemux webp)
+endif()
+
+if(CCGEN_ENABLE_WEBPRS)
+  if(CCGEN_WASM)
+    message(
+      FATAL_ERROR "CCGEN_ENABLE_WEBPRS=ON is not supported with CCGEN_WASM=ON.")
+  endif()
+
+  target_compile_definitions(libccgen PRIVATE HAS_WEBPRS)
+
+  # Copy the files from CMAKE_SOURCE_DIR to CMAKE_BINARY_DIR to avoid generating
+  # build files outside of CMAKE_BINARY_DIR.
+  configure_file(bindings/Cargo.toml bindings/Cargo.toml COPYONLY)
+  configure_file(bindings/lib.rs bindings/lib.rs COPYONLY)
+
+  # Corrosion is used to call cargo from CMake.
+  include(FetchContent)
+  FetchContent_Declare(
+    Corrosion
+    EXCLUDE_FROM_ALL
+    GIT_REPOSITORY https://github.com/corrosion-rs/corrosion.git
+    GIT_TAG v0.6.1
+    GIT_SHALLOW ON)
+  FetchContent_MakeAvailable(Corrosion)
+  corrosion_import_crate(MANIFEST_PATH ${CMAKE_BINARY_DIR}/bindings/Cargo.toml)
+  target_link_libraries(libccgen ccgen_webp_rs)
 endif()
 
 if(CCGEN_ENABLE_WEBP2)
@@ -449,6 +480,9 @@ if(CCGEN_BUILD_TESTING)
     add_ccgen_gtest(test_codec tests/data)
     add_ccgen_gtest(test_codec_avif)
     add_ccgen_gtest(test_codec_sjpeg tests/data)
+    if(CCGEN_ENABLE_WEBPRS)
+      add_ccgen_gtest(test_codec_webp_rs tests/data)
+    endif()
     add_ccgen_gtest(test_distortion tests/data ${CMAKE_CURRENT_BINARY_DIR})
     add_ccgen_gtest(test_framework tests/data)
     add_ccgen_gtest(test_serialization)

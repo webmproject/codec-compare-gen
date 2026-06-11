@@ -73,7 +73,7 @@ The following instructions are used to make sure the unit tests pass.
 cmake -S . -B build \
   -DCCGEN_BUILD_TESTING=ON \
   -DCCGEN_ENABLE_AVIF=ON \
-  -DCCGEN_ENABLE_HEIF=ON \
+  -DCCGEN_ENABLE_AVIF_LIBHEIF=ON \
   -DCCGEN_ENABLE_JPEG=ON \
   -DCCGEN_ENABLE_JPEG2000=ON \
   -DCCGEN_ENABLE_JPEGXL=ON \
