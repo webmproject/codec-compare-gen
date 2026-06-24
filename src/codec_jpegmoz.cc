@@ -55,6 +55,8 @@ std::string JpegmozVersion() {
 #endif
 }
 
+std::vector<int> JpegmozEfforts() { return {}; }
+
 std::vector<int> JpegmozLossyQualities() {
   std::vector<int> qualities(101);
   std::iota(qualities.begin(), qualities.end(), 0);
@@ -218,6 +220,8 @@ CodecMetadata GetJpegmozMetadata() {
       "jpegmoz",
       JpegmozPrettyName,
       JpegmozVersion,
+      " -DCCGEN_ENABLE_AVIF=OFF -DCCGEN_ENABLE_JPEG=ON",
+      JpegmozEfforts,
       JpegmozLossyQualities,
       "moz.jpg",
       /*is_supported_by_browsers=*/true,

@@ -47,6 +47,8 @@ std::string JpegturboVersion() {
 #endif
 }
 
+std::vector<int> JpegturboEfforts() { return {}; }
+
 std::vector<int> JpegturboLossyQualities() {
   std::vector<int> qualities(101);
   std::iota(qualities.begin(), qualities.end(), 0);
@@ -149,6 +151,8 @@ CodecMetadata GetJpegturboMetadata() {
       "jpegturbo",
       JpegturboPrettyName,
       JpegturboVersion,
+      " -DCCGEN_ENABLE_AVIF=OFF -DCCGEN_ENABLE_JPEG=ON",
+      JpegturboEfforts,
       JpegturboLossyQualities,
       "turbo.jpg",
       /*is_supported_by_browsers=*/true,

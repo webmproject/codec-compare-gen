@@ -49,6 +49,8 @@ std::string Webp2PrettyName(bool lossless, Subsampling subsampling,
 
 std::string Webp2Version() { return VersionToString(WP2GetVersion()); }
 
+std::vector<int> Webp2Efforts() { return {0, 1, 2, 3, 4, 5, 6, 7, 8, 9}; }
+
 std::vector<int> Webp2LossyQualities() {
   std::vector<int> qualities(96);
   std::iota(qualities.begin(), qualities.end(), 0);
@@ -140,6 +142,9 @@ CodecMetadata GetWebp2Metadata() {
       "webp2",
       Webp2PrettyName,
       Webp2Version,
+      " -DCCGEN_ENABLE_AVIF=OFF -DCCGEN_ENABLE_JPEG=OFF"
+      " -DCCGEN_ENABLE_WEBP2=ON",
+      Webp2Efforts,
       Webp2LossyQualities,
       "wp2",
       /*is_supported_by_browsers=*/false,

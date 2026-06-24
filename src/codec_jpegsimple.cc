@@ -53,6 +53,8 @@ std::string JpegsimpleVersion() {
 #endif
 }
 
+std::vector<int> JpegsimpleEfforts() { return {0, 1, 2, 3, 4, 5, 6, 7, 8}; }
+
 std::vector<int> JpegsimpleLossyQualities() {
   std::vector<int> qualities(101);
   std::iota(qualities.begin(), qualities.end(), 0);
@@ -114,6 +116,8 @@ CodecMetadata GetJpegsimpleMetadata() {
       "jpegsimple",
       JpegsimplePrettyName,
       JpegsimpleVersion,
+      " -DCCGEN_ENABLE_AVIF=OFF -DCCGEN_ENABLE_JPEG=ON",
+      JpegsimpleEfforts,
       JpegsimpleLossyQualities,
       "s.jpg",
       /*is_supported_by_browsers=*/true,

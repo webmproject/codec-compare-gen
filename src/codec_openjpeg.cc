@@ -56,6 +56,8 @@ std::string OpenjpegVersion() {
 #endif
 }
 
+std::vector<int> OpenjpegEfforts() { return {}; }
+
 std::vector<int> OpenjpegLossyQualities() {
   std::vector<int> qualities(101);
   std::iota(qualities.begin(), qualities.end(), 0);
@@ -412,6 +414,9 @@ CodecMetadata GetJp2Metadata() {
       "jp2",
       OpenjpegPrettyName,
       OpenjpegVersion,
+      " -DCCGEN_ENABLE_AVIF=OFF -DCCGEN_ENABLE_JPEG=OFF"
+      " -DCCGEN_ENABLE_JPEG2000=ON",
+      OpenjpegEfforts,
       OpenjpegLossyQualities,
       "jp2",
       /*is_supported_by_browsers=*/false,

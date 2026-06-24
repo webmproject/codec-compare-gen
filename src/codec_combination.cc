@@ -45,6 +45,10 @@ std::string CodecCombinationVersion() {
          "_" + GetJpegXlMetadata().version();
 }
 
+std::vector<int> CodecCombinationEfforts() {
+  return {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
+}
+
 std::vector<int> CodecCombinationLossyQualities() {
   std::vector<int> qualities(91);
   std::iota(qualities.begin(), qualities.end(), 5);
@@ -161,6 +165,8 @@ CodecMetadata GetCombinationMetadata() {
       "combination",
       CodecCombinationPrettyName,
       CodecCombinationVersion,
+      "",
+      CodecCombinationEfforts,
       CodecCombinationLossyQualities,
       "comb",
       GetWebpMetadata().is_supported_by_browsers &&

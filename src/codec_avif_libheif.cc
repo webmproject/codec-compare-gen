@@ -23,6 +23,7 @@
 #endif
 
 #include <cassert>
+#include <numeric>
 #include <string>
 #include <utility>
 #include <vector>
@@ -61,6 +62,8 @@ std::string AvifLibheifVersion() {
   return "n/a";
 #endif
 }
+
+std::vector<int> AvifLibheifEfforts() { return {0, 1, 2, 3, 4, 5, 6, 7, 8, 9}; }
 
 std::vector<int> AvifLibheifLossyQualities() {
   std::vector<int> qualities(64);
@@ -283,6 +286,10 @@ CodecMetadata GetAvifLibheifMetadata() {
       "aviflibheif",
       AvifLibheifPrettyName,
       AvifLibheifVersion,
+      // The dependencies of libavif are reused as the dependencies of libheif.
+      " -DCCGEN_ENABLE_AVIF=ON -DCCGEN_ENABLE_AVIF_LIBHEIF=ON"
+      " -DCCGEN_ENABLE_JPEG=OFF",
+      AvifLibheifEfforts,
       AvifLibheifLossyQualities,
       "libheif.avif",
       /*is_supported_by_browsers=*/true,

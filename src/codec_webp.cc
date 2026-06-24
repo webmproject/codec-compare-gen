@@ -64,6 +64,11 @@ std::string WebpVersion() {
 #endif
 }
 
+std::vector<int> WebpEfforts() {
+  // Lossless effort is in [0, 9] and lossy effort is in [0, 6].
+  return {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
+}
+
 std::vector<int> WebpLossyQualities() {
   std::vector<int> qualities(101);
   std::iota(qualities.begin(), qualities.end(), 0);
@@ -239,6 +244,8 @@ CodecMetadata GetWebpMetadata() {
       "webp",
       WebpPrettyName,
       WebpVersion,
+      " -DCCGEN_ENABLE_AVIF=OFF -DCCGEN_ENABLE_JPEG=OFF -DCCGEN_ENABLE_WEBP=ON",
+      WebpEfforts,
       WebpLossyQualities,
       "webp",
       /*is_supported_by_browsers=*/true,

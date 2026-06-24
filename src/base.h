@@ -44,9 +44,11 @@ enum class Codec {
   kJpegli,       // JPEG, C++ implementation jpegli.
   kJpegsimple,   // JPEG, C implementation sjpeg.
   kJpegmoz,      // JPEG, C implementation mozjpeg.
-  kJp2,          // JPEG 2000, C implementation openjpeg.
-  kFfv1,         // FFV1, C implementation libavcodec (FFmpeg).
-  kBasis,        // Basis Universal, C++ implementation basis_universal.
+  kJpegzune,     // JPEG, Rust image crate (jpeg) / zune-jpeg.
+  kJpegturboEncJpegzuneDec,  // Encode with kJpegturbo, decode with kJpegzune.
+  kJp2,    // JPEG 2000 (also called J2K), C implementation openjpeg.
+  kFfv1,   // FFV1, C implementation libavcodec (FFmpeg).
+  kBasis,  // Basis Universal, C++ implementation basis_universal.
   kNumCodecs
 };
 
@@ -76,6 +78,7 @@ static_assert(sizeof(kDistortionMetricToStr) /
                   sizeof(kDistortionMetricToStr[0]) ==
               kNumDistortionMetrics);
 static constexpr float kNoDistortion = 99.f;  // Measured dB (for PSNR).
+static constexpr int kPsnr = static_cast<int>(DistortionMetric::kLibwebp2Psnr);
 
 //------------------------------------------------------------------------------
 // Status management

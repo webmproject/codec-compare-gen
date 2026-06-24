@@ -99,6 +99,8 @@ int Main(int argc, const char* const argv[]) {
                 << " [--codec jpegli {444|420}]" << std::endl
                 << " [--codec jpegsimple {444|420} {effort}]" << std::endl
                 << " [--codec jpegmoz {444|420}]" << std::endl
+                << " [--codec jpegzune 444]" << std::endl
+                << " [--codec jpegturboencjpegzunedec {444|420}]" << std::endl
                 << " [--codec jpeg2000 444]" << std::endl
                 << " [--codec ffv1 444]" << std::endl
                 << " [--codec basis 444]" << std::endl
@@ -116,6 +118,7 @@ int Main(int argc, const char* const argv[]) {
                 << " [--quiet]" << std::endl
                 << " [--metric_binary_folder {path to CMake build folder}]"
                 << std::endl
+                << " [--fast_metrics_only]" << std::endl
                 << " [--encoded_folder {path}]" << std::endl
                 << " --progress_file {path}" << std::endl
                 << " --results_folder {path}" << std::endl
@@ -132,6 +135,11 @@ int Main(int argc, const char* const argv[]) {
         codec_settings.push_back({Codec::kJpegli, subsampling.value});
       } else if (codec == "jpegmoz" || codec == "mozjpeg") {
         codec_settings.push_back({Codec::kJpegmoz, subsampling.value});
+      } else if (codec == "jpegzune" || codec == "zunejpeg") {
+        codec_settings.push_back({Codec::kJpegzune, subsampling.value});
+      } else if (codec == "jpegturboencjpegzunedec") {
+        codec_settings.push_back(
+            {Codec::kJpegturboEncJpegzuneDec, subsampling.value});
       } else if (codec == "jpeg2000" || codec == "jp2" || codec == "openjpeg") {
         codec_settings.push_back({Codec::kJp2, subsampling.value});
       } else if (codec == "ffv1") {
@@ -232,6 +240,8 @@ int Main(int argc, const char* const argv[]) {
       settings.quiet = true;
     } else if (arg == "--metric_binary_folder" && arg_index + 1 < argc) {
       settings.metric_binary_folder_path = argv[++arg_index];
+    } else if (arg == "--fast_metrics_only") {
+      settings.metric_binary_folder_path = "fast_metrics_only";
     } else if (arg == "--encoded_folder" && arg_index + 1 < argc) {
       settings.encoded_folder_path = argv[++arg_index];
     } else if (arg == "--progress_file" && arg_index + 1 < argc) {
@@ -267,9 +277,10 @@ int Main(int argc, const char* const argv[]) {
     }
   }
   if (lossy && settings.metric_binary_folder_path.empty()) {
-    std::cerr << "Missing --metric_binary_folder for lossy evaluations"
+    std::cout << "Warning: Missing --metric_binary_folder for lossy "
+                 "evaluations. Only fast distortion metrics will be computed."
               << std::endl;
-    return 1;
+    settings.metric_binary_folder_path = "fast_metrics_only";
   }
 
   // All arguments after "--" are file paths.

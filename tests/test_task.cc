@@ -43,7 +43,9 @@ void ExpectEq(const std::vector<std::vector<TaskOutput>>& actual,
                 expected[i][j].decoding_duration);
       EXPECT_EQ(actual[i][j].decoding_color_conversion_duration,
                 expected[i][j].decoding_color_conversion_duration);
-      for (size_t m = 0; m < kNumDistortionMetrics; ++m) {
+      ASSERT_EQ(actual[i][j].distortions.size(),
+                expected[i][j].distortions.size());
+      for (size_t m = 0; m < actual[i][j].distortions.size(); ++m) {
         EXPECT_EQ(actual[i][j].distortions[m], expected[i][j].distortions[m]);
       }
     }

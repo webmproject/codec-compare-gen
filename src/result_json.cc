@@ -135,46 +135,15 @@ Status TasksToJson(const std::string& batch_pretty_name, CodecSettings settings,
   const std::string encoded_parent = AppendDirectorySeparator(RemovePrefix(
       /*prefix=*/encoded_common_parent.parent_path(), encoded_common_parent));
 
-  const std::string build_option =
-      settings.codec == Codec::kWebp     ? " -DCCGEN_ENABLE_WEBP=ON"
-      : settings.codec == Codec::kWebpRs ? " -DCCGEN_ENABLE_WEBPRS=ON"
-      : settings.codec == Codec::kWebpEncWebpRsDec
-          ? " -DCCGEN_ENABLE_WEBP=ON -DCCGEN_ENABLE_WEBPRS=ON"
-      : settings.codec == Codec::kWebp2 ? " -DCCGEN_ENABLE_WEBP2=ON"
-      : settings.codec == Codec::kJpegXl || settings.codec == Codec::kJpegli
-          ? " -DCCGEN_ENABLE_JPEGXL=ON"
-      : settings.codec == Codec::kAvif || settings.codec == Codec::kAvifSsim ||
-              settings.codec == Codec::kAvifIq ||
-              settings.codec == Codec::kAvifExp ||
-              settings.codec == Codec::kAvifAvm ||
-              settings.codec == Codec::kAvifLibheif
-          ? " -DCCGEN_ENABLE_AVIF=ON"
-      : settings.codec == Codec::kCombination ? ""
-      : settings.codec == Codec::kJpegturbo ||
-              settings.codec == Codec::kJpegsimple ||
-              settings.codec == Codec::kJpegmoz
-          ? " -DCCGEN_ENABLE_JPEG=ON"
-      : settings.codec == Codec::kJp2   ? " -DCCGEN_ENABLE_JPEG2000=ON"
-      : settings.codec == Codec::kFfv1  ? " -DCCGEN_ENABLE_FFV1=ON"
-      : settings.codec == Codec::kBasis ? " -DCCGEN_ENABLE_BASIS=ON"
-                                        : "";
-
   const std::string build_cmd =
-      "git clone -b v0.7.2 --depth 1"
+      "git clone -b v0.7.6 --depth 1"
       " https://github.com/webmproject/codec-compare-gen.git ccgen"
       " && cmake -S ccgen -B ccgen/build" +
-      build_option +
+      std::string(GetCodecMetadata(settings.codec).build_options) +
       " -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++"
       " && cmake --build ccgen/build --parallel";
   const std::string effort_str =
-      (settings.codec == Codec::kWebp ||
-       settings.codec == Codec::kWebpEncWebpRsDec ||
-       settings.codec == Codec::kWebp2 || settings.codec == Codec::kJpegXl ||
-       settings.codec == Codec::kAvif || settings.codec == Codec::kAvifSsim ||
-       settings.codec == Codec::kAvifIq || settings.codec == Codec::kAvifExp ||
-       settings.codec == Codec::kAvifAvm ||
-       settings.codec == Codec::kCombination ||
-       settings.codec == Codec::kJpegsimple)
+      !GetCodecMetadata(settings.codec).efforts().empty()
           ? " " + std::to_string(settings.effort)
           : "";
   std::string encoding_cmd =
@@ -185,8 +154,8 @@ Status TasksToJson(const std::string& batch_pretty_name, CodecSettings settings,
     encoding_cmd += " --lossless";
   } else {
     encoding_cmd += " --lossy --quality ${quality}";
-    encoding_cmd += " --metric_binary_folder ccgen/build/";
   }
+  encoding_cmd += " --encoded_folder /tmp/";
   encoding_cmd += " -- ${original_name}";
 
   file << R"json({
@@ -264,17 +233,45 @@ Status TasksToJson(const std::string& batch_pretty_name, CodecSettings settings,
     {"encoding_time": "Encoding duration in seconds. Warning: Timings are environment-dependent and inaccurate."},
     {"decoding_time": "Decoding duration in seconds. Warning: Timings are environment-dependent and inaccurate."},
     {"dec_time_no_col_conv": "Decoding duration in seconds without color conversion. Warning: Only different from regular decoding for codecs without built-in conversion."})json";
+
+  size_t num_distortion_metrics = 0;
   if (!lossless) {
-    static_assert(kNumDistortionMetrics == 7);
+    // There can be tasks with empty distortions, meaning lossless, even if the
+    // codec settings are not kQualityLossless. Get the maximum number of
+    // distortion metrics from all tasks and expect all non-empty to match.
+    for (const TaskOutput& task : tasks) {
+      num_distortion_metrics =
+          std::max(num_distortion_metrics, task.distortions.size());
+    }
+    CHECK_OR_RETURN(num_distortion_metrics <= kNumDistortionMetrics, quiet);
+    for (const TaskOutput& task : tasks) {
+      CHECK_OR_RETURN(task.distortions.empty() ||
+                          task.distortions.size() == num_distortion_metrics,
+                      quiet);
+    }
     // In DistortionMetric order.
-    file << R"json(,
-    {"psnr": "Distortion metric Peak Signal-to-Noise Ratio (libwebp2 implementation). See https://en.wikipedia.org/wiki/Peak_signal-to-noise_ratio. Warning: There is no scientific consensus on which objective distortion metric to use."},
-    {"ssim": "Distortion metric Structural Similarity Index Measure (libwebp2 implementation). See https://en.wikipedia.org/wiki/Structural_similarity. Warning: There is no scientific consensus on which objective distortion metric to use."},
-    {"dssim": "Distortion metric Structural Dissimilarity (kornelski implementation). See https://en.wikipedia.org/wiki/Structural_similarity_index_measure#Structural_Dissimilarity. Warning: There is no scientific consensus on which objective distortion metric to use."},
-    {"butteraugli": "Distortion metric Butteraugli (libjxl implementation). See https://en.wikipedia.org/wiki/Guetzli#Butteraugli. Warning: There is no scientific consensus on which objective distortion metric to use."},
-    {"ssimulacra": "Distortion metric SSIMULACRA (libjxl implementation). See https://en.wikipedia.org/wiki/Structural_similarity#SSIMULACRA. Warning: There is no scientific consensus on which objective distortion metric to use."},
-    {"ssimulacra2": "Distortion metric SSIMULACRA2 (libjxl implementation). See https://en.wikipedia.org/wiki/Structural_similarity#SSIMULACRA. Warning: There is no scientific consensus on which objective distortion metric to use."},
-    {"p3norm": "Distortion metric P3-norm (libjxl implementation). See https://en.wikipedia.org/wiki/Norm_(mathematics)#p-norm. Warning: There is no scientific consensus on which objective distortion metric to use."})json";
+    const char* const kDistortionMetricHeaders[] = {
+        R"json(,
+    {"psnr": "Distortion metric Peak Signal-to-Noise Ratio (libwebp2 implementation). See https://en.wikipedia.org/wiki/Peak_signal-to-noise_ratio. Warning: There is no scientific consensus on which objective distortion metric to use."})json",
+        R"json(,
+    {"ssim": "Distortion metric Structural Similarity Index Measure (libwebp2 implementation). See https://en.wikipedia.org/wiki/Structural_similarity. Warning: There is no scientific consensus on which objective distortion metric to use."})json",
+        R"json(,
+    {"dssim": "Distortion metric Structural Dissimilarity (kornelski implementation). See https://en.wikipedia.org/wiki/Structural_similarity_index_measure#Structural_Dissimilarity. Warning: There is no scientific consensus on which objective distortion metric to use."})json",
+        R"json(,
+    {"butteraugli": "Distortion metric Butteraugli (libjxl implementation). See https://en.wikipedia.org/wiki/Guetzli#Butteraugli. Warning: There is no scientific consensus on which objective distortion metric to use."})json",
+        R"json(,
+    {"ssimulacra": "Distortion metric SSIMULACRA (libjxl implementation). See https://en.wikipedia.org/wiki/Structural_similarity#SSIMULACRA. Warning: There is no scientific consensus on which objective distortion metric to use."})json",
+        R"json(,
+    {"ssimulacra2": "Distortion metric SSIMULACRA2 (libjxl implementation). See https://en.wikipedia.org/wiki/Structural_similarity#SSIMULACRA. Warning: There is no scientific consensus on which objective distortion metric to use."})json",
+        R"json(,
+    {"p3norm": "Distortion metric P3-norm (libjxl implementation). See https://en.wikipedia.org/wiki/Norm_(mathematics)#p-norm. Warning: There is no scientific consensus on which objective distortion metric to use."})json",
+    };
+    static_assert(sizeof(kDistortionMetricHeaders) /
+                      sizeof(kDistortionMetricHeaders[0]) ==
+                  kNumDistortionMetrics);
+    for (size_t m = 0; m < num_distortion_metrics; ++m) {
+      file << kDistortionMetricHeaders[m];
+    }
   }
   file << R"json(
   ],
@@ -314,8 +311,15 @@ Status TasksToJson(const std::string& batch_pretty_name, CodecSettings settings,
     file << task.decoding_duration << ",";
     file << (task.decoding_duration - task.decoding_color_conversion_duration);
     if (!lossless) {
-      for (const float distortion : task.distortions) {
-        file << "," << distortion;
+      if (task.distortions.empty()) {
+        // Empty task.distortions means lossless but all columns must be filled.
+        for (size_t m = 0; m < num_distortion_metrics; ++m) {
+          file << "," << kNoDistortion;
+        }
+      } else {
+        for (float distortion : task.distortions) {
+          file << "," << distortion;
+        }
       }
     }
     file << "]";
