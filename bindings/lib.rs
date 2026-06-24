@@ -587,18 +587,23 @@ pub unsafe extern "C" fn ccgen_imagejpeg_encode444(
     output_size: Option<&mut usize>,
 ) -> std::ffi::c_int {
     if let (Some(output_bytes), Some(output_size)) = (output_bytes, output_size) {
-        if rgb_pixels.is_null() || width == 0 || height == 0 || stride != width * 3 {
+        if rgb_pixels.is_null() || width == 0 || height == 0 {
             return ERROR;
         }
         if quality < 1 || quality > 100 {
             return ERROR;
         }
+        if stride != width.checked_mul(3).unwrap() {
+            return ERROR;
+        }
+        let slice_len = stride.checked_mul(height).unwrap();
         // SAFETY: rgb_pixels is checked against null above. The caller ensures
         //         it points to a buffer with `stride * height` bytes.
-        let slice = unsafe { std::slice::from_raw_parts(rgb_pixels, stride * height) };
+        let slice = unsafe { std::slice::from_raw_parts(rgb_pixels, slice_len) };
 
         let mut out_vec = Vec::new();
-        let mut encoder = image::codecs::jpeg::JpegEncoder::new_with_quality(&mut out_vec, quality as u8);
+        let mut encoder =
+            image::codecs::jpeg::JpegEncoder::new_with_quality(&mut out_vec, quality as u8);
         match encoder.encode(
             &slice,
             width as u32,
