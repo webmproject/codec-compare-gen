@@ -56,6 +56,8 @@ std::string JpegXLVersion() {
 #endif
 }
 
+std::vector<int> JpegXlEfforts() { return {1, 2, 3, 4, 5, 6, 7, 8, 9}; }
+
 std::vector<int> JpegXLLossyQualities() {
   std::vector<int> qualities(100);
   std::iota(qualities.begin(), qualities.end(), 0);
@@ -318,6 +320,9 @@ CodecMetadata GetJpegXlMetadata() {
       "jpegxl",
       JpegXlPrettyName,
       JpegXLVersion,
+      " -DCCGEN_ENABLE_AVIF=OFF -DCCGEN_ENABLE_JPEG=OFF"
+      " -DCCGEN_ENABLE_JPEGXL=ON",
+      JpegXlEfforts,
       JpegXLLossyQualities,
       "jxl",
       /*is_supported_by_browsers=*/false,

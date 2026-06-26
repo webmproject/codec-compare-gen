@@ -1,15 +1,17 @@
 # C-to-Rust bindings from libwebp API to image-webp crate
 
-* `./webp` is a copy of `libwebp/src/webp` with the following changes:
+* `./jpeg` contains a minimal JPEG encoding and decoding API in C.
+* `./webp` is a copy of `libwebp/src/webp` C headers with the following changes:
 
   * "_rs" suffix added to each file name.
   * "ccgen_" prefix added to each symbol.
 
 * `lib.rs` contains unsafe bindings from the C headers in `./webp` to the
-  image-webp crate implementation.
+  image-webp crate implementation, and unsafe bindings from the C headers in
+  `./jpeg` to the image-rs crate implementation.
 * `Cargo.toml` contains the project and dependency definition.
 
-## Usage
+## Drop-in libwebp replacement steps
 
 1. Run `cargo build`.
 2. Replace the libwebp binary with the generated binary.

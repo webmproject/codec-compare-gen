@@ -24,7 +24,6 @@
 
 #include "src/base.h"
 #include "src/codec.h"
-#include "src/codec_webp.h"
 #include "src/frame.h"
 #include "src/task.h"
 #include "src/timer.h"
@@ -55,7 +54,7 @@ std::string WebpRsPrettyName(bool lossless, Subsampling subsampling,
   assert(subsampling == Subsampling::k444 ||
          subsampling == Subsampling::kDefault);
   assert(effort == 0);
-  return "WebP-rs";
+  return "image-rs WebP";
 }
 
 std::string WebpRsVersion() {
@@ -66,6 +65,8 @@ std::string WebpRsVersion() {
   return "n/a";
 #endif
 }
+
+std::vector<int> WebpRsEfforts() { return {}; }
 
 std::vector<int> WebpRsLossyQualities() {
   // The image crate does not support lossy WebP encoding as of May 2026.
@@ -252,9 +253,14 @@ CodecMetadata GetWebpRsMetadata() {
       "webprs",
       WebpRsPrettyName,
       WebpRsVersion,
+      " -DCCGEN_ENABLE_AVIF=OFF -DCCGEN_ENABLE_JPEG=OFF "
+      "-DCCGEN_ENABLE_WEBPRS=ON",
+      WebpRsEfforts,
       WebpRsLossyQualities,
       "image-rs.webp",
-      /*is_supported_by_browsers=*/true,
+      // true would use chrome's rendering of WebP, which is libwebp as of June
+      // 2026.
+      /*is_supported_by_browsers=*/false,
       GetCodecMetadata(Codec::kWebp).supports_16bit,
       GetCodecMetadata(Codec::kWebp).transparent_format,
       GetCodecMetadata(Codec::kWebp).opaque_format,
@@ -269,13 +275,15 @@ CodecMetadata GetWebpRsMetadata() {
 namespace {
 std::string WebpEncWebpRsDecPrettyName(bool lossless, Subsampling subsampling,
                                        int effort) {
-  return GetWebpMetadata().pretty_name(lossless, subsampling, effort) +
+  return GetCodecMetadata(Codec::kWebp)
+             .pretty_name(lossless, subsampling, effort) +
          " (rs dec)";
 }
 
 std::string WebpEncWebpRsDecVersion() {
 #if defined(HAS_WEBPRS)
-  const std::string libwebp_enc_dec_version = GetWebpMetadata().version();
+  const std::string libwebp_enc_dec_version =
+      GetCodecMetadata(Codec::kWebp).version();
   const std::string libwebp_enc_version =
       libwebp_enc_dec_version.substr(0, libwebp_enc_dec_version.find('/'));
   return "libwebp" + libwebp_enc_version + "/image-webp-rs" +
@@ -291,13 +299,16 @@ CodecMetadata GetWebpEncWebpRsDecMetadata() {
       "webpencwebprsdec",
       WebpEncWebpRsDecPrettyName,
       WebpEncWebpRsDecVersion,
-      GetWebpMetadata().lossy_qualities,
+      " -DCCGEN_ENABLE_AVIF=OFF -DCCGEN_ENABLE_JPEG=OFF"
+      " -DCCGEN_ENABLE_WEBP=ON -DCCGEN_ENABLE_WEBPRS=ON",
+      GetCodecMetadata(Codec::kWebp).efforts,
+      GetCodecMetadata(Codec::kWebp).lossy_qualities,
       "libwebp.webp",
-      GetWebpMetadata().is_supported_by_browsers,
+      GetCodecMetadata(Codec::kWebpRs).is_supported_by_browsers,
       GetCodecMetadata(Codec::kWebp).supports_16bit,
       GetCodecMetadata(Codec::kWebp).transparent_format,
       GetCodecMetadata(Codec::kWebp).opaque_format,
-      GetWebpMetadata().encode,
+      GetCodecMetadata(Codec::kWebp).encode,
       DecodeWebpRs,
   };
 }

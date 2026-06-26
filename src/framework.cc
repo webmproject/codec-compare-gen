@@ -245,9 +245,7 @@ Status ComputeDistortionInCompletedTasks(
     for (TaskOutput& completed_task : completed_tasks) {
       const auto it = results.find(completed_task.task_input.encoded_path);
       CHECK_OR_RETURN(it != results.end(), settings.quiet);
-      std::copy(it->second->distortions,
-                it->second->distortions + kNumDistortionMetrics,
-                completed_task.distortions);
+      completed_task.distortions = it->second->distortions;
     }
   }
 
@@ -423,12 +421,15 @@ Status Compare(const std::vector<std::string>& image_paths,
     for (const std::vector<TaskOutput>& tasks : results) {
       const CodecSettings& codec_settings =
           tasks.front().task_input.codec_settings;
-      // Add a heading 0 when effort goes to 10 for better JSON file sorting.
-      const std::string effort_str = ((codec_settings.codec == Codec::kJpegXl &&
-                                       codec_settings.effort < 10)
-                                          ? "0"
-                                          : "") +
-                                     std::to_string(codec_settings.effort);
+      const std::vector<int> efforts =
+          GetCodecMetadata(codec_settings.codec).efforts();
+      const int max_effort =
+          !efforts.empty() ? *std::max_element(efforts.begin(), efforts.end())
+                           : 0;
+      // Add a heading 0 when effort goes to 10+ for better JSON file sorting.
+      const std::string effort_str =
+          ((max_effort >= 10 && codec_settings.effort < 10) ? "0" : "") +
+          std::to_string(codec_settings.effort);
       const std::string batch_file_name =
           GetCodecMetadata(codec_settings.codec).name +
           ("_" + SubsamplingToString(codec_settings.chroma_subsampling)) +
@@ -483,16 +484,21 @@ Status Compare(const std::vector<std::string>& image_paths,
               << "  Color conversion duration (if available): "
               << Timer::SecondsToString(task.decoding_color_conversion_duration)
               << std::endl;
-    const size_t longest_metric_name = std::strlen(*std::max_element(
-        kDistortionMetricToStr, kDistortionMetricToStr + kNumDistortionMetrics,
-        [](const char* a, const char* b) {
-          return std::strlen(a) < std::strlen(b);
-        }));
-    for (uint32_t i = 0; i < kNumDistortionMetrics; ++i) {
-      std::cout << "  Distortion ("
-                << std::setw(static_cast<int>(longest_metric_name)) << std::left
-                << kDistortionMetricToStr[i] << "): " << task.distortions[i]
-                << std::endl;
+    if (task.distortions.empty()) {
+      std::cout << "  Distortion: none (lossless)" << std::endl;
+    } else {
+      const size_t longest_metric_name = std::strlen(
+          *std::max_element(kDistortionMetricToStr,
+                            kDistortionMetricToStr + task.distortions.size(),
+                            [](const char* a, const char* b) {
+                              return std::strlen(a) < std::strlen(b);
+                            }));
+      for (uint32_t i = 0; i < task.distortions.size(); ++i) {
+        std::cout << "  Distortion ("
+                  << std::setw(static_cast<int>(longest_metric_name))
+                  << std::left << kDistortionMetricToStr[i]
+                  << "): " << task.distortions[i] << std::endl;
+      }
     }
   }
   return Status::kOk;

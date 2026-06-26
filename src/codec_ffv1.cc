@@ -52,6 +52,8 @@ std::string Ffv1Version() {
 #endif
 }
 
+std::vector<int> Ffv1Efforts() { return {}; }
+
 std::vector<int> Ffv1LossyQualities() { return {}; }
 
 #if defined(HAS_FFV1)
@@ -273,6 +275,8 @@ CodecMetadata GetFfv1Metadata() {
       "ffv1",
       Ffv1PrettyName,
       Ffv1Version,
+      " -DCCGEN_ENABLE_AVIF=OFF -DCCGEN_ENABLE_JPEG=OFF -DCCGEN_ENABLE_FFV1=ON",
+      Ffv1Efforts,
       Ffv1LossyQualities,
       "ffv1",
       /*is_supported_by_browsers=*/false,

@@ -11,3 +11,5 @@ crate-type = ["staticlib", "lib"]
 [dependencies]
 image = "0.25.10"
 image-webp = "0.2.4"
+zune-core = "0.5"
+zune-jpeg = "0.5"

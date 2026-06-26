@@ -16,7 +16,7 @@ cmake_minimum_required(VERSION 3.20)
 project(
   codec-compare-gen
   LANGUAGES CXX
-  VERSION 0.7.3)
+  VERSION 0.7.6)
 set(CMAKE_CXX_STANDARD 17)
 
 # Options
@@ -25,10 +25,13 @@ option(CCGEN_ENABLE_AVIF "Build with AVIF support (libavif[aom+dav1d])" ON)
 option(CCGEN_ENABLE_AVIF_LIBHEIF "Build with AVIF support (libheif[aom+dav1d])"
        OFF)
 option(CCGEN_ENABLE_JPEG "Build with JPEG support (Turbo, Moz, sjpeg)" ON)
+option(CCGEN_ENABLE_JPEGZUNE
+       "Build with Rust JPEG support (image and zune-jpeg crates)" OFF)
 option(CCGEN_ENABLE_JPEG2000 "Build with JPEG 2000 support (OpenJPEG)" OFF)
 option(CCGEN_ENABLE_JPEGXL "Build with JPEG XL support (libjxl, jpegli)" ON)
 option(CCGEN_ENABLE_WEBP "Build with WebP support (libwebp)" ON)
-option(CCGEN_ENABLE_WEBPRS "Build with WebP support (Rust image crate)" ON)
+option(CCGEN_ENABLE_WEBPRS
+       "Build with Rust WebP support (image and image-webp crates)" OFF)
 option(CCGEN_ENABLE_WEBP2 "Build with WebP 2 support (libwebp2) [REQUIRED]" ON)
 option(CCGEN_ENABLE_FFV1 "Build with FFV1 support (libavcodec from FFmpeg)" OFF)
 option(CCGEN_ENABLE_BASIS "Build with Basis Universal support" OFF)
@@ -81,6 +84,8 @@ add_library(
   src/codec_jpegturbo.cc
   src/codec_jpegxl.h
   src/codec_jpegxl.cc
+  src/codec_jpegzune.h
+  src/codec_jpegzune.cc
   src/codec_openjpeg.h
   src/codec_openjpeg.cc
   src/codec_webp.h
@@ -259,13 +264,10 @@ if(CCGEN_ENABLE_WEBP)
   target_link_libraries(libccgen webpmux webpdemux webp)
 endif()
 
-if(CCGEN_ENABLE_WEBPRS)
+if(CCGEN_ENABLE_JPEGZUNE OR CCGEN_ENABLE_WEBPRS)
   if(CCGEN_WASM)
-    message(
-      FATAL_ERROR "CCGEN_ENABLE_WEBPRS=ON is not supported with CCGEN_WASM=ON.")
+    message(FATAL_ERROR "Rust bindings are not supported with CCGEN_WASM=ON.")
   endif()
-
-  target_compile_definitions(libccgen PRIVATE HAS_WEBPRS)
 
   # Copy the files from CMAKE_SOURCE_DIR to CMAKE_BINARY_DIR to avoid generating
   # build files outside of CMAKE_BINARY_DIR.
@@ -283,6 +285,14 @@ if(CCGEN_ENABLE_WEBPRS)
   FetchContent_MakeAvailable(Corrosion)
   corrosion_import_crate(MANIFEST_PATH ${CMAKE_BINARY_DIR}/bindings/Cargo.toml)
   target_link_libraries(libccgen ccgen_webp_rs)
+
+  if(CCGEN_ENABLE_JPEGZUNE)
+    target_compile_definitions(libccgen PRIVATE HAS_JPEGZUNE)
+  endif()
+
+  if(CCGEN_ENABLE_WEBPRS)
+    target_compile_definitions(libccgen PRIVATE HAS_WEBPRS)
+  endif()
 endif()
 
 if(CCGEN_ENABLE_WEBP2)
@@ -479,6 +489,9 @@ if(CCGEN_BUILD_TESTING)
     add_ccgen_gtest(test_ccgen tests/data)
     add_ccgen_gtest(test_codec tests/data)
     add_ccgen_gtest(test_codec_avif)
+    if(CCGEN_ENABLE_JPEGZUNE)
+      add_ccgen_gtest(test_codec_jpegzune tests/data)
+    endif()
     add_ccgen_gtest(test_codec_sjpeg tests/data)
     if(CCGEN_ENABLE_WEBPRS)
       add_ccgen_gtest(test_codec_webp_rs tests/data)

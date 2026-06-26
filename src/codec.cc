@@ -38,6 +38,7 @@
 #include "src/codec_jpegsimple.h"
 #include "src/codec_jpegturbo.h"
 #include "src/codec_jpegxl.h"
+#include "src/codec_jpegzune.h"
 #include "src/codec_openjpeg.h"
 #include "src/codec_webp.h"
 #include "src/codec_webp2.h"
@@ -85,6 +86,10 @@ CodecMetadata GetCodecMetadata(Codec codec) {
       return GetJpegsimpleMetadata();
     case Codec::kJpegmoz:
       return GetJpegmozMetadata();
+    case Codec::kJpegzune:
+      return GetJpegzuneMetadata();
+    case Codec::kJpegturboEncJpegzuneDec:
+      return GetJpegturboEncJpegzuneDecMetadata();
     case Codec::kJp2:
       return GetJp2Metadata();
     case Codec::kFfv1:
@@ -222,16 +227,21 @@ StatusOr<TaskOutput> EncodeDecode(const TaskInput& input,
         << " was not decoded losslessly (PSNR " << psnr << "dB)";
   }
 
+  const size_t num_distortion_metrics =
+      metric_binary_folder_path == "fast_metrics_only"
+          ? 2  // Just DistortionMetric::kLibwebp2PSNR and kLibwebp2SSIM.
+          : kNumDistortionMetrics;
+  assert(task.distortions.empty());
   if (pixel_equality) {
-    std::fill(task.distortions, task.distortions + kNumDistortionMetrics,
-              kNoDistortion);
+    // Empty task.distortions means lossless.
   } else {
-    for (size_t m = 0; m < kNumDistortionMetrics; ++m) {
-      ASSIGN_OR_RETURN(task.distortions[m],
+    for (size_t m = 0; m < num_distortion_metrics; ++m) {
+      ASSIGN_OR_RETURN(const float distortion,
                        GetAverageDistortion(
                            input.image_path, original_image, decoded_path,
                            decoded_image, input, metric_binary_folder_path,
                            static_cast<DistortionMetric>(m), thread_id, quiet));
+      task.distortions.push_back(distortion);
     }
   }
   return task;

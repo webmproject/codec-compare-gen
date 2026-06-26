@@ -1,5 +1,19 @@
 # Changelog
 
+## v0.7.6
+
+- Add Codec::kJpegzune and Codec::kJpegturboEncJpegzuneDec using the Rust image
+  crate and the zune-jpeg crate.
+
+## v0.7.5
+
+- Add --fast_metrics_only to the ccgen binary, to skip all distortion metrics
+  but PSNR and SSIM.
+
+## v0.7.4
+
+- Disable CCGEN_ENABLE_WEBPRS by default.
+
 ## v0.7.3
 
 - No longer check for the P3-norm distortion metric upper bound.

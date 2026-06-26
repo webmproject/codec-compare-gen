@@ -15,6 +15,7 @@
 #include "src/task.h"
 
 #include <algorithm>
+#include <cassert>
 #include <cstdint>
 #include <cstdlib>
 #include <filesystem>
@@ -94,10 +95,13 @@ std::string TaskOutput::Serialize() const {
      << Escape(task_input.encoded_path) << ", " << encoded_size << ", "
      << encoding_duration << ", " << decoding_duration << ", "
      << decoding_color_conversion_duration;
-  if (task_input.codec_settings.quality != kQualityLossless) {
-    for (size_t metric = 0; metric < kNumDistortionMetrics; ++metric) {
-      ss << ", " << distortions[metric];
-    }
+  // Empty distortions means lossless, which can happen even if the quality is
+  // not kQualityLossless.
+  if (task_input.codec_settings.quality == kQualityLossless) {
+    assert(distortions.empty());
+  }
+  for (float distortion : distortions) {
+    ss << ", " << distortion;
   }
   return ss.str();
 }
@@ -128,10 +132,16 @@ StatusOr<TaskOutput> UnserializeNoDistortion(
                    SubsamplingFromString(tokens[t++], quiet));
 
   task.task_input.codec_settings.effort = std::stoul(tokens[t++]);
-  CHECK_OR_RETURN(task.task_input.codec_settings.effort <= 10 ||
-                      (task.task_input.codec_settings.codec == Codec::kJpegXl &&
-                       task.task_input.codec_settings.effort <= 11),
-                  quiet)
+  const std::vector<int> efforts =
+      GetCodecMetadata(task.task_input.codec_settings.codec).efforts();
+  CHECK_OR_RETURN(
+      efforts.empty()
+          ? (task.task_input.codec_settings.effort == 0)
+          : (task.task_input.codec_settings.effort >=
+                 *std::min_element(efforts.begin(), efforts.end()) &&
+             task.task_input.codec_settings.effort <=
+                 *std::max_element(efforts.begin(), efforts.end())),
+      quiet)
       << "Unknown effort in \"" << serialized_task << "\"";
 
   task.task_input.codec_settings.quality = std::stoi(tokens[t++]);
@@ -188,28 +198,35 @@ StatusOr<TaskOutput> TaskOutput::Unserialize(
   ASSIGN_OR_RETURN(TaskOutput task,
                    ::codec_compare_gen::UnserializeNoDistortion(
                        serialized_task, tokens, qualities_per_codec, quiet));
-  if (tokens.size() == kNumNonDistortionTokens) {
-    // Likely lossless.
-    std::fill(task.distortions, task.distortions + kNumDistortionMetrics,
-              kNoDistortion);
-  } else {
-    CHECK_OR_RETURN(
-        tokens.size() == kNumNonDistortionTokens + kNumDistortionMetrics, quiet)
-        << "Expected " << kNumNonDistortionTokens + kNumDistortionMetrics
-        << " tokens instead of " << tokens.size() << " in \"" << serialized_task
-        << "\", try the flag --recompute_distortion";
-
-    for (size_t metric = 0; metric < kNumDistortionMetrics; ++metric) {
-      task.distortions[metric] =
-          std::stof(tokens[kNumNonDistortionTokens + metric]);
-      if (metric != static_cast<size_t>(DistortionMetric::kLibjxlButteraugli) &&
-          metric != static_cast<size_t>(DistortionMetric::kLibjxlSsimulacra2) &&
-          metric != static_cast<size_t>(DistortionMetric::kLibjxlP3norm)) {
-        CHECK_OR_RETURN(task.distortions[metric] <= 99, quiet)
-            << "Bad " << kDistortionMetricToStr[metric] << " metric value "
-            << task.distortions[metric] << " in \"" << serialized_task << "\"";
-      }
+  CHECK_OR_RETURN(tokens.size() >= kNumNonDistortionTokens, quiet)
+      << "Expected at least " << kNumNonDistortionTokens
+      << " tokens instead of " << tokens.size() << " in \"" << serialized_task
+      << "\", try the flag --recompute_distortion";
+  CHECK_OR_RETURN(
+      tokens.size() <= kNumNonDistortionTokens + kNumDistortionMetrics, quiet)
+      << "Expected at most " << kNumNonDistortionTokens + kNumDistortionMetrics
+      << " tokens instead of " << tokens.size() << " in \"" << serialized_task
+      << "\", try the flag --recompute_distortion";
+  const size_t num_distortion_metrics = tokens.size() - kNumNonDistortionTokens;
+  assert(task.distortions.empty());
+  for (size_t metric = 0; metric < num_distortion_metrics; ++metric) {
+    task.distortions.push_back(
+        std::stof(tokens[kNumNonDistortionTokens + metric]));
+    if (metric != static_cast<size_t>(DistortionMetric::kLibjxlButteraugli) &&
+        metric != static_cast<size_t>(DistortionMetric::kLibjxlSsimulacra2) &&
+        metric != static_cast<size_t>(DistortionMetric::kLibjxlP3norm)) {
+      CHECK_OR_RETURN(task.distortions.back() <= 99, quiet)
+          << "Bad " << kDistortionMetricToStr[metric] << " metric value "
+          << task.distortions.back() << " in \"" << serialized_task << "\"";
     }
+  }
+  if (!task.distortions.empty() && task.distortions.front() == kNoDistortion &&
+      (task.distortions.size() == 1 ||
+       std::equal(task.distortions.begin() + 1, task.distortions.end(),
+                  task.distortions.begin()))) {
+    // Non-empty distortions means loss, but all values are kNoDistortion.
+    assert(false);  // This should not happen.
+    task.distortions.clear();
   }
   return task;
 }
@@ -258,7 +275,8 @@ bool TaskOutputsAreRepetitions(const TaskOutput& a, const TaskOutput& b) {
   if (a.bit_depth != b.bit_depth) return false;
   if (a.num_frames != b.num_frames) return false;
   if (a.encoded_size != b.encoded_size) return false;
-  for (size_t metric = 0; metric < kNumDistortionMetrics; ++metric) {
+  if (a.distortions.size() != b.distortions.size()) return false;
+  for (size_t metric = 0; metric < a.distortions.size(); ++metric) {
     if (!SameDistortion(a.distortions[metric], b.distortions[metric])) {
       return false;
     }

@@ -106,6 +106,13 @@ TEST(CodecCompareGenTest, Efforts) {
                          "--qualities", "10");
 }
 
+TEST(CodecCompareGenTest, FastMetricsOnly) {
+  constexpr size_t num_img = 4;
+  TestProgressFileLength(num_img * 1, "--codec", "webp", "420", "4",
+                         "--qualities", "10", "--metric_binary_folder",
+                         "fast_metrics_only");
+}
+
 //------------------------------------------------------------------------------
 
 }  // namespace

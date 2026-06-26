@@ -47,6 +47,8 @@ std::string BasisVersion() {
 #endif
 }
 
+std::vector<int> BasisEfforts() { return {}; }
+
 std::vector<int> BasisLossyQualities() {
 #if defined(HAS_BASIS)
   const uint32_t kBasisQualityMin = basisu::BASISU_QUALITY_MIN;
@@ -215,6 +217,9 @@ CodecMetadata GetBasisMetadata() {
       "basis",
       BasisPrettyName,
       BasisVersion,
+      " -DCCGEN_ENABLE_AVIF=OFF -DCCGEN_ENABLE_JPEG=OFF"
+      " -DCCGEN_ENABLE_BASIS=ON",
+      BasisEfforts,
       BasisLossyQualities,
       "basis",
       /*is_supported_by_browsers=*/false,

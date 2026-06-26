@@ -51,6 +51,8 @@ std::string JpegliVersion() {
   return GetJpegXlMetadata().version() + "_" + GetJpegturboMetadata().version();
 }
 
+std::vector<int> JpegliEfforts() { return {}; }
+
 std::vector<int> JpegliLossyQualities() {
   std::vector<int> qualities(101);
   std::iota(qualities.begin(), qualities.end(), 0);
@@ -166,6 +168,9 @@ CodecMetadata GetJpegliMetadata() {
       "jpegli",
       JpegliPrettyName,
       JpegliVersion,
+      " -DCCGEN_ENABLE_AVIF=OFF -DCCGEN_ENABLE_JPEG=OFF"
+      " -DCCGEN_ENABLE_JPEGXL=ON",
+      JpegliEfforts,
       JpegliLossyQualities,
       "li.jpg",
       /*is_supported_by_browsers=*/true,

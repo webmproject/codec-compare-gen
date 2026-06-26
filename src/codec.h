@@ -34,6 +34,8 @@ struct CodecMetadata {
   std::string (*pretty_name)(bool lossless, Subsampling subsampling,
                              int effort);
   std::string (*version)();
+  const char* build_options;  // CMake "-D..." flags used to build this codec.
+  std::vector<int> (*efforts)();
   std::vector<int> (*lossy_qualities)();
   const char* extension;
   bool is_supported_by_browsers;

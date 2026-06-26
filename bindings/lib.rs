@@ -301,7 +301,12 @@ pub unsafe extern "C" fn ccgen_WebPEncode(
 
         let mut out_vec = Vec::new();
         let encoder = image::codecs::webp::WebPEncoder::new_lossless(&mut out_vec);
-        match encoder.encode(&rgba8, width as u32, height as u32, image::ExtendedColorType::Rgba8) {
+        match encoder.encode(
+            &rgba8,
+            width as u32,
+            height as u32,
+            image::ExtendedColorType::Rgba8,
+        ) {
             Ok(()) => {
                 if let Some(writer) = picture.writer {
                     if writer(out_vec.as_ptr(), out_vec.len(), Some(picture)) != 1 {
@@ -514,7 +519,10 @@ pub extern "C" fn ccgen_WebPAnimDecoderGetNext(
             }
             // image_webp::WebPDecoder::read_image() will fill the given buffer with RGBA samples
             // if image_webp::WebPDecoder::has_alpha() is true, and RGB samples otherwise.
-            if decoder.read_image(&mut dec.buffer[..expected_buffer_len]).is_err() {
+            if decoder
+                .read_image(&mut dec.buffer[..expected_buffer_len])
+                .is_err()
+            {
                 return ERROR;
             }
             0 // Undefined delay_ms for a still image.
@@ -551,5 +559,123 @@ pub unsafe extern "C" fn ccgen_WebPAnimDecoderDelete(dec: *mut ccgen_WebPAnimDec
         // SAFETY: `dec` is checked against null above. The caller ensures it points to a valid
         //         `ccgen_WebPAnimDecoder` allocated by `Box::into_raw()`.
         let _ = unsafe { Box::from_raw(dec) };
+    }
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn ccgen_imagejpeg_encoder_version() -> std::ffi::c_int {
+    0x00190A // 0.25.10
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn ccgen_zunejpeg_version() -> std::ffi::c_int {
+    0x00050F // 0.5.15
+}
+
+/// Encodes an RGB_24 image to JPEG using the Rust image crate.
+///
+/// # Safety
+/// `rgb_pixels` must point to a valid array of size `stride * height`.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn ccgen_imagejpeg_encode444(
+    rgb_pixels: *const u8,
+    width: usize,
+    height: usize,
+    stride: usize,
+    quality: std::ffi::c_int,
+    output_bytes: Option<&mut *mut u8>,
+    output_size: Option<&mut usize>,
+) -> std::ffi::c_int {
+    if let (Some(output_bytes), Some(output_size)) = (output_bytes, output_size) {
+        if rgb_pixels.is_null() || width == 0 || height == 0 {
+            return ERROR;
+        }
+        if quality < 1 || quality > 100 {
+            return ERROR;
+        }
+        if stride != width.checked_mul(3).unwrap() {
+            return ERROR;
+        }
+        let slice_len = stride.checked_mul(height).unwrap();
+        // SAFETY: rgb_pixels is checked against null above. The caller ensures
+        //         it points to a buffer with `stride * height` bytes.
+        let slice = unsafe { std::slice::from_raw_parts(rgb_pixels, slice_len) };
+
+        let mut out_vec = Vec::new();
+        let mut encoder =
+            image::codecs::jpeg::JpegEncoder::new_with_quality(&mut out_vec, quality as u8);
+        match encoder.encode(
+            &slice,
+            width as u32,
+            height as u32,
+            image::ExtendedColorType::Rgb8,
+        ) {
+            Ok(()) => {
+                let mut boxed_slice = out_vec.into_boxed_slice();
+                *output_size = boxed_slice.len();
+                *output_bytes = boxed_slice.as_mut_ptr();
+                std::mem::forget(boxed_slice);
+                OK
+            }
+            Err(_) => ERROR,
+        }
+    } else {
+        ERROR
+    }
+}
+
+/// Decodes a JPEG image to RGB_24 using the Rust zune-jpeg crate.
+///
+/// # Safety
+/// `encoded_bytes` must point to a valid slice of size `encoded_size`.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn ccgen_zunejpeg_decode(
+    encoded_bytes: *const u8,
+    encoded_size: usize,
+    width: Option<&mut usize>,
+    height: Option<&mut usize>,
+    output_bytes: Option<&mut *mut u8>,
+) -> std::ffi::c_int {
+    if let (Some(width), Some(height), Some(output_bytes)) = (width, height, output_bytes) {
+        if encoded_bytes.is_null() || encoded_size == 0 {
+            return ERROR;
+        }
+        // SAFETY: encoded_bytes is checked against null above. The caller ensures
+        //         it points to a buffer with `encoded_size` bytes.
+        let slice = unsafe { std::slice::from_raw_parts(encoded_bytes, encoded_size) };
+        let cursor = zune_core::bytestream::ZCursor::new(slice);
+        let options = zune_core::options::DecoderOptions::default()
+            .jpeg_set_out_colorspace(zune_core::colorspace::ColorSpace::RGB);
+        let mut decoder = zune_jpeg::JpegDecoder::new_with_options(cursor, options);
+        match decoder.decode() {
+            Ok(pixels) => {
+                if let Some(info) = decoder.info() {
+                    *width = info.width as usize;
+                    *height = info.height as usize;
+                    let mut boxed_slice = pixels.into_boxed_slice();
+                    *output_bytes = boxed_slice.as_mut_ptr();
+                    std::mem::forget(boxed_slice);
+                    OK
+                } else {
+                    ERROR
+                }
+            }
+            Err(_) => ERROR,
+        }
+    } else {
+        ERROR
+    }
+}
+
+/// Frees a buffer allocated by `ccgen_imagejpeg_encode444` or `ccgen_zunejpeg_decode`.
+///
+/// # Safety
+/// `buffer` must point to a valid slice of size `size` allocated by `into_boxed_slice()`.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn ccgen_imagejpeg_free_buffer(buffer: *mut u8, size: usize) {
+    if !buffer.is_null() {
+        // SAFETY: buffer is checked against null above. The caller ensures it points to a valid
+        //         boxed slice of size `size`.
+        let _ = unsafe { Box::from_raw(std::slice::from_raw_parts_mut(buffer, size)) };
     }
 }

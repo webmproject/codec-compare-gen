@@ -17,6 +17,7 @@
 #include <algorithm>
 #include <cassert>
 #include <cstdint>
+#include <numeric>
 #include <string>
 #include <utility>
 #include <vector>
@@ -80,6 +81,7 @@ std::string AvifSsimVersion() { return AvifVersion() + "_tunessim"; }
 std::string AvifIqVersion() { return AvifVersion() + "_tuneiq"; }
 std::string AvifExpVersion() { return AvifVersion() + "_exp"; }
 std::string AvifAvmVersion() { return AvifVersion() + "_avm"; }
+std::vector<int> AvifEfforts() { return {0, 1, 2, 3, 4, 5, 6, 7, 8, 9}; }
 
 std::vector<int> AvifLossyQualities() {
   std::vector<int> qualities(64);
@@ -325,6 +327,9 @@ StatusOr<std::pair<Image, double>> DecodeAvifAvm(const TaskInput& input,
   return DecodeAvif(input, encoded_image, /*avm=*/true, quiet);
 }
 
+const char* kBuildOptionsAvif =
+    " -DCCGEN_ENABLE_AVIF=ON -DCCGEN_ENABLE_JPEG=OFF";
+
 }  // namespace
 
 CodecMetadata GetAvifMetadata() {
@@ -332,6 +337,8 @@ CodecMetadata GetAvifMetadata() {
       "avif",
       AvifPrettyName,
       AvifVersion,
+      kBuildOptionsAvif,
+      AvifEfforts,
       AvifLossyQualities,
       "avif",
       /*is_supported_by_browsers=*/true,
@@ -348,6 +355,8 @@ CodecMetadata GetAvifSsimMetadata() {
       "avifssim",
       AvifSsimPrettyName,
       AvifSsimVersion,
+      kBuildOptionsAvif,
+      AvifEfforts,
       AvifLossyQualities,
       "ssim.avif",
       /*is_supported_by_browsers=*/true,
@@ -364,6 +373,8 @@ CodecMetadata GetAvifIqMetadata() {
       "avifiq",
       AvifIqPrettyName,
       AvifIqVersion,
+      kBuildOptionsAvif,
+      AvifEfforts,
       AvifIqLossyQualities,
       "iq.avif",
       /*is_supported_by_browsers=*/true,
@@ -380,6 +391,8 @@ CodecMetadata GetAvifExpMetadata() {
       "avifexp",
       AvifExpPrettyName,
       AvifExpVersion,
+      kBuildOptionsAvif,
+      AvifEfforts,
       AvifLossyQualities,
       "hmg",
       /*is_supported_by_browsers=*/false,
@@ -396,6 +409,8 @@ CodecMetadata GetAvifAvmMetadata() {
       "avifavm",
       AvifAvmPrettyName,
       AvifAvmVersion,
+      kBuildOptionsAvif,
+      AvifEfforts,
       AvifLossyQualities,
       "avmf",
       /*is_supported_by_browsers=*/false,

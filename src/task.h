@@ -49,7 +49,9 @@ struct TaskOutput {
   double decoding_duration;  // in seconds, color conversion inclusive
   double decoding_color_conversion_duration;  // in seconds
 
-  float distortions[kNumDistortionMetrics];
+  // Up to kNumDistortionMetrics values. Index is DistortionMetric.
+  // Empty means lossless. Non-empty means loss.
+  std::vector<float> distortions;
 
   std::string Serialize() const;
   static StatusOr<TaskOutput> UnserializeNoDistortion(
