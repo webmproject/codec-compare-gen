@@ -32,15 +32,6 @@ function toByteVector(module: any, bytes: Uint8Array): any {
   return v;
 }
 
-function fromByteVector(v: any): Uint8Array {
-  const size = v.size();
-  const bytes = new Uint8Array(size);
-  for (let i = 0; i < size; i++) {
-    bytes[i] = v.get(i);
-  }
-  return bytes;
-}
-
 // Loading codec_wasm_bin.wasm can take a long time, especially if sanitizers
 // were enabled during the build. See b/514217988.
 jasmine.DEFAULT_TIMEOUT_INTERVAL = 60000;
@@ -92,12 +83,10 @@ describe('Codec WASM', () => {
     expect(decoded.height).toBe(32);
     expect(decoded.argb.size()).toBe(32 * 32 * 4);
 
-    // Encode ARGB to WebP
-    const EFFORT = 0;
-    const LOSSLESS_QUALITY = -1;
+    // Encode ARGB to WebP lossless
     const encodedVector = module.encode(
         decoded.argb, decoded.width, decoded.height, module.Codec.Webp,
-        module.Subsampling.Default, EFFORT, LOSSLESS_QUALITY);
+        module.Subsampling.Default, /*effort=*/ 0, /*quality=*/ -1);
     expect(encodedVector.size()).toBeGreaterThan(0);
 
     // Decode WebP back to ARGB
@@ -111,35 +100,40 @@ describe('Codec WASM', () => {
     decodedAgain.argb.delete();
   });
 
-  it('should encode and decode with Jpegturbo', async () => {
-    const pngVector = toByteVector(module, pngBytes);
-    const decoded = module.decodeToArgb(pngVector);
+  it('should encode and decode with JPEG libraries', async () => {
+    for (const codec
+             of [module.Codec.Jpegturbo,
+                 module.Codec.Jpegsimple,
+                 module.Codec.Jpegmoz,
+    ]) {
+      const pngVector = toByteVector(module, pngBytes);
+      const decoded = module.decodeToArgb(pngVector);
 
-    const encodedVector = module.encode(
-        decoded.argb, decoded.width, decoded.height, module.Codec.Jpegturbo,
-        module.Subsampling.Default, 0, 90);
-    expect(encodedVector.size()).toBeGreaterThan(0);
+      const encodedVector = module.encode(
+          decoded.argb, decoded.width, decoded.height, codec,
+          module.Subsampling.Default, /*effort=*/ 0, /*quality=*/ 90);
+      expect(encodedVector.size()).toBeGreaterThan(0);
 
-    const decodedAgain = module.decodeToArgb(encodedVector);
-    expect(decodedAgain.width).toBe(32);
-    expect(decodedAgain.height).toBe(32);
+      const decodedAgain = module.decodeToArgb(encodedVector);
+      expect(decodedAgain.width).toBe(32);
+      expect(decodedAgain.height).toBe(32);
 
-    let maxDiff = 0;
-    for (let i = 0; i < decoded.argb.size(); i++) {
-      const expected = decoded.argb.get(i);
-      const actual = decodedAgain.argb.get(i);
-      const diff = Math.abs(expected - actual);
-      if (diff > maxDiff) maxDiff = diff;
+      let maxDiff = 0;
+      for (let i = 0; i < decoded.argb.size(); i++) {
+        const expected = decoded.argb.get(i);
+        const actual = decodedAgain.argb.get(i);
+        const diff = Math.abs(expected - actual);
+        if (diff > maxDiff) maxDiff = diff;
+      }
+      console.log(`${codec} Maximum pixel difference:`, maxDiff);
+      // The codec is lossy, expect some difference. 25 is safe for quality 90.
+      expect(maxDiff).toBeLessThanOrEqual(25);
+
+      pngVector.delete();
+      decoded.argb.delete();
+      encodedVector.delete();
+      decodedAgain.argb.delete();
     }
-    console.log('Jpegturbo Maximum pixel difference:', maxDiff);
-    // JPEG-turbo is lossy, so we expect some difference. 25 is safe for 90
-    // quality.
-    expect(maxDiff).toBeLessThanOrEqual(25);
-
-    pngVector.delete();
-    decoded.argb.delete();
-    encodedVector.delete();
-    decodedAgain.argb.delete();
   });
 
   it('should throw an error on invalid bytes', () => {

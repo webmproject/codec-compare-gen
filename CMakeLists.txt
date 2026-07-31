@@ -16,7 +16,7 @@ cmake_minimum_required(VERSION 3.20)
 project(
   codec-compare-gen
   LANGUAGES CXX
-  VERSION 0.7.6)
+  VERSION 0.7.7)
 set(CMAKE_CXX_STANDARD 17)
 
 # Options
@@ -25,10 +25,11 @@ option(CCGEN_ENABLE_AVIF "Build with AVIF support (libavif[aom+dav1d])" ON)
 option(CCGEN_ENABLE_AVIF_LIBHEIF "Build with AVIF support (libheif[aom+dav1d])"
        OFF)
 option(CCGEN_ENABLE_JPEG "Build with JPEG support (Turbo, Moz, sjpeg)" ON)
+option(CCGEN_ENABLE_JPEGLI "Build with Jpegli support (jpegli)" ON)
 option(CCGEN_ENABLE_JPEGZUNE
        "Build with Rust JPEG support (image and zune-jpeg crates)" OFF)
 option(CCGEN_ENABLE_JPEG2000 "Build with JPEG 2000 support (OpenJPEG)" OFF)
-option(CCGEN_ENABLE_JPEGXL "Build with JPEG XL support (libjxl, jpegli)" ON)
+option(CCGEN_ENABLE_JPEGXL "Build with JPEG XL support (libjxl)" ON)
 option(CCGEN_ENABLE_WEBP "Build with WebP support (libwebp)" ON)
 option(CCGEN_ENABLE_WEBPRS
        "Build with Rust WebP support (image and image-webp crates)" OFF)
@@ -199,11 +200,11 @@ if(CCGEN_ENABLE_JPEG)
   target_compile_definitions(libccgen PRIVATE HAS_JPEGTURBO)
   # libjpeg-turbo forbids add_subdirectory() and thus FetchContent. It also
   # forbids ExternalProject_Add() initiated from a subdirectory. See
-  # https://github.com/libjpeg-turbo/libjpeg-turbo/blob/3.1.3/CMakeLists.txt#L45-L71
+  # https://github.com/libjpeg-turbo/libjpeg-turbo/blob/3.2.0/CMakeLists.txt#L45-L71
 
   set(libjpeg_turbo_GIT_REPOSITORY
       "https://github.com/libjpeg-turbo/libjpeg-turbo.git")
-  set(libjpeg_turbo_GIT_TAG "3.1.3")
+  set(libjpeg_turbo_GIT_TAG "3.2.0")
 
   include(ExternalProject)
   if(CCGEN_WASM)
@@ -370,13 +371,19 @@ endif()
 
 if(CCGEN_ENABLE_JPEGXL)
   include(LocalLibjxl)
-  target_compile_definitions(libccgen PRIVATE HAS_JPEGXL HAS_JPEGLI)
-  target_link_libraries(libccgen jxl jpegli-static)
+  target_compile_definitions(libccgen PRIVATE HAS_JPEGXL)
+  target_link_libraries(libccgen jxl)
 elseif(NOT CCGEN_WASM)
   message(
     WARNING
       "codec-compare-gen requires CCGEN_ENABLE_JPEGXL=ON when comparing lossy codecs."
   )
+endif()
+
+if(CCGEN_ENABLE_JPEGLI)
+  include(LocalJpegli)
+  target_compile_definitions(libccgen PRIVATE HAS_JPEGLI)
+  target_link_libraries(libccgen jpegli-static)
 endif()
 
 # Metric binaries called by ccgen because the API is missing or weird.

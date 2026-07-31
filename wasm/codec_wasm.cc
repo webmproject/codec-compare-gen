@@ -63,12 +63,9 @@ EMSCRIPTEN_BINDINGS(codec_compare_gen) {
   emscripten::enum_<Codec>("Codec")
       .value("Webp", Codec::kWebp)
       .value("Webp2", Codec::kWebp2)
-      .value("JpegXl", Codec::kJpegXl)
-      .value("Avif", Codec::kAvif)
       .value("Jpegturbo", Codec::kJpegturbo)
-      .value("Jpegli", Codec::kJpegli)
       .value("Jpegsimple", Codec::kJpegsimple)
-      .value("Basis", Codec::kBasis);
+      .value("Jpegmoz", Codec::kJpegmoz);
 
   emscripten::enum_<Subsampling>("Subsampling")
       .value("Default", Subsampling::kDefault)

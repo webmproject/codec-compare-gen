@@ -4,7 +4,7 @@ include(CcgenFetchContent)
 FetchContent_Declare(
   libjxl
   GIT_REPOSITORY "https://github.com/libjxl/libjxl.git"
-  GIT_TAG v0.11.2
+  GIT_TAG v0.12.0
   GIT_PROGRESS ON
   GIT_SHALLOW ON
   UPDATE_COMMAND "")
@@ -42,14 +42,8 @@ set(JPEGXL_FORCE_SYSTEM_BROTLI
 set(JPEGXL_FORCE_SYSTEM_HWY
     OFF
     CACHE INTERNAL "")
-
-# jpegli was still part of libjxl in v0.11.2 but will be removed. See
-# https://github.com/libjxl/libjxl/pull/4657.
-set(JPEGXL_ENABLE_JPEGLI
+set(CMAKE_DISABLE_FIND_PACKAGE_JPEG
     ON
-    CACHE INTERNAL "")
-set(JPEGXL_ENABLE_JPEGLI_LIBJPEG
-    OFF
     CACHE INTERNAL "")
 
 # JPEGXL_ENABLE_DEVTOOLS=ON for Butteraugli and SSIMULACRA2 metric binaries. See

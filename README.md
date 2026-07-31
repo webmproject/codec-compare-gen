@@ -77,6 +77,7 @@ cmake -S . -B build \
   -DCCGEN_ENABLE_JPEG=ON \
   -DCCGEN_ENABLE_JPEG2000=ON \
   -DCCGEN_ENABLE_JPEGXL=ON \
+  -DCCGEN_ENABLE_JPEGLI=ON \
   -DCCGEN_ENABLE_WEBP=ON \
   -DCCGEN_ENABLE_WEBP2=ON \
   -DCCGEN_ENABLE_FFV1=ON \
@@ -92,6 +93,7 @@ ctest --test-dir build --output-on-failure -j$(nproc)
 ```sh
 emcmake cmake -S . -B build_wasm \
   -DCCGEN_ENABLE_JPEGXL=OFF \
+  -DCCGEN_ENABLE_JPEGLI=OFF \
   -DCCGEN_ENABLE_WEBP2=ON \
   -DCCGEN_ENABLE_DSSIM=OFF \
   -DCCGEN_WASM=ON \
@@ -105,7 +107,8 @@ emmake cmake --build build_wasm -j$(nproc)
 ```sh
 emcmake cmake -S . -B build_wasm \
   -DCCGEN_BUILD_TESTING=ON -DCCGEN_ENABLE_JPEG=ON -DCCGEN_ENABLE_JPEGXL=OFF \
-  -DCCGEN_ENABLE_WEBP=ON -DCCGEN_ENABLE_WEBP2=ON -DCCGEN_ENABLE_DSSIM=OFF \
+  -DCCGEN_ENABLE_JPEGLI=OFF -DCCGEN_ENABLE_WEBP=ON -DCCGEN_ENABLE_WEBP2=ON \
+  -DCCGEN_ENABLE_DSSIM=OFF \
   -DCCGEN_WASM=ON -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF
 emmake cmake --build build_wasm -j$(nproc)
 ctest --test-dir build --output-on-failure -j$(nproc)

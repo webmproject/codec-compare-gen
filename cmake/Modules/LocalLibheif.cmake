@@ -4,7 +4,7 @@ include(CcgenFetchContent)
 FetchContent_Declare(
   libheif
   GIT_REPOSITORY "https://github.com/strukturag/libheif.git"
-  GIT_TAG v1.23.0
+  GIT_TAG v1.23.1
   GIT_PROGRESS ON
   GIT_SHALLOW ON
   UPDATE_COMMAND "")
