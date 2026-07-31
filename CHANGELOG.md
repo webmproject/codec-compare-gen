@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.7.7
+
+- Bump the versions of the JPEG XL, jpegli, libheif, and TurboJPEG dependencies.
+
 ## v0.7.6
 
 - Add Codec::kJpegzune and Codec::kJpegturboEncJpegzuneDec using the Rust image

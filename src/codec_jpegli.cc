@@ -25,7 +25,6 @@
 #include "src/base.h"
 #include "src/codec.h"
 #include "src/codec_jpegturbo.h"
-#include "src/codec_jpegxl.h"
 #include "src/frame.h"
 #include "src/serialization.h"
 #include "src/task.h"
@@ -48,7 +47,12 @@ std::string JpegliPrettyName(bool lossless, Subsampling subsampling, int) {
 }
 
 std::string JpegliVersion() {
-  return GetJpegXlMetadata().version() + "_" + GetJpegturboMetadata().version();
+#if defined(HAS_JPEGLI)
+  // There is no public API for obtaining the version of jpegli.
+  return "jpegli_031a007_jpegturbo_" + GetJpegturboMetadata().version();
+#else
+  return "n/a";
+#endif
 }
 
 std::vector<int> JpegliEfforts() { return {}; }
@@ -169,7 +173,7 @@ CodecMetadata GetJpegliMetadata() {
       JpegliPrettyName,
       JpegliVersion,
       " -DCCGEN_ENABLE_AVIF=OFF -DCCGEN_ENABLE_JPEG=OFF"
-      " -DCCGEN_ENABLE_JPEGXL=ON",
+      " -DCCGEN_ENABLE_JPEGLI=ON",
       JpegliEfforts,
       JpegliLossyQualities,
       "li.jpg",
