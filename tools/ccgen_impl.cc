@@ -115,13 +115,15 @@ int Main(int argc, const char* const argv[]) {
                 << " [--abort_above_fail_ratio {0..1}] - default: "
                 << (kDefSet.abort_above_fail_ratio * 100) << "%" << std::endl
                 << " [--skip_all_remaining]" << std::endl
+                << " [--print {size|enctime|dectime|dectimenocolconv}]"
+                << std::endl
                 << " [--quiet]" << std::endl
                 << " [--metric_binary_folder {path to CMake build folder}]"
                 << std::endl
                 << " [--fast_metrics_only]" << std::endl
                 << " [--encoded_folder {path}]" << std::endl
-                << " --progress_file {path}" << std::endl
-                << " --results_folder {path}" << std::endl
+                << " [--progress_file {path}]" << std::endl
+                << " [--results_folder {path}]" << std::endl
                 << " -- {image file path}..." << std::endl;
       return 0;
     } else if (arg == "--codec" && arg_index + 2 < argc) {
@@ -236,6 +238,21 @@ int Main(int argc, const char* const argv[]) {
       settings.abort_above_fail_ratio = std::stod(argv[++arg_index]);
     } else if (arg == "--skip_all_remaining") {
       settings.skip_all_remaining = true;
+    } else if (arg == "--print" && arg_index + 1 < argc) {
+      const std::string print_arg = argv[++arg_index];
+      if (print_arg == "size") {
+        settings.metric_to_print = Metric::kSize;
+      } else if (print_arg == "enctime") {
+        settings.metric_to_print = Metric::kEncodeTime;
+      } else if (print_arg == "dectime") {
+        settings.metric_to_print = Metric::kDecodeTime;
+      } else if (print_arg == "dectimenocolconv") {
+        settings.metric_to_print = Metric::kDecodeTimeNoColorConversion;
+      } else {
+        std::cerr << "Error: Unknown print mode \"" << print_arg << "\""
+                  << std::endl;
+        return 1;
+      }
     } else if (arg == "--quiet") {
       settings.quiet = true;
     } else if (arg == "--metric_binary_folder" && arg_index + 1 < argc) {

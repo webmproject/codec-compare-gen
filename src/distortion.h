@@ -40,6 +40,18 @@ StatusOr<bool> PixelEquality(const Image& a, const Image& b, bool quiet);
 StatusOr<bool> PixelEquality(const WP2::ArgbBuffer& a, const WP2::ArgbBuffer& b,
                              bool quiet);
 
+class GeometricMean {
+ public:
+  void Add(double value);
+  double Get() const;
+
+ private:
+  size_t num_values_ = 0;
+  double product_ = 1.0;
+  // Used when the product underflows or overflows intermediate thresholds.
+  double product_log_sum_ = 0.0;
+};
+
 }  // namespace codec_compare_gen
 
 #endif  // SRC_DISTORTION_H_

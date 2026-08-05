@@ -36,6 +36,7 @@
 #include "src/base.h"
 #include "src/codec.h"
 #include "src/codec_basis.h"
+#include "src/distortion.h"
 #include "src/result_json.h"
 #include "src/serialization.h"
 #include "src/task.h"
@@ -415,6 +416,7 @@ Status Compare(const std::vector<std::string>& image_paths,
   std::vector<std::vector<TaskOutput>> results;
   ASSIGN_OR_RETURN(results, SplitByCodecSettingsAndAggregateByImageAndQuality(
                                 context.completed_tasks, settings.quiet));
+  CHECK_OR_RETURN(!results.empty(), settings.quiet) << "No result";
   const bool single_result = results.size() == 1 && results.front().size() == 1;
 
   if (!results_folder_path.empty()) {
@@ -444,7 +446,8 @@ Status Compare(const std::vector<std::string>& image_paths,
                                std::filesystem::path(results_folder_path) /
                                    (batch_file_name + ".json")));
     }
-  } else if (!single_result) {
+  } else if (!single_result && !settings.metric_to_print.has_value() &&
+             !settings.quiet) {
     std::cout << "Warning: no JSON results folder path specified" << std::endl;
   }
 
@@ -457,7 +460,7 @@ Status Compare(const std::vector<std::string>& image_paths,
     }
   }
 
-  if (single_result) {
+  if (single_result && !settings.quiet) {
     const TaskOutput& task = results.front().front();
     const TaskInput& input = task.task_input;
     const CodecSettings& codec_settings = input.codec_settings;
@@ -499,6 +502,28 @@ Status Compare(const std::vector<std::string>& image_paths,
                   << std::left << kDistortionMetricToStr[i]
                   << "): " << task.distortions[i] << std::endl;
       }
+    }
+  }
+
+  if (settings.metric_to_print.has_value()) {
+    const std::vector<TaskOutput>& reference = results.front();
+    for (size_t batch = 1; batch < results.size(); ++batch) {
+      CHECK_OR_RETURN(results[batch].size() == reference.size(), settings.quiet)
+          << "Different number of results " << results[batch].size() << " ("
+          << results[batch].front().task_input.Serialize() << ")" << " vs "
+          << reference.size() << " ("
+          << reference.front().task_input.Serialize() << ")";
+      GeometricMean geometric_mean;
+      for (size_t i = 0; i < reference.size(); ++i) {
+        const double reference_value =
+            GetMetric(reference[i], settings.metric_to_print.value());
+        const double value =
+            GetMetric(results[batch][i], settings.metric_to_print.value());
+        CHECK_OR_RETURN(reference_value > 0 && value > 0, settings.quiet)
+            << "Non-positive metric value";
+        geometric_mean.Add(value / reference_value);
+      }
+      std::cout << std::setprecision(7) << geometric_mean.Get() << std::endl;
     }
   }
   return Status::kOk;
