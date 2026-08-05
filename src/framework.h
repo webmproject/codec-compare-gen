@@ -16,6 +16,7 @@
 #define SRC_FRAMEWORK_H_
 
 #include <cstdint>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -30,6 +31,13 @@ struct CodecSettings {
   int quality;  // kQualityLossless or in [0:100] (exact range depends on codec)
 };
 
+enum class Metric {
+  kSize,
+  kEncodeTime,
+  kDecodeTime,
+  kDecodeTimeNoColorConversion,
+};
+
 struct ComparisonSettings {
   std::vector<CodecSettings> codec_settings;
   std::string metric_binary_folder_path;
@@ -38,10 +46,11 @@ struct ComparisonSettings {
                                  // 1 means encode/decode each image twice etc.
   uint32_t num_extra_threads = 0;  // 0 means single-threaded,
                                    // 1 and above means multi-threaded.
-  bool random_order = false;  // If true, input paths are randomly permuted.
+  bool random_order = false;       // If true, tasks are randomly permuted.
   bool discard_distortion_values = false;  // If true, recompute distortions.
   double abort_above_fail_ratio = 0.1;  // Stop all once that % of tasks failed.
   bool skip_all_remaining = false;  // Just generate already computed results.
+  std::optional<Metric> metric_to_print = std::nullopt;  // To stdout.
   bool quiet = true;  // If true, avoids logging to stdout and stderr.
 };
 

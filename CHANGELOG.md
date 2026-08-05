@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.7.8
+
+- Add the --print option to ccgen to get a single geometric mean value printed
+  to stdout per codec configuration past the first one used as reference.
+
 ## v0.7.7
 
 - Bump the versions of the JPEG XL, jpegli, libheif, and TurboJPEG dependencies.

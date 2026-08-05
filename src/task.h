@@ -76,6 +76,8 @@ StatusOr<std::vector<std::vector<TaskOutput>>>
 SplitByCodecSettingsAndAggregateByImageAndQuality(
     const std::vector<TaskOutput>& results, bool quiet);
 
+double GetMetric(const TaskOutput& task, Metric metric);
+
 }  // namespace codec_compare_gen
 
 #endif  // SRC_TASK_H_

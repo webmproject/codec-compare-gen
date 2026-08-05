@@ -367,4 +367,19 @@ SplitByCodecSettingsAndAggregateByImageAndQuality(
   return aggregated_results;
 }
 
+double GetMetric(const TaskOutput& task, Metric metric) {
+  switch (metric) {
+    case Metric::kSize:
+      return static_cast<double>(task.encoded_size);
+    case Metric::kEncodeTime:
+      return task.encoding_duration;
+    case Metric::kDecodeTime:
+      return task.decoding_duration;
+    case Metric::kDecodeTimeNoColorConversion:
+      return task.decoding_duration - task.decoding_color_conversion_duration;
+    default:
+      return 0;
+  }
+}
+
 }  // namespace codec_compare_gen

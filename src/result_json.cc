@@ -136,7 +136,7 @@ Status TasksToJson(const std::string& batch_pretty_name, CodecSettings settings,
       /*prefix=*/encoded_common_parent.parent_path(), encoded_common_parent));
 
   const std::string build_cmd =
-      "git clone -b v0.7.7 --depth 1"
+      "git clone -b v0.7.8 --depth 1"
       " https://github.com/webmproject/codec-compare-gen.git ccgen"
       " && cmake -S ccgen -B ccgen/build" +
       std::string(GetCodecMetadata(settings.codec).build_options) +

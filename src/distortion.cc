@@ -19,6 +19,7 @@
 #endif
 
 #include <algorithm>
+#include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <cstdio>
@@ -419,6 +420,25 @@ StatusOr<bool> PixelEquality(const Image& a, const Image& b, bool quiet) {
   CHECK_OR_RETURN(a_index == a.size() && b_index == b.size(), quiet);
   CHECK_OR_RETURN(a_time == b_time && a_time == a_duration_ms, quiet);
   return true;
+}
+
+void GeometricMean::Add(double value) {
+  product_ *= value;
+  ++num_values_;
+
+  // A large number of small or big values may lead to floating point
+  // underflow or overflow. Avoid that by regularly dumping part of the
+  // computation to a side accumulator.
+  if (product_ < 1e-16 || product_ > 1e16) {
+    product_log_sum_ += std::log(product_);
+    product_ = 1;
+  }
+}
+
+double GeometricMean::Get() const {
+  if (num_values_ == 0) return 1;
+  return std::exp((product_log_sum_ + std::log(product_)) /
+                  static_cast<double>(num_values_));
 }
 
 }  // namespace codec_compare_gen
