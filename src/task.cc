@@ -377,6 +377,9 @@ double GetMetric(const TaskOutput& task, Metric metric) {
       return task.decoding_duration;
     case Metric::kDecodeTimeNoColorConversion:
       return task.decoding_duration - task.decoding_color_conversion_duration;
+    case Metric::kPsnr:
+      if (kPsnr >= task.distortions.size()) return 0.;
+      return task.distortions[kPsnr];
     default:
       return 0;
   }

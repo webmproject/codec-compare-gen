@@ -36,6 +36,7 @@ enum class Metric {
   kEncodeTime,
   kDecodeTime,
   kDecodeTimeNoColorConversion,
+  kPsnr,
 };
 
 struct ComparisonSettings {
