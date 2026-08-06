@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.7.9
+
+- Bump the version of the TurboJPEG dependency.
+- Add the --print psnr option to ccgen.
+
 ## v0.7.8
 
 - Add the --print option to ccgen to get a single geometric mean value printed

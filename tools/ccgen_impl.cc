@@ -248,6 +248,8 @@ int Main(int argc, const char* const argv[]) {
         settings.metric_to_print = Metric::kDecodeTime;
       } else if (print_arg == "dectimenocolconv") {
         settings.metric_to_print = Metric::kDecodeTimeNoColorConversion;
+      } else if (print_arg == "psnr") {
+        settings.metric_to_print = Metric::kPsnr;
       } else {
         std::cerr << "Error: Unknown print mode \"" << print_arg << "\""
                   << std::endl;

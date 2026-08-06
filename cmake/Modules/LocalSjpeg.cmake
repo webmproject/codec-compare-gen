@@ -4,9 +4,9 @@ include(CcgenFetchContent)
 FetchContent_Declare(
   libsjpeg
   GIT_REPOSITORY "https://github.com/webmproject/sjpeg.git"
-  GIT_TAG 46da5aec5fce05faabf1facf0066e36e6b1c4dff
+  GIT_TAG 1afdc5508ef9c3d2d932e82f815b8dbbab4e6ae2
   GIT_PROGRESS ON
-  GIT_SHALLOW ON
+  GIT_SHALLOW OFF
   UPDATE_COMMAND "")
 
 set(SJPEG_BUILD_EXAMPLES

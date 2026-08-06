@@ -16,7 +16,7 @@ cmake_minimum_required(VERSION 3.20)
 project(
   codec-compare-gen
   LANGUAGES CXX
-  VERSION 0.7.8)
+  VERSION 0.7.9)
 set(CMAKE_CXX_STANDARD 17)
 
 # Options
