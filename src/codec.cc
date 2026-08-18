@@ -14,7 +14,6 @@
 
 #include "src/codec.h"
 
-#include <algorithm>
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
@@ -23,6 +22,8 @@
 #include <fstream>
 #include <iostream>
 #include <string>
+#include <system_error>
+#include <tuple>
 #include <utility>
 #include <vector>
 
@@ -120,10 +121,12 @@ std::string SubsamplingToPrettyString(bool lossless, Subsampling subsampling) {
              : (subsampling == Subsampling::k444 ? " 4:4:4" : " 4:2:0");
 }
 
-StatusOr<TaskOutput> EncodeDecode(const TaskInput& input,
-                                  const std::string& metric_binary_folder_path,
-                                  size_t thread_id, EncodeMode encode_mode,
-                                  bool quiet) {
+namespace {
+StatusOr<TaskOutput> EncodeDecodeImpl(
+    const TaskInput& input, const uint8_t* data, size_t data_size,
+    const std::string& metric_binary_folder_path, size_t thread_id,
+    EncodeMode encode_mode, WP2::Data& encoded_image, Image& decoded_image,
+    bool quiet) {
   TaskOutput task;
   task.task_input = input;
 
@@ -132,8 +135,8 @@ StatusOr<TaskOutput> EncodeDecode(const TaskInput& input,
   const WP2SampleFormat initial_format =
       supports_transparency ? codec.transparent_format : codec.opaque_format;
   ASSIGN_OR_RETURN(Image original_image,
-                   ReadStillImageOrAnimation(input.image_path.c_str(),
-                                             initial_format, quiet));
+                   ReadStillImageOrAnimation(input.image_path.c_str(), data,
+                                             data_size, initial_format, quiet));
 
   bool has_transparency = false;
   for (const Frame& frame : original_image) {
@@ -163,7 +166,6 @@ StatusOr<TaskOutput> EncodeDecode(const TaskInput& input,
       quiet);
 
   const Timer encoding_duration;
-  WP2::Data encoded_image;
   if (encode_mode == EncodeMode::kLoadFromDisk) {
     CHECK_OR_RETURN(!task.task_input.encoded_path.empty(), quiet);
     std::ifstream file{task.task_input.encoded_path, std::ios::binary};
@@ -185,7 +187,6 @@ StatusOr<TaskOutput> EncodeDecode(const TaskInput& input,
   task.encoded_size = encoded_image.size;
 
   const Timer decoding_duration;
-  Image decoded_image;
   CHECK_OR_RETURN(codec.decode != nullptr, quiet);
   {
     ASSIGN_OR_RETURN(auto image_and_color_conversion_duration,
@@ -246,38 +247,26 @@ StatusOr<TaskOutput> EncodeDecode(const TaskInput& input,
   }
   return task;
 }
+}  // namespace
 
-StatusOr<std::vector<uint8_t>> Encode(const uint8_t* argb, uint32_t width,
-                                      uint32_t height, Codec codec,
-                                      Subsampling chroma_subsampling,
-                                      int effort, int quality, bool quiet) {
-  TaskInput input;
-  input.codec_settings = {codec, chroma_subsampling, effort, quality};
-
-  WP2::ArgbBuffer buffer(WP2_ARGB_32);
-  OK_WP2_OR_RETURN(buffer.Import(WP2_ARGB_32, width, height, argb, width * 4),
-                   quiet);
-
-  Image original_image;
-  original_image.emplace_back(std::move(buffer), /*duration_ms=*/0);
-
-  const bool supports_transparency =
-      GetCodecMetadata(codec).transparent_format != WP2_FORMAT_NUM;
-  const WP2SampleFormat needed_format =
-      supports_transparency && original_image.front().pixels.HasTransparency()
-          ? GetCodecMetadata(codec).transparent_format
-          : GetCodecMetadata(codec).opaque_format;
-  if (original_image.front().pixels.format() != needed_format) {
-    ASSIGN_OR_RETURN(original_image,
-                     CloneAs(original_image, needed_format, quiet));
-  }
-
-  CHECK_OR_RETURN(GetCodecMetadata(codec).encode != nullptr, quiet);
-  ASSIGN_OR_RETURN(WP2::Data encoded_image, GetCodecMetadata(codec).encode(
-                                                input, original_image, quiet));
-
-  return std::vector<uint8_t>(encoded_image.bytes,
-                              encoded_image.bytes + encoded_image.size);
+StatusOr<TaskOutput> EncodeDecode(const TaskInput& input,
+                                  const std::string& metric_binary_folder_path,
+                                  size_t thread_id, EncodeMode encode_mode,
+                                  bool quiet) {
+  std::error_code ec;
+  const uintmax_t file_size = std::filesystem::file_size(input.image_path, ec);
+  CHECK_OR_RETURN(!ec, quiet) << "Cannot get the file size of "
+                              << input.image_path << ": " << ec.message();
+  std::vector<uint8_t> bytes(file_size);
+  std::ifstream file(input.image_path, std::ios::binary);
+  CHECK_OR_RETURN(file.good(), quiet)
+      << "Cannot open file " << input.image_path;
+  file.read(reinterpret_cast<char*>(bytes.data()), bytes.size());
+  WP2::Data encoded_image;
+  Image decoded_image;
+  return EncodeDecodeImpl(input, bytes.data(), bytes.size(),
+                          metric_binary_folder_path, thread_id, encode_mode,
+                          encoded_image, decoded_image, quiet);
 }
 
 StatusOr<std::vector<uint8_t>> DecodeToArgb(const uint8_t* encoded_image,
@@ -298,6 +287,35 @@ StatusOr<std::vector<uint8_t>> DecodeToArgb(const uint8_t* encoded_image,
                 buffer.width() * 4);
   }
   return output;
+}
+
+StatusOr<std::tuple<std::vector<uint8_t>, const char*, TaskOutput>>
+GetEncodedBytesAndDecodeStats(const uint8_t* data, size_t data_size,
+                              Codec codec, Subsampling chroma_subsampling,
+                              int effort, int quality, bool quiet) {
+  const TaskInput input = {
+      {codec, chroma_subsampling, effort, quality}, "undefined", ""};
+  WP2::Data encoded_image;
+  Image decoded_image;
+  ASSIGN_OR_RETURN(const TaskOutput task,
+                   EncodeDecodeImpl(input, data, data_size, "fast_metrics_only",
+                                    0, EncodeMode::kEncode, encoded_image,
+                                    decoded_image, quiet));
+  if (GetCodecMetadata(input.codec_settings.codec).is_supported_by_browsers) {
+    // Return the encoded image bytes.
+    return std::make_tuple(
+        std::vector<uint8_t>(encoded_image.bytes,
+                             encoded_image.bytes + encoded_image.size),
+        GetCodecMetadata(input.codec_settings.codec).mime_type, task);
+  } else {
+    // Return the decoded image as the bytes of a still PNG or a lossless
+    // animated WebP.
+    ASSIGN_OR_RETURN(const std::vector<uint8_t> decoded_image_bytes,
+                     WriteStillImageOrAnimation(decoded_image, quiet));
+    return std::make_tuple(
+        decoded_image_bytes,
+        decoded_image.size() == 1 ? "image/png" : "image/webp", task);
+  }
 }
 
 }  // namespace codec_compare_gen

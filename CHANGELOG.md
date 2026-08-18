@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.8.0
+
+- Bump the version of the libwebp2 dependency.
+- Replace the Encode() public API with GetEncodedBytesAndDecodeStats() for WASM
+  in-browser encoding for the codec-compare visualizer.
+
 ## v0.7.9
 
 - Bump the version of the TurboJPEG dependency.

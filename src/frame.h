@@ -15,6 +15,7 @@
 #ifndef SRC_FRAME_H_
 #define SRC_FRAME_H_
 
+#include <cstddef>
 #include <cstdint>
 #include <utility>
 #include <vector>
@@ -52,11 +53,18 @@ StatusOr<Image> MakeView(const Image& from, bool quiet);
 // Reads a file into a frame sequence.
 StatusOr<Image> ReadStillImageOrAnimation(const char* file_path,
                                           WP2SampleFormat format, bool quiet);
+// Reads bytes into a frame sequence.
+StatusOr<Image> ReadStillImageOrAnimation(const char* data_source,
+                                          const uint8_t* data, size_t data_size,
+                                          WP2SampleFormat format, bool quiet);
 
 // Writes a frame sequence to a file (PNG for still images, WebP for
 // animations).
 Status WriteStillImageOrAnimation(const Image& image, const char* file_path,
                                   bool quiet);
+// Writes a frame sequence to bytes (PNG for still images, WebP for animations).
+StatusOr<std::vector<uint8_t>> WriteStillImageOrAnimation(const Image& image,
+                                                          bool quiet);
 
 }  // namespace codec_compare_gen
 

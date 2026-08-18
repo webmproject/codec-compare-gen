@@ -16,7 +16,7 @@ cmake_minimum_required(VERSION 3.20)
 project(
   codec-compare-gen
   LANGUAGES CXX
-  VERSION 0.7.9)
+  VERSION 0.8.0)
 set(CMAKE_CXX_STANDARD 17)
 
 # Options
@@ -118,13 +118,9 @@ endif()
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules")
 
-if(CCGEN_WASM)
-  set(CCGEN_ENABLE_PNG ON) # Could be an option for when CCGEN_WASM=OFF.
-  include(LocalLibzlib)
-  include(LocalLibpng)
-else()
-  set(CCGEN_ENABLE_PNG OFF)
-endif()
+set(CCGEN_ENABLE_PNG ON)
+include(LocalLibzlib)
+include(LocalLibpng)
 
 if(CCGEN_ENABLE_JPEG)
   target_compile_definitions(libccgen PRIVATE HAS_JPEGMOZ)
@@ -186,12 +182,12 @@ if(CCGEN_ENABLE_JPEG)
     ${CMAKE_BINARY_DIR}/_deps/src/mozjpeg-build/${CCGEN_PREFIX}jpeg${CCGEN_SUFFIX}
   )
 
-  # Skip sjpeg's find_package(JPEG).
+  # Skip sjpeg's and libwebp2's find_package(JPEG).
   include(FetchContent)
   FetchContent_Declare(JPEG DOWNLOAD_COMMAND "" OVERRIDE_FIND_PACKAGE SYSTEM)
-  set(JPEG_INCLUDE_DIRS ${CMAKE_BINARY_DIR}/_deps/src/mozjpeg
-                        ${CMAKE_BINARY_DIR}/_deps/src/mozjpeg-build)
-  set(JPEG_LIBRARIES jpeg)
+  set(JPEG_FOUND TRUE CACHE BOOL "" FORCE)
+  set(JPEG_INCLUDE_DIRS "${CMAKE_BINARY_DIR}/_deps/src/mozjpeg;${CMAKE_BINARY_DIR}/_deps/src/mozjpeg-build" CACHE STRING "" FORCE)
+  set(JPEG_LIBRARIES jpeg CACHE STRING "" FORCE)
 
   target_compile_definitions(libccgen PRIVATE HAS_JPEGSIMPLE)
   include(LocalSjpeg)
@@ -244,6 +240,12 @@ if(CCGEN_ENABLE_JPEG)
   )
 endif()
 
+if(CCGEN_ENABLE_WEBP)
+  include(LocalLibwebp)
+  target_compile_definitions(libccgen PRIVATE HAS_WEBP)
+  target_link_libraries(libccgen webpmux webpdemux webp)
+endif()
+
 if(CCGEN_ENABLE_AVIF)
   include(LocalLibavif)
   target_compile_definitions(libccgen PRIVATE HAS_AVIF)
@@ -257,12 +259,6 @@ if(CCGEN_ENABLE_AVIF_LIBHEIF)
   include(LocalLibheif)
   target_compile_definitions(libccgen PRIVATE HAS_HEIF)
   target_link_libraries(libccgen heif)
-endif()
-
-if(CCGEN_ENABLE_WEBP)
-  include(LocalLibwebp)
-  target_compile_definitions(libccgen PRIVATE HAS_WEBP)
-  target_link_libraries(libccgen webpmux webpdemux webp)
 endif()
 
 if(CCGEN_ENABLE_JPEGZUNE OR CCGEN_ENABLE_WEBPRS)
@@ -363,7 +359,7 @@ if(CCGEN_ENABLE_FFV1)
     ${CMAKE_BINARY_DIR}/_deps/src/libavcodec-build/lib/${CCGEN_PREFIX}avutil${CCGEN_SUFFIX}
   )
   if(NOT BUILD_SHARED_LIBS)
-    target_link_libraries(libccgen lzma swresample)
+    target_link_libraries(libccgen lzma swresample z)
   endif()
   # Avoid race conditions leading to "No rule to make libavcodec" errors.
   add_dependencies(libccgen libavcodec)
@@ -428,7 +424,7 @@ if(CCGEN_WASM)
   set_target_properties(codec_wasm PROPERTIES SUFFIX ".js")
   target_link_options(
     codec_wasm PRIVATE "-sMODULARIZE=1" "-sEXPORT_NAME=loadCodecWasm"
-    "-sENVIRONMENT=node,worker" "--bind")
+    "-sENVIRONMENT=web,worker" "-sALLOW_MEMORY_GROWTH=1" "--bind")
   # Making the following work would be nicer for TypeScript integration:
   # "--emit-tsd=${CMAKE_CURRENT_BINARY_DIR}/codec_wasm_bin.d.ts"
 endif()
@@ -504,6 +500,7 @@ if(CCGEN_BUILD_TESTING)
       add_ccgen_gtest(test_codec_webp_rs tests/data)
     endif()
     add_ccgen_gtest(test_distortion tests/data ${CMAKE_CURRENT_BINARY_DIR})
+    add_ccgen_gtest(test_encode tests/data)
     add_ccgen_gtest(test_framework tests/data)
     add_ccgen_gtest(test_serialization)
     add_ccgen_gtest(test_task)

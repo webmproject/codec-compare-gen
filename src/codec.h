@@ -18,6 +18,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <string>
+#include <tuple>
 #include <utility>
 #include <vector>
 
@@ -38,6 +39,7 @@ struct CodecMetadata {
   std::vector<int> (*efforts)();
   std::vector<int> (*lossy_qualities)();
   const char* extension;
+  const char* mime_type;
   bool is_supported_by_browsers;
   bool supports_16bit;
   WP2SampleFormat opaque_format;
@@ -62,10 +64,16 @@ StatusOr<TaskOutput> EncodeDecode(const TaskInput& input,
                                   size_t thread_id, EncodeMode encode_mode,
                                   bool quiet);
 
-StatusOr<std::vector<uint8_t>> Encode(const uint8_t* argb, uint32_t width,
-                                      uint32_t height, Codec codec,
-                                      Subsampling chroma_subsampling,
-                                      int effort, int quality, bool quiet);
+// Returns the encoded image bytes, the associated mime type, and the decode
+// stats. For codecs supported by browsers, the encoded image is the output of
+// the codec encoder. For other codecs, it is the bytes of a still PNG or a
+// lossless animated WebP that can be displayed by browsers.
+StatusOr<std::tuple<std::vector<uint8_t>, const char*, TaskOutput>>
+GetEncodedBytesAndDecodeStats(const uint8_t* data, size_t data_size,
+                              Codec codec, Subsampling chroma_subsampling,
+                              int effort, int quality, bool quiet);
+
+// Decodes the encoded still 8-bit image as ARGB pixel values.
 StatusOr<std::vector<uint8_t>> DecodeToArgb(const uint8_t* encoded_image,
                                             size_t encoded_size,
                                             uint32_t* width, uint32_t* height,

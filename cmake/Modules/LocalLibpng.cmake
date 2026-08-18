@@ -18,7 +18,8 @@ set(ZLIB_USE_STATIC_LIBS
 ccgen_fetchcontent_makeavailable(PNG)
 
 target_include_directories(png_static
-                           INTERFACE "$<BUILD_INTERFACE:${png_SOURCE_DIR}>")
+                           PUBLIC "$<BUILD_INTERFACE:${libpng_SOURCE_DIR}>"
+                                  "$<BUILD_INTERFACE:${libpng_BINARY_DIR}>")
 target_link_libraries(png_static PRIVATE zlibstatic)
 target_link_libraries(png_static PRIVATE ZLIB::ZLIB)
 
@@ -26,5 +27,7 @@ add_library(PNG::PNG ALIAS png_static)
 
 add_dependencies(png_static zlibstatic)
 
-set(PNG_INCLUDE_DIRS ${PNG_SOURCE_DIR})
-set(PNG_LIBRARIES png_static)
+set(PNG_INCLUDE_DIRS "${libpng_SOURCE_DIR};${libpng_BINARY_DIR}" CACHE PATH "" FORCE)
+set(PNG_PNG_INCLUDE_DIR "${libpng_SOURCE_DIR}" CACHE PATH "" FORCE)
+set(PNG_INCLUDE_DIR "${libpng_SOURCE_DIR}" CACHE PATH "" FORCE)
+set(PNG_LIBRARIES png_static CACHE STRING "" FORCE)

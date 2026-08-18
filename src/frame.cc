@@ -14,16 +14,21 @@
 
 #include "src/frame.h"
 
+#include <cstddef>
 #include <cstdint>
+#include <cstdio>
+#include <cstdlib>
+#include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <system_error>
 #include <utility>
+#include <vector>
 
 #include "imageio/anim_image_dec.h"
 #include "imageio/image_enc.h"
 #include "src/base.h"
 #include "src/codec.h"
-#include "src/codec_webp.h"
 #include "src/distortion.h"
 #include "src/task.h"
 #include "src/wp2/base.h"
@@ -98,11 +103,26 @@ StatusOr<Image> MakeView(const Image& from, bool quiet) {
 
 StatusOr<Image> ReadStillImageOrAnimation(const char* file_path,
                                           WP2SampleFormat format, bool quiet) {
+  std::error_code ec;
+  const uintmax_t file_size = std::filesystem::file_size(file_path, ec);
+  CHECK_OR_RETURN(!ec, quiet)
+      << "Cannot get the file size of " << file_path << ": " << ec.message();
+  std::vector<uint8_t> bytes(file_size);
+  std::ifstream file(file_path, std::ios::binary);
+  CHECK_OR_RETURN(file.good(), quiet) << "Cannot open file " << file_path;
+  file.read(reinterpret_cast<char*>(bytes.data()), bytes.size());
+  return ReadStillImageOrAnimation(file_path, bytes.data(), bytes.size(),
+                                   format, quiet);
+}
+
+StatusOr<Image> ReadStillImageOrAnimation(const char* data_source,
+                                          const uint8_t* data, size_t data_size,
+                                          WP2SampleFormat format, bool quiet) {
   // Reuse libwebp2's wrapper for simplicity.
   Image image;
   {
     WP2::ArgbBuffer buffer(WP2_ARGB_32);
-    WP2::ImageReader reader(file_path, &buffer);
+    WP2::ImageReader reader(data, data_size, &buffer);
     bool is_last;
     do {
       uint32_t duration_ms;
@@ -111,16 +131,16 @@ StatusOr<Image> ReadStillImageOrAnimation(const char* file_path,
         // Maybe it is a 16-bit file and the ImageReaderPNG refused to read it
         // into an 8-bit buffer. Try again with a 16-bit buffer.
         CHECK_OR_RETURN(buffer.SetFormat(WP2_ARGB_64) == WP2_STATUS_OK, quiet);
-        reader = WP2::ImageReader(file_path, &buffer);
+        reader = WP2::ImageReader(data, data_size, &buffer);
         status = reader.ReadFrame(&is_last, &duration_ms);
       }
       CHECK_OR_RETURN(status == WP2_STATUS_OK, quiet)
           << "Got " << WP2GetStatusMessage(status) << " when reading frame "
-          << image.size() << " of " << file_path;
+          << image.size() << " of " << data_source;
 
       if (duration_ms == 0 && !is_last) {
         std::cout << "Warning: 0-second frame " << image.size() << " of "
-                  << file_path << " was ignored" << std::endl;
+                  << data_source << " was ignored" << std::endl;
         continue;
       }
       format = WP2FormatAtbpc(format, WP2Formatbpc(buffer.format()));
@@ -175,6 +195,50 @@ Status WriteStillImageOrAnimation(const Image& image, const char* file_path,
                encoded_image.size);
   }
   return Status::kOk;
+}
+
+namespace {
+class VectorWriter : public WP2::Writer {
+ public:
+  WP2_NO_DISCARD bool Reserve(size_t size) override {
+    bytes_.reserve(bytes_.size() + size);
+    return true;
+  }
+  WP2_NO_DISCARD bool Append(const void* data, size_t data_size) override {
+    bytes_.insert(bytes_.end(), reinterpret_cast<const uint8_t*>(data),
+                  reinterpret_cast<const uint8_t*>(data) + data_size);
+    return true;
+  }
+  std::vector<uint8_t>&& TakeBytes() { return std::move(bytes_); }
+
+ private:
+  std::vector<uint8_t> bytes_;
+};
+}  // namespace
+
+StatusOr<std::vector<uint8_t>> WriteStillImageOrAnimation(const Image& image,
+                                                          bool quiet) {
+  if (image.size() == 1) {
+    VectorWriter writer;
+    const WP2Status status = WP2::CompressPNG(image.front().pixels, &writer);
+    CHECK_OR_RETURN(status == WP2_STATUS_OK, quiet)
+        << "WP2::CompressPNG() failed: " << WP2GetStatusMessage(status);
+    return writer.TakeBytes();
+  } else {
+    const TaskInput input = {
+        {Codec::kWebp, Subsampling::k444, 0, kQualityLossless},
+        "undefined",
+        ""};
+    CHECK_OR_RETURN(WP2Formatbpc(image.front().pixels.format()) == 8, quiet);
+    ASSIGN_OR_RETURN(const Image bgra,
+                     image.front().pixels.format() == WP2_BGRA_32
+                         ? MakeView(image, quiet)
+                         : CloneAs(image, WP2_BGRA_32, quiet));
+    ASSIGN_OR_RETURN(const WP2::Data encoded_image,
+                     GetCodecMetadata(Codec::kWebp).encode(input, bgra, quiet));
+    return std::vector<uint8_t>(encoded_image.bytes,
+                                encoded_image.bytes + encoded_image.size);
+  }
 }
 
 }  // namespace codec_compare_gen

@@ -257,7 +257,8 @@ CodecMetadata GetWebpRsMetadata() {
       "-DCCGEN_ENABLE_WEBPRS=ON",
       WebpRsEfforts,
       WebpRsLossyQualities,
-      "image-rs.webp",
+      /*extension=*/"image-rs.webp",
+      /*mime_type=*/"image/webp",
       // true would use chrome's rendering of WebP, which is libwebp as of June
       // 2026.
       /*is_supported_by_browsers=*/false,
@@ -303,7 +304,8 @@ CodecMetadata GetWebpEncWebpRsDecMetadata() {
       " -DCCGEN_ENABLE_WEBP=ON -DCCGEN_ENABLE_WEBPRS=ON",
       GetCodecMetadata(Codec::kWebp).efforts,
       GetCodecMetadata(Codec::kWebp).lossy_qualities,
-      "libwebp.webp",
+      /*extension=*/"image-rs.libwebp.webp",
+      /*mime_type=*/"image/webp",
       GetCodecMetadata(Codec::kWebpRs).is_supported_by_browsers,
       GetCodecMetadata(Codec::kWebp).supports_16bit,
       GetCodecMetadata(Codec::kWebp).transparent_format,

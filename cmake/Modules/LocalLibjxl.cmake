@@ -9,6 +9,9 @@ FetchContent_Declare(
   GIT_SHALLOW ON
   UPDATE_COMMAND "")
 
+set(JPEGXL_ENABLE_APNG
+    OFF
+    CACHE INTERNAL "")
 set(JPEGXL_ENABLE_BENCHMARK
     OFF
     CACHE INTERNAL "")
@@ -57,6 +60,15 @@ set(JPEGXL_ENABLE_TOOLS
     CACHE INTERNAL "")
 
 ccgen_fetchcontent_makeavailable(libjxl)
+
+if(TARGET jxl_extras_core-obj)
+  target_include_directories(jxl_extras_core-obj
+                             PRIVATE ${libpng_SOURCE_DIR} ${libpng_BINARY_DIR})
+endif()
+if(TARGET jxl_extras_core_nocodec-obj)
+  target_include_directories(jxl_extras_core_nocodec-obj
+                             PRIVATE ${libpng_SOURCE_DIR} ${libpng_BINARY_DIR})
+endif()
 
 target_include_directories(jxl
                            INTERFACE $<BUILD_INTERFACE:${libjxl_SOURCE_DIR}>)

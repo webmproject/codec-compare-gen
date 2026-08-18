@@ -47,8 +47,20 @@ set(WEBP_BUILD_LIBWEBPMUX
 
 ccgen_fetchcontent_makeavailable(libwebp)
 
-if(CCGEN_WASM)
+if(TARGET libwebpmux AND NOT TARGET webpmux)
   add_library(webpmux ALIAS libwebpmux)
+endif()
+if(TARGET webp AND NOT TARGET WebP::webp)
+  add_library(WebP::webp ALIAS webp)
+endif()
+if(TARGET webpdemux AND NOT TARGET WebP::webpdemux)
+  add_library(WebP::webpdemux ALIAS webpdemux)
+endif()
+if(TARGET libwebpmux AND NOT TARGET WebP::webpmux)
+  add_library(WebP::webpmux ALIAS libwebpmux)
+endif()
+if(TARGET libwebpmux AND NOT TARGET WebP::libwebpmux)
+  add_library(WebP::libwebpmux ALIAS libwebpmux)
 endif()
 
 target_include_directories(

@@ -38,9 +38,14 @@ Status EncodeTest(const std::string& image_path, bool quiet = false) {
   ASSIGN_OR_RETURN(
       std::vector<uint8_t> argb,
       DecodeToArgb(bytes.data(), bytes.size(), &width, &height, quiet));
-  ASSIGN_OR_RETURN(std::vector<uint8_t> encoded_image,
-                   Encode(argb.data(), width, height, Codec::kWebp,
-                          Subsampling::kDefault, 0, kQualityLossless, quiet));
+  ASSIGN_OR_RETURN(auto encoded_image_and_stats,
+                   GetEncodedBytesAndDecodeStats(
+                       bytes.data(), bytes.size(), Codec::kWebp,
+                       Subsampling::kDefault, 0, kQualityLossless, quiet));
+  const auto& [encoded_image, mime_type, stats] = encoded_image_and_stats;
+  CHECK_OR_RETURN(stats.image_width == width && stats.image_height == height,
+                  quiet);
+  CHECK_OR_RETURN(stats.encoded_size == encoded_image.size(), quiet);
   uint32_t decoded_width, decoded_height;
   ASSIGN_OR_RETURN(std::vector<uint8_t> decoded_argb,
                    DecodeToArgb(encoded_image.data(), encoded_image.size(),

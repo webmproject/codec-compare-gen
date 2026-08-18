@@ -15,44 +15,73 @@
 #include <emscripten/bind.h>
 #include <emscripten/val.h>
 
+#include <cstddef>
 #include <cstdint>
 #include <string>
 #include <vector>
 
 #include "src/base.h"
 #include "src/codec.h"
+#include "src/framework.h"
 
 namespace codec_compare_gen {
-struct DecodedImage {
-  std::vector<uint8_t> argb;
+struct EncodedBytesAndDecodeStats {
+  std::vector<uint8_t> encoded_bytes;
+  std::string encoded_bytes_mime_type;
+
+  // Same fields as TaskOutput.
   uint32_t width;
   uint32_t height;
+  uint32_t bit_depth;
+  uint32_t num_frames;
+  size_t encoded_size;
+  double encoding_duration;
+  double decoding_duration;
+  double decoding_color_conversion_duration;
+  float psnr;
+  float ssim;
+
+  std::string description;
 };
 
-DecodedImage WasmDecodeToArgb(const std::vector<uint8_t>& encoded_image) {
-  uint32_t width, height;
-  auto status_or =
-      DecodeToArgb(encoded_image.data(), encoded_image.size(), &width, &height,
-                   /*quiet=*/false);
+EncodedBytesAndDecodeStats WasmGetEncodedBytesAndDecodeStats(
+    const std::vector<uint8_t>& bytes, Codec codec, Subsampling subsampling,
+    int effort, int quality) {
+  auto status_or = GetEncodedBytesAndDecodeStats(
+      bytes.data(), bytes.size(), codec, subsampling, effort, quality,
+      /*quiet=*/false);
   if (status_or.status != Status::kOk) {
     emscripten::val::global("Error")(std::string("Failed to decode image"))
         .throw_();
   }
-  return {std::move(status_or.value), width, height};
-}
+  auto& [encoded_bytes, encoded_bytes_mime_type, task] = status_or.value;
+  const CodecSettings& codec_settings = task.task_input.codec_settings;
+  const CodecMetadata codec_metadata = GetCodecMetadata(codec_settings.codec);
 
-std::vector<uint8_t> WasmEncode(const std::vector<uint8_t>& argb,
-                                uint32_t width, uint32_t height, Codec codec,
-                                Subsampling subsampling, int effort,
-                                int quality) {
-  auto status_or =
-      Encode(argb.data(), width, height, codec, subsampling, effort, quality,
-             /*quiet=*/false);
-  if (status_or.status != Status::kOk) {
-    emscripten::val::global("Error")(std::string("Failed to encode image"))
-        .throw_();
+  const float psnr =
+      task.distortions.empty() ? kNoDistortion : task.distortions[0];
+  const float ssim =
+      task.distortions.size() < 2 ? kNoDistortion : task.distortions[1];
+  const bool lossless = codec_settings.quality == kQualityLossless;
+  std::string description = codec_metadata.pretty_name(
+      lossless, codec_settings.chroma_subsampling, codec_settings.effort);
+  if (!lossless) {
+    description += " q";
+    description += std::to_string(codec_settings.quality);
   }
-  return std::move(status_or.value);
+  return {std::move(encoded_bytes),
+          encoded_bytes_mime_type,
+          task.image_width,
+          task.image_height,
+          task.bit_depth,
+          task.num_frames,
+          task.encoded_size,
+          task.encoding_duration,
+          task.decoding_duration,
+          task.decoding_color_conversion_duration,
+          psnr,
+          ssim,
+          description};
 }
 
 }  // namespace codec_compare_gen
@@ -73,11 +102,26 @@ EMSCRIPTEN_BINDINGS(codec_compare_gen) {
       .value("Yuv420", Subsampling::k420);
 
   emscripten::register_vector<uint8_t>("ByteVector");
-  emscripten::value_object<DecodedImage>("DecodedImage")
-      .field("argb", &DecodedImage::argb)
-      .field("width", &DecodedImage::width)
-      .field("height", &DecodedImage::height);
+  emscripten::value_object<EncodedBytesAndDecodeStats>(
+      "EncodedBytesAndDecodeStats")
+      .field("encoded_bytes", &EncodedBytesAndDecodeStats::encoded_bytes)
+      .field("encoded_bytes_mime_type",
+             &EncodedBytesAndDecodeStats::encoded_bytes_mime_type)
+      .field("width", &EncodedBytesAndDecodeStats::width)
+      .field("height", &EncodedBytesAndDecodeStats::height)
+      .field("bit_depth", &EncodedBytesAndDecodeStats::bit_depth)
+      .field("num_frames", &EncodedBytesAndDecodeStats::num_frames)
+      .field("encoded_size", &EncodedBytesAndDecodeStats::encoded_size)
+      .field("encoding_duration",
+             &EncodedBytesAndDecodeStats::encoding_duration)
+      .field("decoding_duration",
+             &EncodedBytesAndDecodeStats::decoding_duration)
+      .field("decoding_color_conversion_duration",
+             &EncodedBytesAndDecodeStats::decoding_color_conversion_duration)
+      .field("psnr", &EncodedBytesAndDecodeStats::psnr)
+      .field("ssim", &EncodedBytesAndDecodeStats::ssim)
+      .field("description", &EncodedBytesAndDecodeStats::description);
 
-  emscripten::function("decodeToArgb", &WasmDecodeToArgb);
-  emscripten::function("encode", &WasmEncode);
+  emscripten::function("getEncodedBytesAndDecodeStats",
+                       &WasmGetEncodedBytesAndDecodeStats);
 }

@@ -168,7 +168,8 @@ CodecMetadata GetCombinationMetadata() {
       "",
       CodecCombinationEfforts,
       CodecCombinationLossyQualities,
-      "comb",
+      /*extension=*/"comb",
+      /*mime_type=*/"image/comb",
       GetWebpMetadata().is_supported_by_browsers &&
           GetWebp2Metadata().is_supported_by_browsers &&
           GetJpegXlMetadata().is_supported_by_browsers,

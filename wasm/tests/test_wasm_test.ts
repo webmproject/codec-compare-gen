@@ -12,9 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import {trustedResourceUrl} from 'safevalues';
-import {setScriptSrc} from 'safevalues/dom';
-
 async function fetchBytes(url: string): Promise<Uint8Array> {
   const response = await fetch(url);
   if (!response.ok) {
@@ -76,28 +73,26 @@ describe('Codec WASM', () => {
   });
 
   it('should encode and decode gradient32x32.png with WebP', async () => {
-    // Decode PNG to ARGB
     const pngVector = toByteVector(module, pngBytes);
-    const decoded = module.decodeToArgb(pngVector);
-    expect(decoded.width).toBe(32);
-    expect(decoded.height).toBe(32);
-    expect(decoded.argb.size()).toBe(32 * 32 * 4);
+    const result = module.getEncodedBytesAndDecodeStats(
+        pngVector, module.Codec.Webp, module.Subsampling.Default, /*effort=*/ 0,
+        /*quality=*/ -1);
+    expect(result.width).toBe(32);
+    expect(result.height).toBe(32);
+    expect(result.encoded_bytes.size()).toBeGreaterThan(0);
+    expect(result.encoded_size).toBe(result.encoded_bytes.size());
+    expect(result.psnr).toBe(99);
 
-    // Encode ARGB to WebP lossless
-    const encodedVector = module.encode(
-        decoded.argb, decoded.width, decoded.height, module.Codec.Webp,
-        module.Subsampling.Default, /*effort=*/ 0, /*quality=*/ -1);
-    expect(encodedVector.size()).toBeGreaterThan(0);
+    const resultAgain = module.getEncodedBytesAndDecodeStats(
+        result.encoded_bytes, module.Codec.Webp, module.Subsampling.Default,
+        /*effort=*/ 0, /*quality=*/ -1);
+    expect(resultAgain.width).toBe(32);
+    expect(resultAgain.height).toBe(32);
+    expect(resultAgain.psnr).toBe(99);
 
-    // Decode WebP back to ARGB
-    const decodedAgain = module.decodeToArgb(encodedVector);
-    expect(decodedAgain).toEqual(decoded);
-
-    // Clean up
     pngVector.delete();
-    decoded.argb.delete();
-    encodedVector.delete();
-    decodedAgain.argb.delete();
+    result.encoded_bytes.delete();
+    resultAgain.encoded_bytes.delete();
   });
 
   it('should encode and decode with JPEG libraries', async () => {
@@ -107,39 +102,35 @@ describe('Codec WASM', () => {
                  module.Codec.Jpegmoz,
     ]) {
       const pngVector = toByteVector(module, pngBytes);
-      const decoded = module.decodeToArgb(pngVector);
+      const result = module.getEncodedBytesAndDecodeStats(
+          pngVector, codec, module.Subsampling.Default, /*effort=*/ 0,
+          /*quality=*/ 90);
+      expect(result.width).toBe(32);
+      expect(result.height).toBe(32);
+      expect(result.encoded_bytes.size()).toBeGreaterThan(0);
+      expect(result.encoded_size).toBe(result.encoded_bytes.size());
+      console.log(`${codec} PSNR:`, result.psnr);
+      expect(result.psnr).toBeGreaterThan(20);
+      expect(result.psnr).toBeLessThan(99);
 
-      const encodedVector = module.encode(
-          decoded.argb, decoded.width, decoded.height, codec,
-          module.Subsampling.Default, /*effort=*/ 0, /*quality=*/ 90);
-      expect(encodedVector.size()).toBeGreaterThan(0);
-
-      const decodedAgain = module.decodeToArgb(encodedVector);
-      expect(decodedAgain.width).toBe(32);
-      expect(decodedAgain.height).toBe(32);
-
-      let maxDiff = 0;
-      for (let i = 0; i < decoded.argb.size(); i++) {
-        const expected = decoded.argb.get(i);
-        const actual = decodedAgain.argb.get(i);
-        const diff = Math.abs(expected - actual);
-        if (diff > maxDiff) maxDiff = diff;
-      }
-      console.log(`${codec} Maximum pixel difference:`, maxDiff);
-      // The codec is lossy, expect some difference. 25 is safe for quality 90.
-      expect(maxDiff).toBeLessThanOrEqual(25);
+      const resultAgain = module.getEncodedBytesAndDecodeStats(
+          result.encoded_bytes, codec, module.Subsampling.Default,
+          /*effort=*/ 0, /*quality=*/ 90);
+      expect(resultAgain.width).toBe(32);
+      expect(resultAgain.height).toBe(32);
 
       pngVector.delete();
-      decoded.argb.delete();
-      encodedVector.delete();
-      decodedAgain.argb.delete();
+      result.encoded_bytes.delete();
+      resultAgain.encoded_bytes.delete();
     }
   });
 
   it('should throw an error on invalid bytes', () => {
     const invalidBytes = toByteVector(module, new Uint8Array([1, 2, 3]));
     expect(() => {
-      module.decodeToArgb(invalidBytes);
+      module.getEncodedBytesAndDecodeStats(
+          invalidBytes, module.Codec.Webp, module.Subsampling.Default,
+          /*effort=*/ 0, /*quality=*/ 90);
     }).toThrowError(/Failed to decode image/);
     invalidBytes.delete();
   });
