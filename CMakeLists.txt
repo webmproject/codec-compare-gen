@@ -16,7 +16,7 @@ cmake_minimum_required(VERSION 3.20)
 project(
   codec-compare-gen
   LANGUAGES CXX
-  VERSION 0.8.0)
+  VERSION 0.8.1)
 set(CMAKE_CXX_STANDARD 17)
 
 # Options
@@ -424,7 +424,8 @@ if(CCGEN_WASM)
   set_target_properties(codec_wasm PROPERTIES SUFFIX ".js")
   target_link_options(
     codec_wasm PRIVATE "-sMODULARIZE=1" "-sEXPORT_NAME=loadCodecWasm"
-    "-sENVIRONMENT=web,worker" "-sALLOW_MEMORY_GROWTH=1" "--bind")
+    "-sENVIRONMENT=web,worker" "-sALLOW_MEMORY_GROWTH=1" "-sSTACK_SIZE=5MB"
+    "--bind")
   # Making the following work would be nicer for TypeScript integration:
   # "--emit-tsd=${CMAKE_CURRENT_BINARY_DIR}/codec_wasm_bin.d.ts"
 endif()

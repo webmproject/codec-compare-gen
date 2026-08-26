@@ -21,12 +21,27 @@ set(AVIF_BUILD_TESTS
 set(AVIF_CODEC_AOM
     LOCAL
     CACHE INTERNAL "")
-set(AVIF_CODEC_DAV1D
-    LOCAL
-    CACHE INTERNAL "")
-set(AVIF_CODEC_AVM
-    LOCAL
-    CACHE INTERNAL "")
+if(CCGEN_WASM)
+  set(AVIF_CODEC_DAV1D
+      OFF
+      CACHE INTERNAL "")
+  set(AVIF_CODEC_AVM
+      OFF
+      CACHE INTERNAL "")
+  set(AOM_TARGET_CPU
+      "generic"
+      CACHE INTERNAL "")
+  set(AOM_LIB_LINK_TYPE
+      "PRIVATE"
+      CACHE INTERNAL "")
+else()
+  set(AVIF_CODEC_DAV1D
+      LOCAL
+      CACHE INTERNAL "")
+  set(AVIF_CODEC_AVM
+      LOCAL
+      CACHE INTERNAL "")
+endif()
 set(AVIF_LIBYUV
     LOCAL
     CACHE INTERNAL "")
@@ -39,7 +54,14 @@ set(AVIF_ENABLE_EXPERIMENTAL_MINI
 
 include_directories("${CMAKE_BINARY_DIR}/flatbuffers/include")
 
+set(CMAKE_CXX_FLAGS_ORIG "${CMAKE_CXX_FLAGS}")
+set(CMAKE_C_FLAGS_ORIG "${CMAKE_C_FLAGS}")
+
 ccgen_fetchcontent_makeavailable(libavif)
+
+# libaom modifies CMAKE_CXX_FLAGS/CMAKE_C_FLAGS with CACHE FORCE. Restore them.
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS_ORIG}" CACHE STRING "" FORCE)
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS_ORIG}" CACHE STRING "" FORCE)
 
 if(CCGEN_ENABLE_WEBP)
   # To avoid building libsharpyuv twice.

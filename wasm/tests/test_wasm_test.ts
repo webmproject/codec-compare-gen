@@ -20,15 +20,6 @@ async function fetchBytes(url: string): Promise<Uint8Array> {
   return new Uint8Array(await response.arrayBuffer());
 }
 
-function toByteVector(module: any, bytes: Uint8Array): any {
-  const v = new module.ByteVector();
-  // Using a loop for simplicity, can be optimized later
-  for (let i = 0; i < bytes.length; i++) {
-    v.push_back(bytes[i]);
-  }
-  return v;
-}
-
 // Loading codec_wasm_bin.wasm can take a long time, especially if sanitizers
 // were enabled during the build. See b/514217988.
 jasmine.DEFAULT_TIMEOUT_INTERVAL = 60000;
@@ -73,14 +64,13 @@ describe('Codec WASM', () => {
   });
 
   it('should encode and decode gradient32x32.png with WebP', async () => {
-    const pngVector = toByteVector(module, pngBytes);
     const result = module.getEncodedBytesAndDecodeStats(
-        pngVector, module.Codec.Webp, module.Subsampling.Default, /*effort=*/ 0,
+        pngBytes, module.Codec.Webp, module.Subsampling.Default, /*effort=*/ 0,
         /*quality=*/ -1);
     expect(result.width).toBe(32);
     expect(result.height).toBe(32);
-    expect(result.encoded_bytes.size()).toBeGreaterThan(0);
-    expect(result.encoded_size).toBe(result.encoded_bytes.size());
+    expect(result.encoded_bytes.length).toBeGreaterThan(0);
+    expect(result.encoded_size).toBe(result.encoded_bytes.length);
     expect(result.psnr).toBe(99);
 
     const resultAgain = module.getEncodedBytesAndDecodeStats(
@@ -89,10 +79,18 @@ describe('Codec WASM', () => {
     expect(resultAgain.width).toBe(32);
     expect(resultAgain.height).toBe(32);
     expect(resultAgain.psnr).toBe(99);
+  });
 
-    pngVector.delete();
-    result.encoded_bytes.delete();
-    resultAgain.encoded_bytes.delete();
+  it('should encode and decode gradient32x32.png with AVIF', async () => {
+    const result = module.getEncodedBytesAndDecodeStats(
+        pngBytes, module.Codec.Avif, module.Subsampling.Default, /*effort=*/ 0,
+        /*quality=*/ 90);
+    expect(result.width).toBe(32);
+    expect(result.height).toBe(32);
+    expect(result.encoded_bytes.length).toBeGreaterThan(0);
+    expect(result.encoded_size).toBe(result.encoded_bytes.length);
+    expect(result.psnr).toBeGreaterThan(20);
+    expect(result.psnr).toBeLessThan(99);
   });
 
   it('should encode and decode with JPEG libraries', async () => {
@@ -101,14 +99,13 @@ describe('Codec WASM', () => {
                  module.Codec.Jpegsimple,
                  module.Codec.Jpegmoz,
     ]) {
-      const pngVector = toByteVector(module, pngBytes);
       const result = module.getEncodedBytesAndDecodeStats(
-          pngVector, codec, module.Subsampling.Default, /*effort=*/ 0,
+          pngBytes, codec, module.Subsampling.Default, /*effort=*/ 0,
           /*quality=*/ 90);
       expect(result.width).toBe(32);
       expect(result.height).toBe(32);
-      expect(result.encoded_bytes.size()).toBeGreaterThan(0);
-      expect(result.encoded_size).toBe(result.encoded_bytes.size());
+      expect(result.encoded_bytes.length).toBeGreaterThan(0);
+      expect(result.encoded_size).toBe(result.encoded_bytes.length);
       console.log(`${codec} PSNR:`, result.psnr);
       expect(result.psnr).toBeGreaterThan(20);
       expect(result.psnr).toBeLessThan(99);
@@ -118,20 +115,15 @@ describe('Codec WASM', () => {
           /*effort=*/ 0, /*quality=*/ 90);
       expect(resultAgain.width).toBe(32);
       expect(resultAgain.height).toBe(32);
-
-      pngVector.delete();
-      result.encoded_bytes.delete();
-      resultAgain.encoded_bytes.delete();
     }
   });
 
   it('should throw an error on invalid bytes', () => {
-    const invalidBytes = toByteVector(module, new Uint8Array([1, 2, 3]));
+    const invalidBytes = new Uint8Array([1, 2, 3]);
     expect(() => {
       module.getEncodedBytesAndDecodeStats(
           invalidBytes, module.Codec.Webp, module.Subsampling.Default,
           /*effort=*/ 0, /*quality=*/ 90);
     }).toThrowError(/Failed to decode image/);
-    invalidBytes.delete();
   });
 });

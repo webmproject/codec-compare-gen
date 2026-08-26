@@ -18,6 +18,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "src/base.h"
@@ -26,7 +27,7 @@
 
 namespace codec_compare_gen {
 struct EncodedBytesAndDecodeStats {
-  std::vector<uint8_t> encoded_bytes;
+  emscripten::val encoded_bytes;
   std::string encoded_bytes_mime_type;
 
   // Same fields as TaskOutput.
@@ -45,8 +46,10 @@ struct EncodedBytesAndDecodeStats {
 };
 
 EncodedBytesAndDecodeStats WasmGetEncodedBytesAndDecodeStats(
-    const std::vector<uint8_t>& bytes, Codec codec, Subsampling subsampling,
+    const emscripten::val& bytes_val, Codec codec, Subsampling subsampling,
     int effort, int quality) {
+  const std::vector<uint8_t> bytes =
+      emscripten::convertJSArrayToNumberVector<uint8_t>(bytes_val);
   auto status_or = GetEncodedBytesAndDecodeStats(
       bytes.data(), bytes.size(), codec, subsampling, effort, quality,
       /*quiet=*/false);
@@ -69,7 +72,14 @@ EncodedBytesAndDecodeStats WasmGetEncodedBytesAndDecodeStats(
     description += " q";
     description += std::to_string(codec_settings.quality);
   }
-  return {std::move(encoded_bytes),
+
+  emscripten::val js_encoded_bytes =
+      emscripten::val::global("Uint8Array").new_(encoded_bytes.size());
+  js_encoded_bytes.call<void>(
+      "set", emscripten::val(emscripten::typed_memory_view(
+                 encoded_bytes.size(), encoded_bytes.data())));
+
+  return {std::move(js_encoded_bytes),
           encoded_bytes_mime_type,
           task.image_width,
           task.image_height,
@@ -90,6 +100,7 @@ EMSCRIPTEN_BINDINGS(codec_compare_gen) {
   using namespace codec_compare_gen;
 
   emscripten::enum_<Codec>("Codec")
+      .value("Avif", Codec::kAvif)
       .value("Webp", Codec::kWebp)
       .value("Webp2", Codec::kWebp2)
       .value("Jpegturbo", Codec::kJpegturbo)
@@ -101,7 +112,6 @@ EMSCRIPTEN_BINDINGS(codec_compare_gen) {
       .value("Yuv444", Subsampling::k444)
       .value("Yuv420", Subsampling::k420);
 
-  emscripten::register_vector<uint8_t>("ByteVector");
   emscripten::value_object<EncodedBytesAndDecodeStats>(
       "EncodedBytesAndDecodeStats")
       .field("encoded_bytes", &EncodedBytesAndDecodeStats::encoded_bytes)

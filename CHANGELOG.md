@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.8.1
+
+- Support WASM AVIF encoding and decoding (AV1 only, with libavif+aom).
+
 ## v0.8.0
 
 - Bump the version of the libwebp2 dependency.
