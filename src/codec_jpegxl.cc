@@ -56,7 +56,7 @@ std::string JpegXLVersion() {
 #endif
 }
 
-std::vector<int> JpegXlEfforts() { return {1, 2, 3, 4, 5, 6, 7, 8, 9}; }
+std::vector<int> JpegXlEfforts() { return {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11}; }
 
 std::vector<int> JpegXLLossyQualities() {
   std::vector<int> qualities(100);

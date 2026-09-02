@@ -75,9 +75,9 @@ EncodedBytesAndDecodeStats WasmGetEncodedBytesAndDecodeStats(
 
   emscripten::val js_encoded_bytes =
       emscripten::val::global("Uint8Array").new_(encoded_bytes.size());
-  js_encoded_bytes.call<void>(
-      "set", emscripten::val(emscripten::typed_memory_view(
-                 encoded_bytes.size(), encoded_bytes.data())));
+  js_encoded_bytes.call<void>("set",
+                              emscripten::val(emscripten::typed_memory_view(
+                                  encoded_bytes.size(), encoded_bytes.data())));
 
   return {std::move(js_encoded_bytes),
           encoded_bytes_mime_type,
@@ -105,7 +105,8 @@ EMSCRIPTEN_BINDINGS(codec_compare_gen) {
       .value("Webp2", Codec::kWebp2)
       .value("Jpegturbo", Codec::kJpegturbo)
       .value("Jpegsimple", Codec::kJpegsimple)
-      .value("Jpegmoz", Codec::kJpegmoz);
+      .value("Jpegmoz", Codec::kJpegmoz)
+      .value("Png", Codec::kPng);
 
   emscripten::enum_<Subsampling>("Subsampling")
       .value("Default", Subsampling::kDefault)

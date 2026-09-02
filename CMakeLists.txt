@@ -16,7 +16,7 @@ cmake_minimum_required(VERSION 3.20)
 project(
   codec-compare-gen
   LANGUAGES CXX
-  VERSION 0.8.1)
+  VERSION 0.8.2)
 set(CMAKE_CXX_STANDARD 17)
 
 # Options
@@ -36,6 +36,7 @@ option(CCGEN_ENABLE_WEBPRS
 option(CCGEN_ENABLE_WEBP2 "Build with WebP 2 support (libwebp2) [REQUIRED]" ON)
 option(CCGEN_ENABLE_FFV1 "Build with FFV1 support (libavcodec from FFmpeg)" OFF)
 option(CCGEN_ENABLE_BASIS "Build with Basis Universal support" OFF)
+option(CCGEN_ENABLE_PNG "Build with PNG support (libpng)" ON)
 
 option(CCGEN_ENABLE_DSSIM "Build the DSSIM distortion metric binary" ON)
 
@@ -89,6 +90,8 @@ add_library(
   src/codec_jpegzune.cc
   src/codec_openjpeg.h
   src/codec_openjpeg.cc
+  src/codec_png.h
+  src/codec_png.cc
   src/codec_webp.h
   src/codec_webp.cc
   src/codec_webp_rs.h
@@ -118,9 +121,12 @@ endif()
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules")
 
-set(CCGEN_ENABLE_PNG ON)
-include(LocalLibzlib)
-include(LocalLibpng)
+if(CCGEN_ENABLE_PNG)
+  include(LocalLibzlib)
+  include(LocalLibpng)
+  target_compile_definitions(libccgen PRIVATE HAS_PNG)
+  target_link_libraries(libccgen PNG::PNG)
+endif()
 
 if(CCGEN_ENABLE_JPEG)
   target_compile_definitions(libccgen PRIVATE HAS_JPEGMOZ)

@@ -140,6 +140,8 @@ TEST_F(FrameworkTest, AllCodecsSupporting16bits) {
       {Codec::kJpegXl, Subsampling::kDefault, /*effort=*/1, kQualityLossless});
   settings.codec_settings.push_back(
       {Codec::kJp2, Subsampling::kDefault, /*effort=*/0, kQualityLossless});
+  settings.codec_settings.push_back(
+      {Codec::kPng, Subsampling::kDefault, /*effort=*/0, kQualityLossless});
   EXPECT_EQ(
       CompareAndVerify({std::string(data_path) + "alpha31x32_16bits.png",
                         std::string(data_path) + "gradient32x32_16bits.png"},

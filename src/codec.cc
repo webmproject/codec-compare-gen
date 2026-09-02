@@ -41,6 +41,7 @@
 #include "src/codec_jpegxl.h"
 #include "src/codec_jpegzune.h"
 #include "src/codec_openjpeg.h"
+#include "src/codec_png.h"
 #include "src/codec_webp.h"
 #include "src/codec_webp2.h"
 #include "src/codec_webp_rs.h"
@@ -97,6 +98,8 @@ CodecMetadata GetCodecMetadata(Codec codec) {
       return GetFfv1Metadata();
     case Codec::kBasis:
       return GetBasisMetadata();
+    case Codec::kPng:
+      return GetPngMetadata();
     case Codec::kNumCodecs:
       break;
   }
