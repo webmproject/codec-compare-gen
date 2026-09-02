@@ -49,6 +49,7 @@ enum class Codec {
   kJp2,    // JPEG 2000 (also called J2K), C implementation openjpeg.
   kFfv1,   // FFV1, C implementation libavcodec (FFmpeg).
   kBasis,  // Basis Universal, C++ implementation basis_universal.
+  kPng,    // PNG, C implementation libpng.
   kNumCodecs
 };
 

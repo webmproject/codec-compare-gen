@@ -430,6 +430,65 @@ TEST(CodecTest, Jp2LosslessAlpha) {
 
 //------------------------------------------------------------------------------
 
+TEST(CodecTest, PngMinEffort) {
+  TaskInput input;
+  input.codec_settings = {Codec::kPng, kDef, /*effort=*/0, kQualityLossless};
+  input.image_path = std::string(data_path) + "gradient32x32.png";
+  EXPECT_EQ(EncodeDecodeTest(input), Status::kOk);
+}
+
+TEST(CodecTest, PngMaxEffort) {
+  TaskInput input;
+  input.codec_settings = {Codec::kPng, kDef, /*effort=*/9, kQualityLossless};
+  input.image_path = std::string(data_path) + "alpha1x17.png";
+  EXPECT_EQ(EncodeDecodeTest(input), Status::kOk);
+}
+
+TEST(CodecTest, Png16Bits) {
+  TaskInput input;
+  input.codec_settings = {Codec::kPng, kDef, /*effort=*/6, kQualityLossless};
+  input.image_path = std::string(data_path) + "gradient32x32_16bits.png";
+  EXPECT_EQ(EncodeDecodeTest(input), Status::kOk);
+}
+
+TEST(CodecTest, Png16BitsAlpha) {
+  TaskInput input;
+  input.codec_settings = {Codec::kPng, kDef, /*effort=*/6, kQualityLossless};
+  input.image_path = std::string(data_path) + "alpha31x32_16bits.png";
+  EXPECT_EQ(EncodeDecodeTest(input), Status::kOk);
+}
+
+TEST(CodecTest, PngWrongEffort) {
+  TaskInput input;
+  input.codec_settings = {Codec::kPng, kDef, /*effort=*/10, kQualityLossless};
+  input.image_path = std::string(data_path) + "gradient32x32.png";
+  EXPECT_EQ(EncodeDecodeTest(input, /*quiet=*/true), Status::kUnknownError);
+}
+
+TEST(CodecTest, PngWrongQuality) {
+  TaskInput input;
+  input.codec_settings = {Codec::kPng, kDef, /*effort=*/6, /*quality=*/90};
+  input.image_path = std::string(data_path) + "gradient32x32.png";
+  EXPECT_EQ(EncodeDecodeTest(input, /*quiet=*/true), Status::kUnknownError);
+}
+
+TEST(CodecTest, PngWrongSubsampling) {
+  TaskInput input;
+  input.codec_settings = {Codec::kPng, Subsampling::k420, /*effort=*/6,
+                          kQualityLossless};
+  input.image_path = std::string(data_path) + "gradient32x32.png";
+  EXPECT_EQ(EncodeDecodeTest(input, /*quiet=*/true), Status::kUnknownError);
+}
+
+TEST(CodecTest, PngAnimated) {
+  TaskInput input;
+  input.codec_settings = {Codec::kPng, kDef, /*effort=*/6, kQualityLossless};
+  input.image_path = std::string(data_path) + "anim80x80.gif";
+  EXPECT_EQ(EncodeDecodeTest(input, /*quiet=*/true), Status::kUnknownError);
+}
+
+//------------------------------------------------------------------------------
+
 TEST(CodecTest, Ffv1Lossless) {
   TaskInput input;
   input.codec_settings = {Codec::kFfv1, kDef, 0, kQualityLossless};

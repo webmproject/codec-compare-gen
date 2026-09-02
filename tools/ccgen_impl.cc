@@ -104,6 +104,7 @@ int Main(int argc, const char* const argv[]) {
                 << " [--codec jpeg2000 444]" << std::endl
                 << " [--codec ffv1 444]" << std::endl
                 << " [--codec basis 444]" << std::endl
+                << " [--codec png 444 {effort}]" << std::endl
                 << " --lossy|--lossless" << std::endl
                 << " [--quality {unique|min:max}]" << std::endl
                 << " [--repeat {number of times to encode each image}]"
@@ -197,6 +198,8 @@ int Main(int argc, const char* const argv[]) {
                      codec == "sjpeg") {
             codec_settings.push_back(
                 {Codec::kJpegsimple, subsampling.value, effort});
+          } else if (codec == "png") {
+            codec_settings.push_back({Codec::kPng, subsampling.value, effort});
           } else {
             std::cerr << "Error: Unknown codec \"" << codec << "\""
                       << std::endl;

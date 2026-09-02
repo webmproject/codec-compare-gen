@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.8.2
+
+- Add Codec::kPng using libpng.
+- Fix encoding slices setting for FFV1.
+- Register efforts 10 and 11 for JPEG XL.
+
 ## v0.8.1
 
 - Support WASM AVIF encoding and decoding (AV1 only, with libavif+aom).

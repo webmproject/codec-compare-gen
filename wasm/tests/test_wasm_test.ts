@@ -81,6 +81,24 @@ describe('Codec WASM', () => {
     expect(resultAgain.psnr).toBe(99);
   });
 
+  it('should encode and decode gradient32x32.png with PNG', async () => {
+    const result = module.getEncodedBytesAndDecodeStats(
+        pngBytes, module.Codec.Png, module.Subsampling.Default, /*effort=*/ 0,
+        /*quality=*/ -1);
+    expect(result.width).toBe(32);
+    expect(result.height).toBe(32);
+    expect(result.encoded_bytes.length).toBeGreaterThan(0);
+    expect(result.encoded_size).toBe(result.encoded_bytes.length);
+    expect(result.psnr).toBe(99);
+
+    const resultAgain = module.getEncodedBytesAndDecodeStats(
+        result.encoded_bytes, module.Codec.Png, module.Subsampling.Default,
+        /*effort=*/ 0, /*quality=*/ -1);
+    expect(resultAgain.width).toBe(32);
+    expect(resultAgain.height).toBe(32);
+    expect(resultAgain.psnr).toBe(99);
+  });
+
   it('should encode and decode gradient32x32.png with AVIF', async () => {
     const result = module.getEncodedBytesAndDecodeStats(
         pngBytes, module.Codec.Avif, module.Subsampling.Default, /*effort=*/ 0,

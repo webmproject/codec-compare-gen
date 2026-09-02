@@ -134,15 +134,18 @@ StatusOr<TaskOutput> UnserializeNoDistortion(
   task.task_input.codec_settings.effort = std::stoul(tokens[t++]);
   const std::vector<int> efforts =
       GetCodecMetadata(task.task_input.codec_settings.codec).efforts();
-  CHECK_OR_RETURN(
-      efforts.empty()
-          ? (task.task_input.codec_settings.effort == 0)
-          : (task.task_input.codec_settings.effort >=
-                 *std::min_element(efforts.begin(), efforts.end()) &&
-             task.task_input.codec_settings.effort <=
-                 *std::max_element(efforts.begin(), efforts.end())),
-      quiet)
-      << "Unknown effort in \"" << serialized_task << "\"";
+  const int min_effort =
+      efforts.empty() ? 0 : *std::min_element(efforts.begin(), efforts.end());
+  const int max_effort =
+      efforts.empty() ? 0 : *std::max_element(efforts.begin(), efforts.end());
+  CHECK_OR_RETURN(efforts.empty()
+                      ? (task.task_input.codec_settings.effort == 0)
+                      : (task.task_input.codec_settings.effort >= min_effort &&
+                         task.task_input.codec_settings.effort <= max_effort),
+                  quiet)
+      << "Effort " << task.task_input.codec_settings.effort << " out of range ["
+      << min_effort << ", " << max_effort << "]" << " in \"" << serialized_task
+      << "\"";
 
   task.task_input.codec_settings.quality = std::stoi(tokens[t++]);
   CHECK_OR_RETURN(task.task_input.codec_settings.quality == kQualityLossless ||
