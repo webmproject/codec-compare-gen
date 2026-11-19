@@ -207,12 +207,14 @@ StatusOr<std::pair<Image, double>> DecodeWebp(const TaskInput& input,
   Image image;
   image.reserve(anim_info.frame_count);
   int previous_timestamp = 0;
+  double color_conversion_duration = 0;
   while (WebPAnimDecoderHasMoreFrames(dec.get())) {
     uint8_t* buf;
     int timestamp;
     CHECK_OR_RETURN(WebPAnimDecoderGetNext(dec.get(), &buf, &timestamp), quiet);
 
     // This does not depend on endianness so no need for WebPPictureFormat().
+    const Timer timer;
     WP2::ArgbBuffer buffer(WP2_BGRA_32);
     CHECK_OR_RETURN(
         buffer.Import(buffer.format(), anim_info.canvas_width,
@@ -220,11 +222,12 @@ StatusOr<std::pair<Image, double>> DecodeWebp(const TaskInput& input,
                       anim_info.canvas_width * WP2FormatBpp(buffer.format())) ==
             WP2_STATUS_OK,
         quiet);
+    color_conversion_duration += timer.seconds();
     image.emplace_back(std::move(buffer),
                        static_cast<uint32_t>(timestamp - previous_timestamp));
     previous_timestamp = timestamp;
   }
-  return std::pair<Image, double>(std::move(image), 0);
+  return std::pair<Image, double>(std::move(image), color_conversion_duration);
 }
 
 #else
