@@ -85,6 +85,8 @@ int Main(int argc, const char* const argv[]) {
                 << " [--codec webpimagecrate 444]" << std::endl
                 << " [--codec webpencwebpimagecratedec {444|420} {effort}]"
                 << std::endl
+                << " [--codec webprs {444|420} {effort}]" << std::endl
+                << " [--codec webpencwebprsdec {444|420} {effort}]" << std::endl
                 << " [--codec webp2 {444|420} {effort}]" << std::endl
                 << " [--codec jpegxl 444 {effort}]" << std::endl
                 << " [--codec avif {444|420} {effort}]" << std::endl
@@ -169,6 +171,12 @@ int Main(int argc, const char* const argv[]) {
           } else if (codec == "webpencwebpimagecratedec") {
             codec_settings.push_back(
                 {Codec::kWebpEncWebpImageCrateDec, subsampling.value, effort});
+          } else if (codec == "webprs") {
+            codec_settings.push_back(
+                {Codec::kWebpRs, subsampling.value, effort});
+          } else if (codec == "webpencwebprsdec") {
+            codec_settings.push_back(
+                {Codec::kWebpEncWebpRsDec, subsampling.value, effort});
           } else if (codec == "wp2" || codec == "webp2") {
             codec_settings.push_back(
                 {Codec::kWebp2, subsampling.value, effort});

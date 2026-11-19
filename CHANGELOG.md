@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.8.7
+
+- Add Codec::kWebpRs (webprs) and Codec::kWebpEncWebpRsDec (webpencwebprsdec)
+  using libwebp-rs (CCGEN_ENABLE_WEBPRS).
+
 ## v0.8.6
 
 - Rename Codec::kWebpRs, Codec::kWebpEncWebpRsDec, webprs, webpencwebprsdec, and

@@ -16,7 +16,7 @@ cmake_minimum_required(VERSION 3.20)
 project(
   codec-compare-gen
   LANGUAGES C CXX
-  VERSION 0.8.6)
+  VERSION 0.8.7)
 set(CMAKE_CXX_STANDARD 17)
 
 # Options
@@ -33,6 +33,8 @@ option(CCGEN_ENABLE_JPEGXL "Build with JPEG XL support (libjxl)" ON)
 option(CCGEN_ENABLE_WEBP "Build with WebP support (libwebp)" ON)
 option(CCGEN_ENABLE_WEBP_IMAGE_CRATE
        "Build with Rust WebP support (image and image-webp crates)" OFF)
+option(CCGEN_ENABLE_WEBPRS
+       "Build with WebP support (libwebp_rust_rewrite)" OFF)
 option(CCGEN_ENABLE_WEBP2 "Build with WebP 2 support (libwebp2) [REQUIRED]" ON)
 option(CCGEN_ENABLE_FFV1 "Build with FFV1 support (libavcodec from FFmpeg)" OFF)
 option(CCGEN_ENABLE_BASIS "Build with Basis Universal support" OFF)
@@ -96,6 +98,8 @@ add_library(
   src/codec_webp.cc
   src/codec_webp_image_crate.h
   src/codec_webp_image_crate.cc
+  src/codec_webp_rs.h
+  src/codec_webp_rs.cc
   src/codec_webp2.h
   src/codec_webp2.cc
   src/distortion.h
@@ -318,6 +322,20 @@ else()
   message(FATAL_ERROR "codec-compare-gen requires CCGEN_ENABLE_WEBP2=ON.")
 endif()
 
+option(CCGEN_ENABLE_WEBPRS_SRC "Path to the libwebp-rs src directory" "")
+option(CCGEN_ENABLE_WEBPRS_BIN "Path to the libwebp-rs binary" "")
+if(CCGEN_ENABLE_WEBPRS)
+  if(NOT CCGEN_ENABLE_WEBPRS_SRC OR NOT CCGEN_ENABLE_WEBPRS_BIN)
+    message(
+      FATAL_ERROR "CCGEN_ENABLE_WEBPRS=ON requires CCGEN_ENABLE_WEBPRS_SRC and CCGEN_ENABLE_WEBPRS_BIN to be set.")
+  endif()
+
+  get_filename_component(WEBPRS_BIN_DIR "${CCGEN_ENABLE_WEBPRS_BIN}" DIRECTORY)
+  target_compile_definitions(libccgen PRIVATE HAS_WEBPRS)
+  target_include_directories(libccgen PRIVATE ${CCGEN_ENABLE_WEBPRS_SRC} "${WEBPRS_BIN_DIR}")
+  target_link_libraries(libccgen "${CCGEN_ENABLE_WEBPRS_BIN}")
+endif()
+
 if(CCGEN_ENABLE_JPEG2000)
   target_compile_definitions(libccgen PRIVATE HAS_OPENJPEG)
   # FetchContent_MakeAvailable() results in weird build mixups such as:
@@ -510,6 +528,9 @@ if(CCGEN_BUILD_TESTING)
     add_ccgen_gtest(test_codec_sjpeg tests/data)
     if(CCGEN_ENABLE_WEBP_IMAGE_CRATE)
       add_ccgen_gtest(test_codec_webp_image_crate tests/data)
+    endif()
+    if(CCGEN_ENABLE_WEBPRS)
+      add_ccgen_gtest(test_codec_webp_rs tests/data)
     endif()
     add_ccgen_gtest(test_distortion tests/data ${CMAKE_CURRENT_BINARY_DIR})
     add_ccgen_gtest(test_encode tests/data)
