@@ -1,6 +1,6 @@
 #![allow(non_camel_case_types)]
 #![allow(non_snake_case)]
-/**
+/*
  * Copyright 2026 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");

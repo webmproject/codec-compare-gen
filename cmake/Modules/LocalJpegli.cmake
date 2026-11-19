@@ -8,7 +8,7 @@ FetchContent_Declare(
   GIT_REPOSITORY "https://github.com/google/jpegli.git"
   GIT_TAG ${JPEGLI_GIT_TAG}
   GIT_PROGRESS ON
-  GIT_SHALLOW ON
+  GIT_SHALLOW OFF
   UPDATE_COMMAND "")
 
 set(JPEGLI_ENABLE_TOOLS
