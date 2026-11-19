@@ -16,7 +16,7 @@ cmake_minimum_required(VERSION 3.20)
 project(
   codec-compare-gen
   LANGUAGES C CXX
-  VERSION 0.8.5)
+  VERSION 0.8.6)
 set(CMAKE_CXX_STANDARD 17)
 
 # Options
@@ -31,7 +31,7 @@ option(CCGEN_ENABLE_JPEGZUNE
 option(CCGEN_ENABLE_JPEG2000 "Build with JPEG 2000 support (OpenJPEG)" OFF)
 option(CCGEN_ENABLE_JPEGXL "Build with JPEG XL support (libjxl)" ON)
 option(CCGEN_ENABLE_WEBP "Build with WebP support (libwebp)" ON)
-option(CCGEN_ENABLE_WEBPRS
+option(CCGEN_ENABLE_WEBP_IMAGE_CRATE
        "Build with Rust WebP support (image and image-webp crates)" OFF)
 option(CCGEN_ENABLE_WEBP2 "Build with WebP 2 support (libwebp2) [REQUIRED]" ON)
 option(CCGEN_ENABLE_FFV1 "Build with FFV1 support (libavcodec from FFmpeg)" OFF)
@@ -94,8 +94,8 @@ add_library(
   src/codec_png.cc
   src/codec_webp.h
   src/codec_webp.cc
-  src/codec_webp_rs.h
-  src/codec_webp_rs.cc
+  src/codec_webp_image_crate.h
+  src/codec_webp_image_crate.cc
   src/codec_webp2.h
   src/codec_webp2.cc
   src/distortion.h
@@ -272,7 +272,7 @@ if(CCGEN_ENABLE_AVIF_LIBHEIF)
   target_link_libraries(libccgen heif)
 endif()
 
-if(CCGEN_ENABLE_JPEGZUNE OR CCGEN_ENABLE_WEBPRS)
+if(CCGEN_ENABLE_JPEGZUNE OR CCGEN_ENABLE_WEBP_IMAGE_CRATE)
   if(CCGEN_WASM)
     message(FATAL_ERROR "Rust bindings are not supported with CCGEN_WASM=ON.")
   endif()
@@ -292,14 +292,14 @@ if(CCGEN_ENABLE_JPEGZUNE OR CCGEN_ENABLE_WEBPRS)
     GIT_SHALLOW ON)
   FetchContent_MakeAvailable(Corrosion)
   corrosion_import_crate(MANIFEST_PATH ${CMAKE_BINARY_DIR}/bindings/Cargo.toml)
-  target_link_libraries(libccgen ccgen_webp_rs)
+  target_link_libraries(libccgen ccgen_webp_image_crate)
 
   if(CCGEN_ENABLE_JPEGZUNE)
     target_compile_definitions(libccgen PRIVATE HAS_JPEGZUNE)
   endif()
 
-  if(CCGEN_ENABLE_WEBPRS)
-    target_compile_definitions(libccgen PRIVATE HAS_WEBPRS)
+  if(CCGEN_ENABLE_WEBP_IMAGE_CRATE)
+    target_compile_definitions(libccgen PRIVATE HAS_WEBP_IMAGE_CRATE)
   endif()
 endif()
 
@@ -508,8 +508,8 @@ if(CCGEN_BUILD_TESTING)
       add_ccgen_gtest(test_codec_jpegzune tests/data)
     endif()
     add_ccgen_gtest(test_codec_sjpeg tests/data)
-    if(CCGEN_ENABLE_WEBPRS)
-      add_ccgen_gtest(test_codec_webp_rs tests/data)
+    if(CCGEN_ENABLE_WEBP_IMAGE_CRATE)
+      add_ccgen_gtest(test_codec_webp_image_crate tests/data)
     endif()
     add_ccgen_gtest(test_distortion tests/data ${CMAKE_CURRENT_BINARY_DIR})
     add_ccgen_gtest(test_encode tests/data)

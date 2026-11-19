@@ -28,11 +28,12 @@ namespace codec_compare_gen {
 enum class Status { kOk, kUnknownError };
 
 enum class Codec {
-  kWebp,    // WebP, C implementation libwebp.
-  kWebpRs,  // WebP, Rust image crate (image-webp). No lossy encoder for now.
-  kWebpEncWebpRsDec,  // Encode with kWebp, decode with kWebpRs.
-  kWebp2,             // Experimental format WebP2, C++ implementation libwebp2.
-  kJpegXl,            // JPEG XL, C++ implementation libjxl.
+  kWebp,  // WebP, C implementation libwebp. Original encoder and decoder.
+  kWebpImageCrate,            // WebP, Rust image crate (image-webp crate).
+                              // No lossy encoder for now.
+  kWebpEncWebpImageCrateDec,  // Encode with kWebp, decode with kWebpImageCrate.
+  kWebp2,     // WebP2, C++ implementation libwebp2. Very exprimental format.
+  kJpegXl,    // JPEG XL, C++ implementation libjxl.
   kAvif,      // AV1 in HEIF, C implementation libavif (+libaom+libdav1d).
   kAvifSsim,  // kAvif with tune=ssim.
   kAvifIq,    // kAvif with tune=iq.

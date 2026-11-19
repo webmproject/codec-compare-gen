@@ -1,10 +1,10 @@
 [package]
-name = "ccgen_webp_rs"
+name = "ccgen_webp_image_crate"
 version = "0.1.0"
 edition = "2021"
 
 [lib]
-name = "ccgen_webp_rs"
+name = "ccgen_webp_image_crate"
 path = "lib.rs"
 crate-type = ["staticlib", "lib"]
 

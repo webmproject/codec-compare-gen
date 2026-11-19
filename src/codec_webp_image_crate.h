@@ -12,16 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef SRC_CODEC_WEBP_RS_H_
-#define SRC_CODEC_WEBP_RS_H_
+#ifndef SRC_CODEC_WEBP_IMAGE_CRATE_H_
+#define SRC_CODEC_WEBP_IMAGE_CRATE_H_
 
 #include "src/codec.h"
 
 namespace codec_compare_gen {
 
-CodecMetadata GetWebpRsMetadata();
-CodecMetadata GetWebpEncWebpRsDecMetadata();
+CodecMetadata GetWebpImageCrateMetadata();
+CodecMetadata GetWebpEncWebpImageCrateDecMetadata();
 
 }  // namespace codec_compare_gen
 
-#endif  // SRC_CODEC_WEBP_RS_H_
+#endif  // SRC_CODEC_WEBP_IMAGE_CRATE_H_
