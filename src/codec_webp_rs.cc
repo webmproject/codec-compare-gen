@@ -31,7 +31,10 @@
 
 #if defined(HAS_WEBPRS)
 #include "webp_rs/decode_prefix.h"
+#include "webp_rs/demux_prefix.h"
 #include "webp_rs/encode_prefix.h"
+#include "webp_rs/mux_prefix.h"
+#include "webp_rs/mux_types_prefix.h"
 #endif
 
 namespace codec_compare_gen {
@@ -129,6 +132,9 @@ StatusOr<WP2::Data> EncodeWebpRs(const TaskInput& input,
   }
   config.thread_level = 0;
 
+  const int width = static_cast<int>(original_image.front().pixels.width());
+  const int height = static_cast<int>(original_image.front().pixels.height());
+
   if (original_image.size() == 1) {
     // Assume WebPEncode() below does not modify the pixels.
     ASSIGN_OR_RETURN(WebPPicture picture,
@@ -142,7 +148,46 @@ StatusOr<WP2::Data> EncodeWebpRs(const TaskInput& input,
     CHECK_OR_RETURN(R_WebPEncode(&config, &picture), quiet)
         << "WebPEncode() failed: " << picture.error_code;
   } else {
-    CHECK_OR_RETURN(false, quiet) << "libwebp-rs does not support animations";
+    WebPAnimEncoderOptions enc_options;
+    CHECK_OR_RETURN(R_WebPAnimEncoderOptionsInit(&enc_options), quiet);
+    enc_options.minimize_size = config.method >= 5;  // arbitrary
+    enc_options.allow_mixed = !lossless;
+    std::unique_ptr<WebPAnimEncoder, decltype(&R_WebPAnimEncoderDelete)> enc(
+        R_WebPAnimEncoderNew(width, height, &enc_options),
+        R_WebPAnimEncoderDelete);
+    CHECK_OR_RETURN(enc != nullptr, quiet) << "WebPAnimEncoderNew() failed";
+
+    int timestamp_ms = 0;
+    for (const Frame& frame : original_image) {
+      // Assume WebPAnimEncoderAdd() below does not modify the pixels.
+      ASSIGN_OR_RETURN(WebPPicture picture,
+                       ArgbBufferToWebPPicture(
+                           const_cast<WP2::ArgbBuffer&>(frame.pixels), quiet));
+      std::unique_ptr<WebPPicture, decltype(&R_WebPPictureFree)>
+          picture_releaser(&picture, R_WebPPictureFree);
+      CHECK_OR_RETURN(
+          R_WebPAnimEncoderAdd(enc.get(), &picture, timestamp_ms, &config),
+          quiet)
+          << "WebPAnimEncoderAdd() failed: "
+          << R_WebPAnimEncoderGetError(enc.get());
+      timestamp_ms += static_cast<int>(frame.duration_ms);
+    }
+    CHECK_OR_RETURN(
+        R_WebPAnimEncoderAdd(enc.get(), nullptr, timestamp_ms, &config), quiet)
+        << "WebPAnimEncoderAdd() failed: "
+        << R_WebPAnimEncoderGetError(enc.get());
+    WebPData webp_data;
+    R_WebPDataInit(&webp_data);
+    std::unique_ptr<WebPData, decltype(&R_WebPDataClear)> webp_data_releaser(
+        &webp_data, R_WebPDataClear);
+    CHECK_OR_RETURN(R_WebPAnimEncoderAssemble(enc.get(), &webp_data), quiet)
+        << "WebPAnimEncoderAssemble() failed: "
+        << R_WebPAnimEncoderGetError(enc.get());
+    // The bytes were allocated by R_WebPMalloc() so they must be released by
+    // R_WebPDataClear(). They cannot be owned by WP2::Data, unlike in
+    // EncodeWebp().
+    CHECK_OR_RETURN(
+        data.CopyFrom(webp_data.bytes, webp_data.size) == WP2_STATUS_OK, quiet);
   }
   return data;
 }
@@ -150,30 +195,43 @@ StatusOr<WP2::Data> EncodeWebpRs(const TaskInput& input,
 StatusOr<std::pair<Image, double>> DecodeWebpRs(const TaskInput& input,
                                                 const WP2::Data& encoded_image,
                                                 bool quiet) {
-  WebPDecoderConfig config;
-  CHECK_OR_RETURN(R_WebPInitDecoderConfig(&config), quiet);
-  config.output.colorspace = MODE_BGRA;
-  config.options.use_threads = 0;
-  const int status =
-      R_WebPDecode(encoded_image.bytes, encoded_image.size, &config);
-  CHECK_OR_RETURN(status == VP8_STATUS_OK, quiet)
-      << "WebPDecode() failed: " << status;
-  std::unique_ptr<WebPDecBuffer, decltype(&R_WebPFreeDecBuffer)>
-      output_releaser(&config.output, R_WebPFreeDecBuffer);
+  WebPAnimDecoderOptions dec_options;
+  CHECK_OR_RETURN(R_WebPAnimDecoderOptionsInit(&dec_options), quiet);
+  dec_options.color_mode = MODE_BGRA;
+  dec_options.use_threads = 0;
+  const WebPData webp_data = {encoded_image.bytes, encoded_image.size};
+  std::unique_ptr<WebPAnimDecoder, decltype(&R_WebPAnimDecoderDelete)> dec(
+      R_WebPAnimDecoderNew(&webp_data, &dec_options), R_WebPAnimDecoderDelete);
+  CHECK_OR_RETURN(dec != nullptr, quiet) << "WebPAnimDecoderNew() failed";
 
-  const Timer timer;
-  WP2::ArgbBuffer buffer(WP2_BGRA_32);
-  CHECK_OR_RETURN(
-      buffer.Import(WP2_BGRA_32, config.output.width, config.output.height,
-                    config.output.u.RGBA.rgba,
-                    static_cast<uint32_t>(config.output.u.RGBA.stride)) ==
-          WP2_STATUS_OK,
-      quiet);
-  const double color_conversion_duration = timer.seconds();
+  WebPAnimInfo anim_info;
+  CHECK_OR_RETURN(R_WebPAnimDecoderGetInfo(dec.get(), &anim_info), quiet);
 
   Image image;
-  image.reserve(1);
-  image.emplace_back(std::move(buffer), /*duration_ms=*/0);
+  image.reserve(anim_info.frame_count);
+  int previous_timestamp = 0;
+  double color_conversion_duration = 0;
+  while (R_WebPAnimDecoderHasMoreFrames(dec.get())) {
+    uint8_t* buf;
+    int timestamp;
+    CHECK_OR_RETURN(R_WebPAnimDecoderGetNext(dec.get(), &buf, &timestamp),
+                    quiet)
+        << "WebPAnimDecoderGetNext() failed";
+
+    // This does not depend on endianness so no need for WebPPictureFormat().
+    const Timer timer;
+    WP2::ArgbBuffer buffer(WP2_BGRA_32);
+    CHECK_OR_RETURN(
+        buffer.Import(buffer.format(), anim_info.canvas_width,
+                      anim_info.canvas_height, buf,
+                      anim_info.canvas_width * WP2FormatBpp(buffer.format())) ==
+            WP2_STATUS_OK,
+        quiet);
+    color_conversion_duration += timer.seconds();
+    image.emplace_back(std::move(buffer),
+                       static_cast<uint32_t>(timestamp - previous_timestamp));
+    previous_timestamp = timestamp;
+  }
   return std::pair<Image, double>(std::move(image), color_conversion_duration);
 }
 
