@@ -129,7 +129,9 @@ StatusOr<WP2::Data> EncodeFfv1(const TaskInput& input,
   ffv1.context->time_base = {1, 25};
   ffv1.context->framerate = {25, 1};
   ffv1.context->thread_count = 1;
-  ffv1.context->slices = 4;  // Minimum valid number of slices.
+  // 4 slices (2x2) is the minimum valid count for large images, but 1px-wide or
+  // 1px-tall images only fit 1 slice.
+  ffv1.context->slices = (pixels.width() < 2 || pixels.height() < 2) ? 1 : 4;
   // TODO(yguyon): Support 16-bit.
   CHECK_OR_RETURN(WP2Formatbpc(pixels.format()) == 8, quiet);
   ffv1.context->pix_fmt =

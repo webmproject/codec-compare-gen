@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.8.3
+
+- Fix CMake FetchContent variable forwarding for uppercase dependency names.
+- Disable GIT_SHALLOW when fetching jpegli by commit hash in LocalJpegli.cmake.
+- Fix FFV1 slice count when encoding 1-pixel-wide or 1-pixel-tall images.
+
 ## v0.8.2
 
 - Add Codec::kPng using libpng.
