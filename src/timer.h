@@ -35,7 +35,7 @@ class Timer {
       if (minutes > 1) {
         ss << std::setprecision(2) << minutes << " minutes";
       } else {
-        ss << std::fixed << std::setprecision(3) << seconds << " seconds";
+        ss << std::fixed << std::setprecision(5) << seconds << " seconds";
       }
     }
     return ss.str();
@@ -52,6 +52,6 @@ class Timer {
   const std::chrono::high_resolution_clock::time_point start_;
 };
 
-#endif  // SRC_TIMER_H_
-
 }  // namespace codec_compare_gen
+
+#endif  // SRC_TIMER_H_

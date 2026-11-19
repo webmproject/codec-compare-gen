@@ -480,12 +480,12 @@ Status Compare(const std::vector<std::string>& image_paths,
               << "  Encoded file path:  " << input.encoded_path << std::endl;
     std::cout << "Output stats" << std::endl
               << "  Encoded size:       " << task.encoded_size << std::endl
-              << "  Encoding duration:  "
-              << Timer::SecondsToString(task.encoding_duration) << std::endl
-              << "  Decoding duration:  "
-              << Timer::SecondsToString(task.decoding_duration) << std::endl
+              << "  Encoding duration:  " << task.encoding_duration
+              << " seconds" << std::endl
+              << "  Decoding duration:  " << task.decoding_duration
+              << " seconds" << std::endl
               << "  Color conversion duration (if available): "
-              << Timer::SecondsToString(task.decoding_color_conversion_duration)
+              << task.decoding_color_conversion_duration << " seconds"
               << std::endl;
     if (task.distortions.empty()) {
       std::cout << "  Distortion: none (lossless)" << std::endl;
