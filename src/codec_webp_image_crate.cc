@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "src/codec_webp_rs.h"
+#include "src/codec_webp_image_crate.h"
 
 #include <cassert>
 #include <cstddef>
@@ -29,7 +29,7 @@
 #include "src/timer.h"
 #include "src/wp2/base.h"
 
-#if defined(HAS_WEBPRS)
+#if defined(HAS_WEBP_IMAGE_CRATE)
 #include "bindings/webp/decode_rs.h"
 #include "bindings/webp/demux_rs.h"
 #include "bindings/webp/encode_rs.h"
@@ -48,8 +48,8 @@ std::string VersionToString(int version) {
          std::to_string(version & 0xff);
 }
 
-std::string WebpRsPrettyName(bool lossless, Subsampling subsampling,
-                             int effort) {
+std::string WebpImageCratePrettyName(bool lossless, Subsampling subsampling,
+                                     int effort) {
   assert(lossless);
   assert(subsampling == Subsampling::k444 ||
          subsampling == Subsampling::kDefault);
@@ -57,8 +57,8 @@ std::string WebpRsPrettyName(bool lossless, Subsampling subsampling,
   return "image-rs WebP";
 }
 
-std::string WebpRsVersion() {
-#if defined(HAS_WEBPRS)
+std::string WebpImageCrateVersion() {
+#if defined(HAS_WEBP_IMAGE_CRATE)
   return "image-rs" + VersionToString(ccgen_WebPGetEncoderVersion()) +
          "/image-webp-rs" + VersionToString(ccgen_WebPGetDecoderVersion());
 #else
@@ -66,14 +66,14 @@ std::string WebpRsVersion() {
 #endif
 }
 
-std::vector<int> WebpRsEfforts() { return {}; }
+std::vector<int> WebpImageCrateEfforts() { return {}; }
 
-std::vector<int> WebpRsLossyQualities() {
+std::vector<int> WebpImageCrateLossyQualities() {
   // The image crate does not support lossy WebP encoding as of May 2026.
   return {};
 }
 
-#if defined(HAS_WEBPRS)
+#if defined(HAS_WEBP_IMAGE_CRATE)
 
 // Returns a WebPPicture that points to the given ArgbBuffer.
 StatusOr<ccgen_WebPPicture> ArgbBufferToWebPPicture(WP2::ArgbBuffer& buffer,
@@ -102,8 +102,9 @@ int WriterFunction(const uint8_t* data, size_t data_size,
   return bytes.Append(data, data_size) == WP2_STATUS_OK ? 1 : 0;
 }
 
-StatusOr<WP2::Data> EncodeWebpRs(const TaskInput& input,
-                                 const Image& original_image, bool quiet) {
+StatusOr<WP2::Data> EncodeWebpImageCrate(const TaskInput& input,
+                                         const Image& original_image,
+                                         bool quiet) {
   const bool lossless = input.codec_settings.quality == kQualityLossless;
   const Subsampling subsampling = input.codec_settings.chroma_subsampling;
   if (lossless) {
@@ -190,9 +191,8 @@ StatusOr<WP2::Data> EncodeWebpRs(const TaskInput& input,
   return data;
 }
 
-StatusOr<std::pair<Image, double>> DecodeWebpRs(const TaskInput& input,
-                                                const WP2::Data& encoded_image,
-                                                bool quiet) {
+StatusOr<std::pair<Image, double>> DecodeWebpImageCrate(
+    const TaskInput& input, const WP2::Data& encoded_image, bool quiet) {
   ccgen_WebPAnimDecoderOptions dec_options;
   CHECK_OR_RETURN(ccgen_WebPAnimDecoderOptionsInit(&dec_options), quiet);
 
@@ -237,26 +237,30 @@ StatusOr<std::pair<Image, double>> DecodeWebpRs(const TaskInput& input,
 }
 
 #else
-StatusOr<WP2::Data> EncodeWebpRs(const TaskInput&, const Image&, bool quiet) {
-  CHECK_OR_RETURN(false, quiet) << "Encoding images requires HAS_WEBPRS";
+StatusOr<WP2::Data> EncodeWebpImageCrate(const TaskInput&, const Image&,
+                                         bool quiet) {
+  CHECK_OR_RETURN(false, quiet)
+      << "Encoding images requires HAS_WEBP_IMAGE_CRATE";
 }
-StatusOr<std::pair<Image, double>> DecodeWebpRs(const TaskInput&,
-                                                const WP2::Data&, bool quiet) {
-  CHECK_OR_RETURN(false, quiet) << "Decoding images requires HAS_WEBPRS";
+StatusOr<std::pair<Image, double>> DecodeWebpImageCrate(const TaskInput&,
+                                                        const WP2::Data&,
+                                                        bool quiet) {
+  CHECK_OR_RETURN(false, quiet)
+      << "Decoding images requires HAS_WEBP_IMAGE_CRATE";
 }
-#endif  // HAS_WEBPRS
+#endif  // HAS_WEBP_IMAGE_CRATE
 
 }  // namespace
 
-CodecMetadata GetWebpRsMetadata() {
+CodecMetadata GetWebpImageCrateMetadata() {
   return CodecMetadata{
-      "webprs",
-      WebpRsPrettyName,
-      WebpRsVersion,
+      "webpimagecrate",
+      WebpImageCratePrettyName,
+      WebpImageCrateVersion,
       " -DCCGEN_ENABLE_AVIF=OFF -DCCGEN_ENABLE_JPEG=OFF "
-      "-DCCGEN_ENABLE_WEBPRS=ON",
-      WebpRsEfforts,
-      WebpRsLossyQualities,
+      "-DCCGEN_ENABLE_WEBP_IMAGE_CRATE=ON",
+      WebpImageCrateEfforts,
+      WebpImageCrateLossyQualities,
       /*extension=*/"image-rs.webp",
       /*mime_type=*/"image/webp",
       // true would use chrome's rendering of WebP, which is libwebp as of June
@@ -265,8 +269,8 @@ CodecMetadata GetWebpRsMetadata() {
       GetCodecMetadata(Codec::kWebp).supports_16bit,
       GetCodecMetadata(Codec::kWebp).transparent_format,
       GetCodecMetadata(Codec::kWebp).opaque_format,
-      EncodeWebpRs,
-      DecodeWebpRs,
+      EncodeWebpImageCrate,
+      DecodeWebpImageCrate,
   };
 }
 
@@ -274,15 +278,16 @@ CodecMetadata GetWebpRsMetadata() {
 // libwebp as the encoder and the image-webp crate as the decoder.
 
 namespace {
-std::string WebpEncWebpRsDecPrettyName(bool lossless, Subsampling subsampling,
-                                       int effort) {
+std::string WebpEncWebpImageCrateDecPrettyName(bool lossless,
+                                               Subsampling subsampling,
+                                               int effort) {
   return GetCodecMetadata(Codec::kWebp)
              .pretty_name(lossless, subsampling, effort) +
          " (rs dec)";
 }
 
-std::string WebpEncWebpRsDecVersion() {
-#if defined(HAS_WEBPRS)
+std::string WebpEncWebpImageCrateDecVersion() {
+#if defined(HAS_WEBP_IMAGE_CRATE)
   const std::string libwebp_enc_dec_version =
       GetCodecMetadata(Codec::kWebp).version();
   const std::string libwebp_enc_version =
@@ -295,23 +300,23 @@ std::string WebpEncWebpRsDecVersion() {
 }
 }  // namespace
 
-CodecMetadata GetWebpEncWebpRsDecMetadata() {
+CodecMetadata GetWebpEncWebpImageCrateDecMetadata() {
   return CodecMetadata{
-      "webpencwebprsdec",
-      WebpEncWebpRsDecPrettyName,
-      WebpEncWebpRsDecVersion,
+      "webpencwebpimagecratedec",
+      WebpEncWebpImageCrateDecPrettyName,
+      WebpEncWebpImageCrateDecVersion,
       " -DCCGEN_ENABLE_AVIF=OFF -DCCGEN_ENABLE_JPEG=OFF"
-      " -DCCGEN_ENABLE_WEBP=ON -DCCGEN_ENABLE_WEBPRS=ON",
+      " -DCCGEN_ENABLE_WEBP=ON -DCCGEN_ENABLE_WEBP_IMAGE_CRATE=ON",
       GetCodecMetadata(Codec::kWebp).efforts,
       GetCodecMetadata(Codec::kWebp).lossy_qualities,
       /*extension=*/"image-rs.libwebp.webp",
       /*mime_type=*/"image/webp",
-      GetCodecMetadata(Codec::kWebpRs).is_supported_by_browsers,
+      GetCodecMetadata(Codec::kWebpImageCrate).is_supported_by_browsers,
       GetCodecMetadata(Codec::kWebp).supports_16bit,
       GetCodecMetadata(Codec::kWebp).transparent_format,
       GetCodecMetadata(Codec::kWebp).opaque_format,
       GetCodecMetadata(Codec::kWebp).encode,
-      DecodeWebpRs,
+      DecodeWebpImageCrate,
   };
 }
 

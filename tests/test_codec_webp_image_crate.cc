@@ -28,9 +28,9 @@ const char* data_path = nullptr;
 
 //------------------------------------------------------------------------------
 
-TEST(WebpRsTest, Lossless) {
+TEST(WebpImageCrateTest, Lossless) {
   const std::string image_path = std::string(data_path) + "gradient32x32.png";
-  TaskInput input = {{Codec::kWebpRs, Subsampling::k444, /*effort=*/0,
+  TaskInput input = {{Codec::kWebpImageCrate, Subsampling::k444, /*effort=*/0,
                       /*quality=*/kQualityLossless},
                      image_path};
 
@@ -40,9 +40,9 @@ TEST(WebpRsTest, Lossless) {
   EXPECT_GT(result.value.encoded_size, 0);
 }
 
-TEST(WebpRsTest, LosslessAlpha) {
+TEST(WebpImageCrateTest, LosslessAlpha) {
   const std::string image_path = std::string(data_path) + "alpha1x17.png";
-  TaskInput input = {{Codec::kWebpRs, Subsampling::k444, /*effort=*/0,
+  TaskInput input = {{Codec::kWebpImageCrate, Subsampling::k444, /*effort=*/0,
                       /*quality=*/kQualityLossless},
                      image_path};
 
@@ -52,20 +52,20 @@ TEST(WebpRsTest, LosslessAlpha) {
   EXPECT_GT(result.value.encoded_size, 0);
 }
 
-TEST(WebpRsTest, LossyFails) {
+TEST(WebpImageCrateTest, LossyFails) {
   const std::string image_path = std::string(data_path) + "gradient32x32.png";
-  TaskInput input = {
-      {Codec::kWebpRs, Subsampling::k420, /*effort=*/0, /*quality=*/75},
-      image_path};
+  TaskInput input = {{Codec::kWebpImageCrate, Subsampling::k420, /*effort=*/0,
+                      /*quality=*/75},
+                     image_path};
 
   const StatusOr<TaskOutput> result =
       EncodeDecode(input, "", 0, EncodeMode::kEncode, /*quiet=*/true);
   EXPECT_NE(result.status, Status::kOk);
 }
 
-TEST(WebpRsTest, AnimationFails) {
+TEST(WebpImageCrateTest, AnimationFails) {
   const std::string image_path = std::string(data_path) + "anim80x80.gif";
-  TaskInput input = {{Codec::kWebpRs, Subsampling::k444, /*effort=*/0,
+  TaskInput input = {{Codec::kWebpImageCrate, Subsampling::k444, /*effort=*/0,
                       /*quality=*/kQualityLossless},
                      image_path};
 
@@ -77,10 +77,10 @@ TEST(WebpRsTest, AnimationFails) {
 //------------------------------------------------------------------------------
 // libwebp as the encoder and the image-webp crate as the decoder.
 
-TEST(WebpEncWebpRsDecTest, Lossless) {
+TEST(WebpEncWebpImageCrateDecTest, Lossless) {
   const std::string image_path = std::string(data_path) + "gradient32x32.png";
-  TaskInput input = {{Codec::kWebpEncWebpRsDec, Subsampling::k444, /*effort=*/0,
-                      /*quality=*/kQualityLossless},
+  TaskInput input = {{Codec::kWebpEncWebpImageCrateDec, Subsampling::k444,
+                      /*effort=*/0, /*quality=*/kQualityLossless},
                      image_path};
 
   const StatusOr<TaskOutput> result =
@@ -89,10 +89,10 @@ TEST(WebpEncWebpRsDecTest, Lossless) {
   EXPECT_GT(result.value.encoded_size, 0);
 }
 
-TEST(WebpEncWebpRsDecTest, LosslessAlpha) {
+TEST(WebpEncWebpImageCrateDecTest, LosslessAlpha) {
   const std::string image_path = std::string(data_path) + "alpha1x17.png";
-  TaskInput input = {{Codec::kWebpEncWebpRsDec, Subsampling::k444, /*effort=*/0,
-                      /*quality=*/kQualityLossless},
+  TaskInput input = {{Codec::kWebpEncWebpImageCrateDec, Subsampling::k444,
+                      /*effort=*/0, /*quality=*/kQualityLossless},
                      image_path};
 
   const StatusOr<TaskOutput> result =
@@ -101,10 +101,10 @@ TEST(WebpEncWebpRsDecTest, LosslessAlpha) {
   EXPECT_GT(result.value.encoded_size, 0);
 }
 
-TEST(WebpEncWebpRsDecTest, Lossy) {
+TEST(WebpEncWebpImageCrateDecTest, Lossy) {
   const std::string image_path = std::string(data_path) + "gradient32x32.png";
-  TaskInput input = {{Codec::kWebpEncWebpRsDec, Subsampling::k420, /*effort=*/0,
-                      /*quality=*/75},
+  TaskInput input = {{Codec::kWebpEncWebpImageCrateDec, Subsampling::k420,
+                      /*effort=*/0, /*quality=*/75},
                      image_path};
 
   const StatusOr<TaskOutput> result =
@@ -116,10 +116,10 @@ TEST(WebpEncWebpRsDecTest, Lossy) {
             25.0f);
 }
 
-TEST(WebpEncWebpRsDecTest, LosslessAnimation) {
+TEST(WebpEncWebpImageCrateDecTest, LosslessAnimation) {
   const std::string image_path = std::string(data_path) + "anim80x80.gif";
-  TaskInput input = {{Codec::kWebpEncWebpRsDec, Subsampling::k444, /*effort=*/0,
-                      /*quality=*/kQualityLossless},
+  TaskInput input = {{Codec::kWebpEncWebpImageCrateDec, Subsampling::k444,
+                      /*effort=*/0, /*quality=*/kQualityLossless},
                      image_path};
 
   const StatusOr<TaskOutput> result =
@@ -130,10 +130,10 @@ TEST(WebpEncWebpRsDecTest, LosslessAnimation) {
   ASSERT_NE(result.status, Status::kOk);
 }
 
-TEST(WebpEncWebpRsDecTest, LossyAnimation) {
+TEST(WebpEncWebpImageCrateDecTest, LossyAnimation) {
   const std::string image_path = std::string(data_path) + "anim80x80.gif";
-  TaskInput input = {{Codec::kWebpEncWebpRsDec, Subsampling::k420, /*effort=*/0,
-                      /*quality=*/75},
+  TaskInput input = {{Codec::kWebpEncWebpImageCrateDec, Subsampling::k420,
+                      /*effort=*/0, /*quality=*/75},
                      image_path};
 
   const StatusOr<TaskOutput> result =

@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.8.6
+
+- Rename Codec::kWebpRs, Codec::kWebpEncWebpRsDec, webprs, webpencwebprsdec, and
+  CCGEN_ENABLE_WEBPRS to Codec::kWebpImageCrate,
+  Codec::kWebpEncWebpImageCrateDec, webpimagecrate, webpencwebpimagecratedec,
+  and CCGEN_ENABLE_WEBP_IMAGE_CRATE.
+
 ## v0.8.5
 
 - Measure frame copy duration as color conversion time when decoding with
@@ -57,13 +64,13 @@
 
 ## v0.7.4
 
-- Disable CCGEN_ENABLE_WEBPRS by default.
+- Disable CCGEN_ENABLE_WEBP_IMAGE_CRATE by default.
 
 ## v0.7.3
 
 - No longer check for the P3-norm distortion metric upper bound.
-- Fix the reproduction command lines and version strings of Codec::kWebpRs and
-  Codec::kWebpEncWebpRsDec.
+- Fix the reproduction command lines and version strings of
+  Codec::kWebpImageCrate and Codec::kWebpEncWebpImageCrateDec.
 
 ## v0.7.2
 
