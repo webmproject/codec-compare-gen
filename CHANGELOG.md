@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.8.8
+
+- Support WebP animations in Codec::kWebpRs and Codec::kWebpEncWebpRsDec using
+  R_WebPAnimEncoder and R_WebPAnimDecoder.
+
 ## v0.8.7
 
 - Add Codec::kWebpRs (webprs) and Codec::kWebpEncWebpRsDec (webpencwebprsdec)

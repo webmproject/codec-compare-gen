@@ -67,15 +67,31 @@ TEST(WebpRsTest, Lossy) {
             25.0f);
 }
 
-TEST(WebpRsTest, AnimationFails) {
+TEST(WebpRsTest, LosslessAnimation) {
   const std::string image_path = std::string(data_path) + "anim80x80.gif";
   TaskInput input = {{Codec::kWebpRs, Subsampling::k444, /*effort=*/0,
                       /*quality=*/kQualityLossless},
                      image_path};
 
   const StatusOr<TaskOutput> result =
-      EncodeDecode(input, "", 0, EncodeMode::kEncode, /*quiet=*/true);
-  ASSERT_NE(result.status, Status::kOk);
+      EncodeDecode(input, "", 0, EncodeMode::kEncode, /*quiet=*/false);
+  ASSERT_EQ(result.status, Status::kOk);
+  EXPECT_GT(result.value.encoded_size, 0);
+}
+
+TEST(WebpRsTest, LossyAnimation) {
+  const std::string image_path = std::string(data_path) + "anim80x80.gif";
+  TaskInput input = {
+      {Codec::kWebpRs, Subsampling::k420, /*effort=*/0, /*quality=*/75},
+      image_path};
+
+  const StatusOr<TaskOutput> result =
+      EncodeDecode(input, "", 0, EncodeMode::kEncode, /*quiet=*/false);
+  ASSERT_EQ(result.status, Status::kOk);
+  EXPECT_GT(result.value.encoded_size, 0);
+  EXPECT_GT(result.value
+                .distortions[static_cast<int>(DistortionMetric::kLibwebp2Psnr)],
+            25.0f);
 }
 
 //------------------------------------------------------------------------------
@@ -120,26 +136,31 @@ TEST(WebpEncWebpRsDecTest, Lossy) {
             25.0f);
 }
 
-TEST(WebpEncWebpRsDecTest, LosslessAnimationFails) {
+TEST(WebpEncWebpRsDecTest, LosslessAnimation) {
   const std::string image_path = std::string(data_path) + "anim80x80.gif";
   TaskInput input = {{Codec::kWebpEncWebpRsDec, Subsampling::k444,
                       /*effort=*/0, /*quality=*/kQualityLossless},
                      image_path};
 
   const StatusOr<TaskOutput> result =
-      EncodeDecode(input, "", 0, EncodeMode::kEncode, /*quiet=*/true);
-  ASSERT_NE(result.status, Status::kOk);
+      EncodeDecode(input, "", 0, EncodeMode::kEncode, /*quiet=*/false);
+  ASSERT_EQ(result.status, Status::kOk);
+  EXPECT_GT(result.value.encoded_size, 0);
 }
 
-TEST(WebpEncWebpRsDecTest, LossyAnimationFails) {
+TEST(WebpEncWebpRsDecTest, LossyAnimation) {
   const std::string image_path = std::string(data_path) + "anim80x80.gif";
   TaskInput input = {{Codec::kWebpEncWebpRsDec, Subsampling::k420,
                       /*effort=*/0, /*quality=*/75},
                      image_path};
 
   const StatusOr<TaskOutput> result =
-      EncodeDecode(input, "", 0, EncodeMode::kEncode, /*quiet=*/true);
-  ASSERT_NE(result.status, Status::kOk);
+      EncodeDecode(input, "", 0, EncodeMode::kEncode, /*quiet=*/false);
+  ASSERT_EQ(result.status, Status::kOk);
+  EXPECT_GT(result.value.encoded_size, 0);
+  EXPECT_GT(result.value
+                .distortions[static_cast<int>(DistortionMetric::kLibwebp2Psnr)],
+            25.0f);
 }
 
 //------------------------------------------------------------------------------
