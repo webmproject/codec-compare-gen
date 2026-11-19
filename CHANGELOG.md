@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.8.9
+
+- Invoke external distortion metric binaries via posix_spawn() instead of
+  popen() on POSIX platforms to avoid shell invocation.
+
 ## v0.8.8
 
 - Support WebP animations in Codec::kWebpRs and Codec::kWebpEncWebpRsDec using

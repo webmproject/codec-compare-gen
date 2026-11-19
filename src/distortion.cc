@@ -17,18 +17,31 @@
 #ifdef HAVE_UNISTD_H
 #include <unistd.h>
 #endif
+#if defined(HAVE_UNISTD_H) && !defined(__EMSCRIPTEN__)
+#include <fcntl.h>
+#include <spawn.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#ifdef __APPLE__
+#include <crt_externs.h>
+#endif
+#endif
 
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
-#include <cstdio>
 #include <cstring>
 #include <filesystem>
 #include <iostream>
-#include <memory>
 #include <string>
 #include <string_view>
+#include <vector>
+#if defined(HAVE_UNISTD_H) && !defined(__EMSCRIPTEN__)
+#include <cerrno>
+#include <mutex>
+#include <system_error>
+#endif
 
 #include "imageio/image_enc.h"
 #include "src/base.h"
@@ -38,6 +51,12 @@
 #include "src/serialization.h"
 #include "src/task.h"
 #include "src/wp2/base.h"
+
+#if defined(HAVE_UNISTD_H) && !defined(__EMSCRIPTEN__) && !defined(__APPLE__)
+extern "C" {
+extern char** environ;
+}
+#endif
 
 namespace codec_compare_gen {
 
@@ -52,21 +71,193 @@ class FileDeleter {
   const std::string file_path_;
 };
 
-// Runs the binary in a sub-process and returns its standard output.
-StatusOr<std::string> RunProcess(const char* binary_path_and_args, bool quiet) {
-  // std::system() is in the standard but pclose() can return stdout without an
-  // extra file.
-  std::unique_ptr<FILE, decltype(&pclose)> file_descriptor(
-      popen(binary_path_and_args, "r"), pclose);
-  CHECK_OR_RETURN(file_descriptor != nullptr, quiet)
-      << "popen(" << binary_path_and_args << ") failure";
+std::string AsPathArg(std::string_view path) {
+  // Prefix relative paths starting with '-' with "./" so external binaries do
+  // not parse them as command-line flags.
+  if (!path.empty() && path.front() == '-') {
+    return "./" + std::string(path);
+  }
+  return std::string(path);
+}
+
+#if defined(HAVE_UNISTD_H) && !defined(__EMSCRIPTEN__)
+
+std::string ErrnoMessage(int err) {
+  return std::error_code(err, std::generic_category()).message();
+}
+
+class ScopedFd {
+ public:
+  explicit ScopedFd(int fd = -1) : fd_(fd) {}
+  ~ScopedFd() { Close(); }
+  ScopedFd(const ScopedFd&) = delete;
+  ScopedFd& operator=(const ScopedFd&) = delete;
+
+  int get() const { return fd_; }
+  void Reset(int fd = -1) {
+    if (fd_ == fd) return;
+    if (fd_ >= 0) close(fd_);
+    fd_ = fd;
+  }
+  void Close() { Reset(-1); }
+
+ private:
+  int fd_;
+};
+
+class ScopedSpawnFileActions {
+ public:
+  ScopedSpawnFileActions() = default;
+  ~ScopedSpawnFileActions() {
+    if (initialized_) posix_spawn_file_actions_destroy(&actions_);
+  }
+  ScopedSpawnFileActions(const ScopedSpawnFileActions&) = delete;
+  ScopedSpawnFileActions& operator=(const ScopedSpawnFileActions&) = delete;
+
+  int Init() {
+    const int err = posix_spawn_file_actions_init(&actions_);
+    if (err == 0) initialized_ = true;
+    return err;
+  }
+  posix_spawn_file_actions_t* get() { return &actions_; }
+
+ private:
+  posix_spawn_file_actions_t actions_;
+  bool initialized_ = false;
+};
+
+// Runs the binary directly in a sub-process without invoking a shell and
+// returns its standard output.
+StatusOr<std::string> RunProcess(const std::string& binary_path,
+                                 const std::vector<std::string>& args,
+                                 bool quiet) {
+  CHECK_OR_RETURN(binary_path.find('\0') == std::string::npos, quiet)
+      << "Null byte in binary path";
+  for (const std::string& arg : args) {
+    CHECK_OR_RETURN(arg.find('\0') == std::string::npos, quiet)
+        << "Null byte in process argument";
+  }
+
+  pid_t pid = -1;
+  ScopedFd read_fd;
+  {
+    // Serialize pipe creation, FD_CLOEXEC setup, and posix_spawn() so that
+    // another thread's child process cannot inherit this thread's pipe write
+    // end (which would keep the pipe open after this child exits).
+    static auto* const spawn_mutex = new std::mutex();
+    std::lock_guard<std::mutex> lock(*spawn_mutex);
+
+    int pipe_fds[2];
+    CHECK_OR_RETURN(pipe(pipe_fds) == 0, quiet)
+        << "pipe() failed: " << ErrnoMessage(errno);
+    read_fd.Reset(pipe_fds[0]);
+    ScopedFd write_fd(pipe_fds[1]);
+
+    CHECK_OR_RETURN(fcntl(read_fd.get(), F_SETFD, FD_CLOEXEC) == 0, quiet)
+        << "fcntl(FD_CLOEXEC) failed: " << ErrnoMessage(errno);
+    if (write_fd.get() != STDOUT_FILENO) {
+      CHECK_OR_RETURN(fcntl(write_fd.get(), F_SETFD, FD_CLOEXEC) == 0, quiet)
+          << "fcntl(FD_CLOEXEC) failed: " << ErrnoMessage(errno);
+    }
+
+    ScopedSpawnFileActions file_actions;
+    int err = file_actions.Init();
+    CHECK_OR_RETURN(err == 0, quiet)
+        << "posix_spawn_file_actions_init() failed: " << ErrnoMessage(err);
+
+    err = posix_spawn_file_actions_addclose(file_actions.get(), read_fd.get());
+    CHECK_OR_RETURN(err == 0, quiet)
+        << "posix_spawn_file_actions_addclose() failed: " << ErrnoMessage(err);
+
+    if (write_fd.get() != STDOUT_FILENO) {
+      err = posix_spawn_file_actions_adddup2(file_actions.get(), write_fd.get(),
+                                             STDOUT_FILENO);
+      CHECK_OR_RETURN(err == 0, quiet)
+          << "posix_spawn_file_actions_adddup2() failed: " << ErrnoMessage(err);
+      err =
+          posix_spawn_file_actions_addclose(file_actions.get(), write_fd.get());
+      CHECK_OR_RETURN(err == 0, quiet)
+          << "posix_spawn_file_actions_addclose() failed: "
+          << ErrnoMessage(err);
+    }
+
+    std::string binary = binary_path;
+    std::vector<std::string> argv_storage = args;
+    std::vector<char*> argv;
+    argv.reserve(argv_storage.size() + 2);
+    argv.push_back(binary.data());
+    for (std::string& arg : argv_storage) {
+      argv.push_back(arg.data());
+    }
+    argv.push_back(nullptr);
+
+#ifdef __APPLE__
+    char** const envp = *_NSGetEnviron();
+#else
+    char** const envp = environ;
+#endif
+
+    err = posix_spawn(&pid, binary.c_str(), file_actions.get(),
+                      /*attrp=*/nullptr, argv.data(), envp);
+    CHECK_OR_RETURN(err == 0, quiet)
+        << "posix_spawn(" << binary_path << ") failed: " << ErrnoMessage(err);
+  }
+
   std::string standard_output;
-  char buffer[128];
-  while (fgets(buffer, 128, file_descriptor.get()) != nullptr) {
-    standard_output += buffer;
+  char buffer[4096];
+  bool read_failed = false;
+  int read_errno = 0;
+  for (;;) {
+    const ssize_t bytes_read = read(read_fd.get(), buffer, sizeof(buffer));
+    if (bytes_read > 0) {
+      standard_output.append(buffer, static_cast<size_t>(bytes_read));
+    } else if (bytes_read == 0) {
+      break;
+    } else if (errno != EINTR) {
+      read_failed = true;
+      read_errno = errno;
+      break;
+    }
+  }
+  read_fd.Close();
+
+  int wait_status = 0;
+  pid_t waited_pid;
+  do {
+    waited_pid = waitpid(pid, &wait_status, 0);
+  } while (waited_pid < 0 && errno == EINTR);
+
+  CHECK_OR_RETURN(waited_pid == pid, quiet)
+      << "waitpid(" << binary_path << ") failed: " << ErrnoMessage(errno);
+  CHECK_OR_RETURN(!read_failed, quiet)
+      << "read(" << binary_path << ") failed: " << ErrnoMessage(read_errno);
+  if (WIFEXITED(wait_status)) {
+    CHECK_OR_RETURN(WEXITSTATUS(wait_status) == 0, quiet)
+        << binary_path << " exited with status " << WEXITSTATUS(wait_status);
+  } else if (WIFSIGNALED(wait_status)) {
+    CHECK_OR_RETURN(false, quiet)
+        << binary_path << " terminated by signal " << WTERMSIG(wait_status);
+  } else {
+    CHECK_OR_RETURN(false, quiet)
+        << binary_path << " did not exit normally (status " << wait_status
+        << ")";
   }
   return standard_output;
 }
+
+#else
+
+StatusOr<std::string> RunProcess(const std::string& binary_path,
+                                 const std::vector<std::string>& args,
+                                 bool quiet) {
+  (void)binary_path;
+  (void)args;
+  CHECK_OR_RETURN(false, quiet)
+      << "Running external binaries is not supported on this platform";
+  return Status::kUnknownError;
+}
+
+#endif
 
 //------------------------------------------------------------------------------
 
@@ -219,10 +410,9 @@ StatusOr<std::string> GetBinaryDistortion(
   }
   const FileDeleter temp_image_path_deleter(temp_image_path);
 
-  const std::string binary_path_and_args = Escape(metric_binary_path) + " " +
-                                           Escape(final_reference_path) + " " +
-                                           Escape(final_image_path);
-  return RunProcess(binary_path_and_args.c_str(), quiet);
+  return RunProcess(
+      metric_binary_path,
+      {AsPathArg(final_reference_path), AsPathArg(final_image_path)}, quiet);
 }
 
 StatusOr<float> GetLibjxlDistortion(

@@ -13,8 +13,13 @@
 // limitations under the License.
 
 #include <cstddef>
+#include <filesystem>
+#include <fstream>
 #include <iostream>
+#include <sstream>
 #include <string>
+#include <thread>
+#include <vector>
 
 #include "gtest/gtest.h"
 #include "src/base.h"
@@ -189,6 +194,226 @@ TEST(DistortionTest, P3norm) {
   ASSERT_EQ(distortion.status, Status::kOk);
   EXPECT_EQ(distortion.value, 0);  // Equality.
 }
+
+#if !defined(_WIN32) && !defined(__EMSCRIPTEN__)
+
+class ScopedTempDir {
+ public:
+  ScopedTempDir()
+      : path_(std::filesystem::path(::testing::TempDir()) /
+              testing::UnitTest::GetInstance()->current_test_info()->name()) {
+    std::filesystem::remove_all(path_);
+    std::filesystem::create_directories(path_);
+  }
+  ~ScopedTempDir() { std::filesystem::remove_all(path_); }
+
+  const std::filesystem::path& path() const { return path_; }
+
+ private:
+  std::filesystem::path path_;
+};
+
+void CreateFakeMetricBinary(const std::filesystem::path& binary_path,
+                            const std::string& script_contents) {
+  std::filesystem::create_directories(binary_path.parent_path());
+  {
+    std::ofstream file(binary_path, std::ios::binary);
+    ASSERT_TRUE(file.is_open()) << "Failed to create " << binary_path;
+    file << script_contents;
+  }
+  std::filesystem::permissions(binary_path, std::filesystem::perms::owner_all);
+}
+
+std::string ReadFileBytes(const std::filesystem::path& path) {
+  std::ifstream file(path, std::ios::binary);
+  std::ostringstream ss;
+  ss << file.rdbuf();
+  return ss.str();
+}
+
+TEST(DistortionTest, BinaryMetricNoShellInjectionDssim) {
+  const std::string png_path = std::string(data_path) + "gradient32x32.png";
+  const StatusOr<Image> png =
+      ReadStillImageOrAnimation(png_path.c_str(), WP2_ARGB_32, kQuiet);
+  ASSERT_EQ(png.status, Status::kOk);
+
+  ScopedTempDir temp_dir;
+  const std::filesystem::path dssim_binary =
+      temp_dir.path() / "_deps" / "dssim-src" / "target" / "release" / "dssim";
+  CreateFakeMetricBinary(dssim_binary,
+                         "#!/bin/sh\n"
+                         "dir=$(dirname \"$0\")\n"
+                         "printf '%s' \"$1\" > \"$dir/arg1\"\n"
+                         "printf '%s' \"$2\" > \"$dir/arg2\"\n"
+                         "printf '0.125\\timg\\n'\n");
+
+  const std::filesystem::path sentinel = temp_dir.path() / "pwned";
+  const std::string s = sentinel.string();
+  const std::vector<std::string> payloads = {
+      temp_dir.path().string() + "/a$(touch " + s + ").png",
+      temp_dir.path().string() + "/a`touch " + s + "`.png",
+      temp_dir.path().string() + "/a\"; touch " + s + "; #.png",
+      temp_dir.path().string() + "/a\\\"; touch " + s + "; #.png",
+      temp_dir.path().string() + "/a'$(touch " + s + ")'.png",
+      temp_dir.path().string() + "/a\ntouch " + s + "\n.png",
+      temp_dir.path().string() + "/a | touch " + s + ".png",
+      temp_dir.path().string() + "/a\\.png",
+  };
+
+  for (const std::string& payload : payloads) {
+    const StatusOr<float> distortion = GetAverageDistortion(
+        payload, png.value, payload, png.value, {}, temp_dir.path().string(),
+        DistortionMetric::kDssim, kThreadId, kQuiet);
+    ASSERT_EQ(distortion.status, Status::kOk) << "Payload failed: " << payload;
+    EXPECT_FLOAT_EQ(distortion.value, 0.125f);
+    EXPECT_FALSE(std::filesystem::exists(sentinel))
+        << "Shell injection triggered for payload: " << payload;
+    EXPECT_EQ(ReadFileBytes(dssim_binary.parent_path() / "arg1"), payload);
+    EXPECT_EQ(ReadFileBytes(dssim_binary.parent_path() / "arg2"), payload);
+  }
+}
+
+TEST(DistortionTest, BinaryMetricNoShellInjectionLibjxl) {
+  const std::string png_path = std::string(data_path) + "gradient32x32.png";
+  const StatusOr<Image> png =
+      ReadStillImageOrAnimation(png_path.c_str(), WP2_ARGB_32, kQuiet);
+  ASSERT_EQ(png.status, Status::kOk);
+
+  ScopedTempDir temp_dir;
+  const std::filesystem::path sentinel = temp_dir.path() / "pwned";
+  const std::filesystem::path binary_root =
+      temp_dir.path() / ("bin$(touch " + sentinel.string() + ")");
+  const std::filesystem::path butteraugli_binary =
+      binary_root / "_deps" / "libjxl-build" / "tools" / "butteraugli_main";
+  CreateFakeMetricBinary(butteraugli_binary,
+                         "#!/bin/sh\n"
+                         "dir=$(dirname \"$0\")\n"
+                         "printf '%s' \"$1\" > \"$dir/arg1\"\n"
+                         "printf '%s' \"$2\" > \"$dir/arg2\"\n"
+                         "printf '1.5\\n3-norm: 0.75\\n'\n");
+
+  const std::string malicious_path =
+      temp_dir.path().string() + "/a$(touch " + sentinel.string() + ")\\.png";
+  const StatusOr<float> butteraugli = GetAverageDistortion(
+      malicious_path, png.value, malicious_path, png.value, {},
+      binary_root.string(), DistortionMetric::kLibjxlButteraugli, kThreadId,
+      kQuiet);
+  ASSERT_EQ(butteraugli.status, Status::kOk);
+  EXPECT_FLOAT_EQ(butteraugli.value, 1.5f);
+  EXPECT_FALSE(std::filesystem::exists(sentinel));
+  EXPECT_EQ(ReadFileBytes(butteraugli_binary.parent_path() / "arg1"),
+            malicious_path);
+  EXPECT_EQ(ReadFileBytes(butteraugli_binary.parent_path() / "arg2"),
+            malicious_path);
+
+  const StatusOr<float> p3norm = GetAverageDistortion(
+      malicious_path, png.value, malicious_path, png.value, {},
+      binary_root.string(), DistortionMetric::kLibjxlP3norm, kThreadId, kQuiet);
+  ASSERT_EQ(p3norm.status, Status::kOk);
+  EXPECT_FLOAT_EQ(p3norm.value, 0.75f);
+  EXPECT_FALSE(std::filesystem::exists(sentinel));
+}
+
+TEST(DistortionTest, BinaryMetricLeadingDashPath) {
+  const std::string png_path = std::string(data_path) + "gradient32x32.png";
+  const StatusOr<Image> png =
+      ReadStillImageOrAnimation(png_path.c_str(), WP2_ARGB_32, kQuiet);
+  ASSERT_EQ(png.status, Status::kOk);
+
+  ScopedTempDir temp_dir;
+  const std::filesystem::path dssim_binary =
+      temp_dir.path() / "_deps" / "dssim-src" / "target" / "release" / "dssim";
+  CreateFakeMetricBinary(dssim_binary,
+                         "#!/bin/sh\n"
+                         "dir=$(dirname \"$0\")\n"
+                         "printf '%s' \"$1\" > \"$dir/arg1\"\n"
+                         "printf '%s' \"$2\" > \"$dir/arg2\"\n"
+                         "printf '0.5\\timg\\n'\n");
+
+  const StatusOr<float> distortion = GetAverageDistortion(
+      "-ref.png", png.value, "--img.png", png.value, {},
+      temp_dir.path().string(), DistortionMetric::kDssim, kThreadId, kQuiet);
+  ASSERT_EQ(distortion.status, Status::kOk);
+  EXPECT_FLOAT_EQ(distortion.value, 0.5f);
+  EXPECT_EQ(ReadFileBytes(dssim_binary.parent_path() / "arg1"), "./-ref.png");
+  EXPECT_EQ(ReadFileBytes(dssim_binary.parent_path() / "arg2"), "./--img.png");
+}
+
+TEST(DistortionTest, BinaryMetricErrors) {
+  const std::string png_path = std::string(data_path) + "gradient32x32.png";
+  const StatusOr<Image> png =
+      ReadStillImageOrAnimation(png_path.c_str(), WP2_ARGB_32, kQuiet);
+  ASSERT_EQ(png.status, Status::kOk);
+
+  ScopedTempDir temp_dir;
+  // Missing binary returns an error rather than throwing on empty stdout.
+  EXPECT_EQ(GetAverageDistortion(png_path, png.value, png_path, png.value, {},
+                                 temp_dir.path().string(),
+                                 DistortionMetric::kDssim, kThreadId,
+                                 /*quiet=*/true)
+                .status,
+            Status::kUnknownError);
+
+  // Non-zero exit status returns an error.
+  const std::filesystem::path dssim_binary =
+      temp_dir.path() / "_deps" / "dssim-src" / "target" / "release" / "dssim";
+  CreateFakeMetricBinary(dssim_binary,
+                         "#!/bin/sh\nprintf '0.1\\timg\\n'\nexit 1\n");
+  EXPECT_EQ(GetAverageDistortion(png_path, png.value, png_path, png.value, {},
+                                 temp_dir.path().string(),
+                                 DistortionMetric::kDssim, kThreadId,
+                                 /*quiet=*/true)
+                .status,
+            Status::kUnknownError);
+
+  // Embedded NUL byte in a path argument is rejected.
+  CreateFakeMetricBinary(dssim_binary, "#!/bin/sh\nprintf '0.1\\timg\\n'\n");
+  const std::string nul_path("foo\0bar.png", 11);
+  EXPECT_EQ(GetAverageDistortion(nul_path, png.value, png_path, png.value, {},
+                                 temp_dir.path().string(),
+                                 DistortionMetric::kDssim, kThreadId,
+                                 /*quiet=*/true)
+                .status,
+            Status::kUnknownError);
+}
+
+TEST(DistortionTest, BinaryMetricLargeOutputAndConcurrency) {
+  const std::string png_path = std::string(data_path) + "gradient32x32.png";
+  const StatusOr<Image> png =
+      ReadStillImageOrAnimation(png_path.c_str(), WP2_ARGB_32, kQuiet);
+  ASSERT_EQ(png.status, Status::kOk);
+
+  ScopedTempDir temp_dir;
+  const std::filesystem::path dssim_binary =
+      temp_dir.path() / "_deps" / "dssim-src" / "target" / "release" / "dssim";
+  CreateFakeMetricBinary(dssim_binary, "#!/bin/sh\nprintf '0.25\\t" +
+                                           std::string(10000, 'x') + "\\n'\n");
+
+  constexpr size_t kNumThreads = 8;
+  constexpr size_t kIterations = 4;
+  std::vector<std::thread> threads;
+  std::vector<Status> statuses(kNumThreads, Status::kOk);
+  threads.reserve(kNumThreads);
+  for (size_t t = 0; t < kNumThreads; ++t) {
+    threads.emplace_back([&, t]() {
+      for (size_t i = 0; i < kIterations; ++i) {
+        const StatusOr<float> distortion = GetAverageDistortion(
+            png_path, png.value, png_path, png.value, {},
+            temp_dir.path().string(), DistortionMetric::kDssim, t, kQuiet);
+        if (distortion.status != Status::kOk || distortion.value != 0.25f) {
+          statuses[t] = Status::kUnknownError;
+          return;
+        }
+      }
+    });
+  }
+  for (std::thread& thread : threads) thread.join();
+  for (Status status : statuses) {
+    EXPECT_EQ(status, Status::kOk);
+  }
+}
+
+#endif  // !defined(_WIN32) && !defined(__EMSCRIPTEN__)
 
 //------------------------------------------------------------------------------
 
