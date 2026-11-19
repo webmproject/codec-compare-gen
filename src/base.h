@@ -32,6 +32,8 @@ enum class Codec {
   kWebpImageCrate,            // WebP, Rust image crate (image-webp crate).
                               // No lossy encoder for now.
   kWebpEncWebpImageCrateDec,  // Encode with kWebp, decode with kWebpImageCrate.
+  kWebpRs,            // WebP, Rust rewrite of libwebp (libwebp-rs crate).
+  kWebpEncWebpRsDec,  // Encode with kWebp, decode with kWebpRs.
   kWebp2,     // WebP2, C++ implementation libwebp2. Very exprimental format.
   kJpegXl,    // JPEG XL, C++ implementation libjxl.
   kAvif,      // AV1 in HEIF, C implementation libavif (+libaom+libdav1d).

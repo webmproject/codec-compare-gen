@@ -45,6 +45,7 @@
 #include "src/codec_webp.h"
 #include "src/codec_webp2.h"
 #include "src/codec_webp_image_crate.h"
+#include "src/codec_webp_rs.h"
 #include "src/distortion.h"
 #include "src/frame.h"
 #include "src/framework.h"
@@ -62,6 +63,10 @@ CodecMetadata GetCodecMetadata(Codec codec) {
       return GetWebpImageCrateMetadata();
     case Codec::kWebpEncWebpImageCrateDec:
       return GetWebpEncWebpImageCrateDecMetadata();
+    case Codec::kWebpRs:
+      return GetWebpRsMetadata();
+    case Codec::kWebpEncWebpRsDec:
+      return GetWebpEncWebpRsDecMetadata();
     case Codec::kWebp2:
       return GetWebp2Metadata();
     case Codec::kJpegXl:
