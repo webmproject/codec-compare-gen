@@ -15,8 +15,8 @@
 cmake_minimum_required(VERSION 3.20)
 project(
   codec-compare-gen
-  LANGUAGES CXX
-  VERSION 0.8.3)
+  LANGUAGES C CXX
+  VERSION 0.8.4)
 set(CMAKE_CXX_STANDARD 17)
 
 # Options
@@ -121,11 +121,16 @@ endif()
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules")
 
+option(CCGEN_ENABLE_PNG "Build with local libpng" ON)
+option(CCGEN_ENABLE_GIF "Build with local giflib" ON)
 if(CCGEN_ENABLE_PNG)
   include(LocalLibzlib)
   include(LocalLibpng)
   target_compile_definitions(libccgen PRIVATE HAS_PNG)
   target_link_libraries(libccgen PNG::PNG)
+endif()
+if(CCGEN_ENABLE_GIF)
+  include(LocalLibgif)
 endif()
 
 if(CCGEN_ENABLE_JPEG)

@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.8.4
+
+- Build giflib 5.2.2 from source by default (CCGEN_ENABLE_GIF=ON).
+
 ## v0.8.3
 
 - Fix CMake FetchContent variable forwarding for uppercase dependency names.
