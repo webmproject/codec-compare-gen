@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.8.5
+
+- Measure frame copy duration as color conversion time when decoding with
+  libwebp instead of including it in decoding time.
+
 ## v0.8.4
 
 - Build giflib 5.2.2 from source by default (CCGEN_ENABLE_GIF=ON).
