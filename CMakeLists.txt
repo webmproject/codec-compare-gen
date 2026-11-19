@@ -16,7 +16,7 @@ cmake_minimum_required(VERSION 3.20)
 project(
   codec-compare-gen
   LANGUAGES C CXX
-  VERSION 0.8.9)
+  VERSION 0.8.10)
 set(CMAKE_CXX_STANDARD 17)
 
 # Options
@@ -519,6 +519,14 @@ if(CCGEN_BUILD_TESTING)
       endif()
     endmacro()
 
+    if(CCGEN_ENABLE_JPEGZUNE OR CCGEN_ENABLE_WEBP_IMAGE_CRATE)
+      configure_file(tests/data/anim1x1_timestamp_overflow.webp
+                     tests/data/anim1x1_timestamp_overflow.webp COPYONLY)
+      add_test(
+        NAME test_bindings
+        COMMAND cargo test
+        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/bindings)
+    endif()
     add_ccgen_gtest(test_ccgen tests/data)
     add_ccgen_gtest(test_codec tests/data)
     add_ccgen_gtest(test_codec_avif)

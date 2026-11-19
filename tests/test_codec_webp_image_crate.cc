@@ -12,13 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <cstdint>
+#include <fstream>
 #include <iostream>
+#include <iterator>
+#include <limits>
 #include <string>
+#include <utility>
+#include <vector>
 
 #include "gtest/gtest.h"
 #include "src/base.h"
 #include "src/codec.h"
+#include "src/frame.h"
 #include "src/task.h"
+#include "src/wp2/base.h"
 
 namespace codec_compare_gen {
 namespace {
@@ -146,6 +154,35 @@ TEST(WebpEncWebpImageCrateDecTest, LossyAnimation) {
             //                    tagged version. See
             //                    https://github.com/image-rs/image/issues/2913.
             24.0f);
+}
+
+TEST(WebpImageCrateTest, AnimatedTimestampOverflow) {
+  const std::string image_path =
+      std::string(data_path) + "anim1x1_timestamp_overflow.webp";
+  std::ifstream file(image_path, std::ios::in | std::ios::binary);
+  ASSERT_TRUE(file.good());
+  const std::vector<uint8_t> webp((std::istreambuf_iterator<char>(file)),
+                                  std::istreambuf_iterator<char>());
+  WP2::Data encoded;
+  ASSERT_EQ(encoded.CopyFrom(webp.data(), webp.size()), WP2_STATUS_OK);
+
+  const TaskInput input = {{Codec::kWebpImageCrate, Subsampling::k444,
+                            /*effort=*/0, /*quality=*/kQualityLossless},
+                           image_path};
+  const StatusOr<std::pair<Image, double>> decoded =
+      GetCodecMetadata(Codec::kWebpImageCrate)
+          .decode(input, encoded, /*quiet=*/false);
+  ASSERT_EQ(decoded.status, Status::kOk);
+  constexpr uint32_t kNumFrames = 130;
+  constexpr uint32_t kMaxDurationMs = 0xffffff;
+  ASSERT_EQ(decoded.value.first.size(), kNumFrames);
+  EXPECT_EQ(decoded.value.first[0].duration_ms, kMaxDurationMs);
+  EXPECT_EQ(decoded.value.first[127].duration_ms, kMaxDurationMs);
+  // Frame 129 saturates the cumulative timestamp to INT_MAX.
+  EXPECT_EQ(decoded.value.first[128].duration_ms,
+            static_cast<uint32_t>(std::numeric_limits<int>::max()) -
+                128u * kMaxDurationMs);
+  EXPECT_EQ(decoded.value.first[129].duration_ms, 0u);
 }
 
 //------------------------------------------------------------------------------

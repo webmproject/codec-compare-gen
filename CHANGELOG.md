@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.8.10
+
+- Avoid panics on overflowing animation timestamps in safe Rust FFI bindings and
+  set MSRV to 1.88 in bindings/Cargo.toml.
+
 ## v0.8.9
 
 - Invoke external distortion metric binaries via posix_spawn() instead of
