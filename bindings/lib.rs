@@ -186,8 +186,9 @@ pub extern "C" fn ccgen_WebPPictureFree(picture: Option<&mut ccgen_WebPPicture>)
     if let Some(picture) = picture {
         // ccgen_WebPPicture should not own any memory.
         // TODO(b/509475659): Revisit this assumption if the whole libwebp API is implemented.
-        assert!(picture.memory_.is_null());
-        assert!(picture.memory_argb_.is_null());
+        if !picture.memory_.is_null() || !picture.memory_argb_.is_null() {
+            return;
+        }
 
         picture.y = std::ptr::null_mut();
         picture.u = std::ptr::null_mut();
@@ -490,17 +491,27 @@ pub extern "C" fn ccgen_WebPAnimDecoderGetNext(
     if let (Some(dec), Some(buf), Some(timestamp)) = (dec, buf, timestamp) {
         let decoder = &mut dec.decoder;
         let (width, height) = decoder.dimensions();
-        let num_pixels = (width as usize).checked_mul(height as usize).unwrap();
-        let buffer_len = num_pixels.checked_mul(4).unwrap();
+        if width == 0 || height == 0 {
+            return ERROR;
+        }
+        let Some(num_pixels) = usize::try_from(width)
+            .ok()
+            .and_then(|w| usize::try_from(height).ok().and_then(|h| w.checked_mul(h)))
+        else {
+            return ERROR;
+        };
+        let Some(buffer_len) = num_pixels.checked_mul(4) else {
+            return ERROR;
+        };
         let expected_buffer_len = num_pixels * if decoder.has_alpha() { 4 } else { 3 };
         // dec.buffer will contain RGBA samples in this order.
         if dec.buffer.is_empty() {
             if dec.buffer.try_reserve_exact(buffer_len).is_err() {
                 return ERROR;
-            };
+            }
             dec.buffer.resize(buffer_len, 0); // Initial values do not matter.
-        } else {
-            assert_eq!(dec.buffer.len(), buffer_len);
+        } else if dec.buffer.len() != buffer_len {
+            return ERROR;
         }
 
         let delay_ms = if decoder.is_animated() {
@@ -511,7 +522,7 @@ pub extern "C" fn ccgen_WebPAnimDecoderGetNext(
             // if image_webp::WebPDecoder::has_alpha() is true, and RGB samples otherwise.
             match decoder.read_frame(&mut dec.buffer[..expected_buffer_len]) {
                 Ok(delay_ms) => delay_ms,
-                Err(_) => return 0,
+                Err(_) => return ERROR,
             }
         } else {
             if dec.next_frame_index >= 1 {
@@ -538,10 +549,11 @@ pub extern "C" fn ccgen_WebPAnimDecoderGetNext(
             }
         }
 
-        dec.next_frame_index += 1;
+        dec.next_frame_index = dec.next_frame_index.saturating_add(1);
         dec.next_frame_timestamp_ms = dec.next_frame_timestamp_ms.saturating_add(delay_ms);
         *buf = dec.buffer.as_mut_ptr();
-        *timestamp = std::ffi::c_int::try_from(dec.next_frame_timestamp_ms).unwrap();
+        *timestamp =
+            std::ffi::c_int::try_from(dec.next_frame_timestamp_ms).unwrap_or(std::ffi::c_int::MAX);
         OK
     } else {
         ERROR
@@ -677,5 +689,104 @@ pub unsafe extern "C" fn ccgen_imagejpeg_free_buffer(buffer: *mut u8, size: usiz
         // SAFETY: buffer is checked against null above. The caller ensures it points to a valid
         //         boxed slice of size `size`.
         let _ = unsafe { Box::from_raw(std::slice::from_raw_parts_mut(buffer, size)) };
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn anim_decoder_saturates_cumulative_timestamp() {
+        const NUM_FRAMES: usize = 130;
+        const MAX_DURATION: u32 = 0x00ff_ffff;
+        let webp = include_bytes!("../tests/data/anim1x1_timestamp_overflow.webp");
+        let data = ccgen_WebPData {
+            bytes: webp.as_ptr(),
+            size: webp.len(),
+        };
+        let mut options = ccgen_WebPAnimDecoderOptions::default();
+        assert_eq!(ccgen_WebPAnimDecoderOptionsInitInternal(Some(&mut options), 0), OK);
+
+        // SAFETY: `webp` stays alive until `ccgen_WebPAnimDecoderDelete` is called below.
+        let dec = unsafe { ccgen_WebPAnimDecoderNewInternal(Some(&data), Some(&options), 0) };
+        assert!(!dec.is_null());
+
+        {
+            // SAFETY: `dec` is a valid non-null pointer returned by
+            //         `ccgen_WebPAnimDecoderNewInternal` and is not aliased during this block.
+            let dec_ref = unsafe { &mut *dec };
+            let mut info = ccgen_WebPAnimInfo {
+                canvas_width: 0,
+                canvas_height: 0,
+                loop_count: 0,
+                bgcolor: 0,
+                frame_count: 0,
+                pad: [0; 4],
+            };
+            assert_eq!(ccgen_WebPAnimDecoderGetInfo(Some(dec_ref), Some(&mut info)), OK);
+            assert_eq!(info.canvas_width, 1);
+            assert_eq!(info.canvas_height, 1);
+            assert_eq!(info.frame_count, NUM_FRAMES as u32);
+
+            for i in 0..NUM_FRAMES {
+                assert_eq!(ccgen_WebPAnimDecoderHasMoreFrames(Some(dec_ref)), 1);
+                let mut buf = std::ptr::null_mut();
+                let mut timestamp: std::ffi::c_int = -1;
+                assert_eq!(
+                    ccgen_WebPAnimDecoderGetNext(
+                        Some(dec_ref),
+                        Some(&mut buf),
+                        Some(&mut timestamp),
+                    ),
+                    OK
+                );
+                assert!(!buf.is_null());
+                let expected = ((i as u64 + 1) * MAX_DURATION as u64)
+                    .min(std::ffi::c_int::MAX as u64) as std::ffi::c_int;
+                assert_eq!(timestamp, expected);
+            }
+            assert_eq!(ccgen_WebPAnimDecoderHasMoreFrames(Some(dec_ref)), 0);
+        }
+
+        // SAFETY: `dec` was allocated by `ccgen_WebPAnimDecoderNewInternal` and is freed once.
+        unsafe { ccgen_WebPAnimDecoderDelete(dec) };
+    }
+
+    #[test]
+    fn picture_and_config_init_and_free() {
+        let mut sentinel: u8 = 0;
+        let mut argb_sentinel: u32 = 0;
+        let mut picture = ccgen_WebPPicture::default();
+        picture.width = 42;
+        assert_eq!(ccgen_WebPPictureInitInternal(Some(&mut picture), 0), OK);
+        assert_eq!(picture.width, 0);
+        assert_eq!(ccgen_WebPPictureInitInternal(None, 0), ERROR);
+
+        picture.y = &mut sentinel;
+        picture.u = &mut sentinel;
+        picture.v = &mut sentinel;
+        picture.a = &mut sentinel;
+        picture.argb = &mut argb_sentinel;
+        ccgen_WebPPictureFree(Some(&mut picture));
+        assert!(picture.y.is_null());
+        assert!(picture.u.is_null());
+        assert!(picture.v.is_null());
+        assert!(picture.a.is_null());
+        assert!(picture.argb.is_null());
+
+        picture.y = &mut sentinel;
+        picture.memory_ = &mut sentinel as *mut u8 as *mut std::ffi::c_void;
+        picture.memory_argb_ = &mut sentinel as *mut u8 as *mut std::ffi::c_void;
+        ccgen_WebPPictureFree(Some(&mut picture));
+        assert!(!picture.y.is_null());
+
+        let mut config = ccgen_WebPConfig::default();
+        config.lossless = 1;
+        assert_eq!(ccgen_WebPConfigInitInternal(Some(&mut config), 0, 75.0, 0), OK);
+        assert_eq!(config.lossless, 0);
+        assert_eq!(config.quality, 75.0);
+        assert_eq!(config.method, 4);
+        assert_eq!(ccgen_WebPConfigInitInternal(None, 0, 75.0, 0), ERROR);
     }
 }

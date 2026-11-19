@@ -2,6 +2,7 @@
 name = "ccgen_webp_image_crate"
 version = "0.1.0"
 edition = "2021"
+rust-version = "1.88"
 
 [lib]
 name = "ccgen_webp_image_crate"
