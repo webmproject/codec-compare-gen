@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.8.11
+
+- Fix Box pointer aliasing and panics in unsafe Rust FFI bindings.
+
 ## v0.8.10
 
 - Avoid panics on overflowing animation timestamps in safe Rust FFI bindings and
